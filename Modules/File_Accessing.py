@@ -1,19 +1,27 @@
 from pyteomics import mzxml, mzml, mass, auxiliary
 from itertools import combinations_with_replacement
-from .General_Functions import mz_int, count_seq_letters, sum_monos, calculate_comp_from_mass, gen_adducts_combo, comp_to_formula, sum_atoms, glycan_to_atoms, form_to_comp, calculate_isotopic_pattern, h_mass
+from .General_Functions import mz_int, count_seq_letters, sum_monos, calculate_comp_from_mass, gen_adducts_combo, comp_to_formula, sum_atoms, glycan_to_atoms, form_to_comp, calculate_isotopic_pattern, h_mass, form_to_charge, noise_level_calc_mzarray, calculate_ppm_diff, normpdf
+from scipy.signal import savgol_filter
+from statistics import mean
 from re import split
 from math import inf
+import numpy
 import sys
 import datetime
 
 ##---------------------------------------------------------------------------------------
 ##File accessing-associated functions (these are functions that deal with the data in
 ##some way. They make vast use of general functions and require a library to work).
-
+    
 def eic_from_glycan(files,
                     glycan_info,
                     ms1_indexes,
-                    tolerance):
+                    rt_interval,
+                    tolerance,
+                    min_isotops,
+                    noise,
+                    max_charges,
+                    verbose = False):
     '''Generates an EIC of the mzs calculated for a glycan.
 
     Parameters
@@ -46,239 +54,281 @@ def eic_from_glycan(files,
         first one being the rt array and the second one the int array.
     '''
     data = {}
+    ppm_info = {}
+    iso_fitting_quality = {}
+    verbose_info = []
     for i in glycan_info['Adducts_mz']:
+        if verbose:
+            print('Adduct: '+str(i)+" mz: "+str(glycan_info['Adducts_mz'][i]))
+            verbose_info.append('Adduct: '+str(i)+" mz: "+str(glycan_info['Adducts_mz'][i]))
+        adduct_mass = mass.calculate_mass(composition=form_to_comp(i))
+        adduct_charge = form_to_charge(i)
+        ppm_info[i] = {}
+        iso_fitting_quality[i] = {}
         data[i] = {}
         for j_j, j in enumerate(files):
+            if verbose:
+                print("--Drawing EIC for Sample: "+str(j_j))
+                verbose_info.append("--Sample: "+str(j_j))
+            ppm_info[i][j_j] = []
+            iso_fitting_quality[i][j_j] = []
             data[i][j_j] = [[], []]
-            for k in ms1_indexes[j_j]:
-                mz_ints = dict(zip(j[k]['m/z array'], j[k]['intensity array']))
+            for k_k, k in enumerate(ms1_indexes[j_j]):
+                iso_fitting_quality[i][j_j].append(0.0)
+                ppm_info[i][j_j].append(inf)
+                not_good = False
+                found = False
                 rt = j[k]['retentionTime']
-                intensity = mz_int(mz_ints, glycan_info['Adducts_mz'][i], tolerance)
                 data[i][j_j][0].append(rt)
-                data[i][j_j][1].append(intensity)
-    return data
-
-def peaks_from_eic(rt_int,
-                   peak_width,
-                   threshold,
-                   rt_interval = (0, inf),
-                   max_peaks = 3,
-                   peak_relative_int = 0.5):
-    '''Does multi-peak-picking in an EIC, based on the most intense peaks in the EIC,
-    in the retention time interval of interest. This function works in-line.
-
-    Parameters
-    ----------
-    rt_int : list
-        A list containing two synchronized lists, the first one containing retention
-        times and the second one containing intensity.
-
-    peak_width : float
-        The estimated peak width of interest peaks in your chromatographic run, in
-        minutes.
-
-    threshold : float
-        The minimum intensity of a peak for it to be picked.
-
-    rt_interval : tuple
-        A tuple containing the retention time interval, in minutes at which you want to
-        do peak-picking.
-        Default = (0, 30)
-
-    max_peaks : int
-        Maximum amount of peaks to pick. Chooses the most intense peaks, and then the
-        ones closer together. Good for isomers picking.
-        Default = 3
-
-    Returns
-    -------
-    max_list : list
-        A list of dictionaries at which the keys are the peak id ('id'), retention time
-        ('rt') and intensity ('int').
-
-    peaks_interval : tuple
-         A tuple of the rt interval at which all peaks were found
+                if (j[k]['retentionTime'] < rt_interval[0] or j[k]['retentionTime'] > rt_interval[1]):
+                    data[i][j_j][1].append(0.0)
+                    continue
+                else:   
+                    if verbose:
+                        verbose_info.append("----RT: "+str(rt))
+                    l_l = 0
+                    last_skip = 2
+                    intensity = 0.0
+                    mono_int = 0.0
+                    iso_distro = 1
+                    sliced_mz = j[k]['m/z array']
+                    sliced_int = j[k]['intensity array']
+                    m_range = range(1, abs(max_charges)+1)
+                    target_mz = glycan_info['Adducts_mz'][i]
+                    second_peak = (glycan_info['Isotopic_Distribution_Masses'][1]+adduct_mass)/adduct_charge
+                    sec_peak_rel_int = glycan_info['Isotopic_Distribution'][1]
+                    last_peak = (glycan_info['Isotopic_Distribution_Masses'][-1]+adduct_mass)/adduct_charge
+                    no_iso_peaks = len(glycan_info['Isotopic_Distribution_Masses'])
+                    before_target = glycan_info['Adducts_mz'][i]-h_mass-tolerance
+                    mono_ppm = []
+                    iso_actual = []
+                    iso_target = []
+                    bad_peaks_before_target = []
+                    for l_l, l in enumerate(sliced_mz):
+                        if not_good: #Here are checks for quick skips
+                            break
+                        if l_l == len(sliced_mz)-1 and not found:
+                            if verbose:
+                                verbose_info.append("------m/z "+str(l)+", int "+str(sliced_int[l_l]))
+                                verbose_info.append("--------Couldn't find peak and array ends shortly afterwards.")
+                            not_good = True
+                            break
+                        if target_mz > sliced_mz[-1]:
+                            if verbose:
+                                verbose_info.append("------m/z "+str(l)+", int "+str(sliced_int[l_l]))
+                                verbose_info.append("--------Target mz outside acquired mz interval.")
+                            not_good = True
+                            break
+                        if l < before_target: #This is the last check for quick skips
+                            continue
+                        if l > second_peak + tolerance and iso_distro == 1: #This is the first check for quick skips that's dependent on mz array acquired data but independent of noise
+                            if verbose:
+                                verbose_info.append("------m/z "+str(l)+", int "+str(sliced_int[l_l]))
+                                verbose_info.append("--------Couldn't check correct charge.")
+                            not_good = True
+                            break
+                        if iso_distro == no_iso_peaks:
+                            if verbose:
+                                verbose_info.append("------m/z "+str(l)+", int "+str(sliced_int[l_l]))
+                                verbose_info.append("--------Reached the end of isotopic distribution without errors.")
+                            break
+                        if l > (target_mz + tolerance) and not found:
+                            if verbose:
+                                verbose_info.append("------m/z "+str(l)+", int "+str(sliced_int[l_l]))
+                                verbose_info.append("--------Couldn't find monoisotopic peak.")
+                            not_good = True
+                            break
+                        if l > last_peak + tolerance and found:
+                            if verbose:
+                                verbose_info.append("------m/z "+str(l)+", int "+str(sliced_int[l_l]))
+                                verbose_info.append("--------Checked all available isotopologue peaks with no error.")
+                                verbose_info.append("--------Isotopologue peaks found: "+str(iso_distro))
+                            if iso_distro < min_isotops:
+                                not_good = True
+                            break
+                        if l > target_mz + tolerance and l < target_mz + h_mass and found:
+                            for m in m_range:
+                                if abs(l-(target_mz+(h_mass/m))) <= tolerance and m != adduct_charge and sliced_int[l_l] < mono_int*(sec_peak_rel_int*1.2) and sliced_int[l_l] > mono_int*(sec_peak_rel_int*0.8):
+                                    if verbose:
+                                        verbose_info.append("------m/z "+str(l)+", int "+str(sliced_int[l_l]))
+                                        verbose_info.append("--------Incorrect charge assigned.")
+                                    not_good = True
+                                    break
+                        if l > target_mz - h_mass - tolerance and l < target_mz - tolerance:
+                            for m in m_range:
+                                if abs(l-(target_mz-(h_mass/m))) <= tolerance:
+                                    if verbose:
+                                        verbose_info.append("------m/z "+str(l)+", int "+str(sliced_int[l_l]))
+                                        verbose_info.append("--------Not monoisotopic.")
+                                    bad_peaks_before_target.append(sliced_int[l_l])
+                                    break
+                        if l >= target_mz - tolerance and abs(l-target_mz) <= tolerance:
+                            mono_ppm.append(calculate_ppm_diff(l, target_mz))
+                            intensity += sliced_int[l_l]
+                            mono_int += sliced_int[l_l]
+                            for m in bad_peaks_before_target:
+                                if m > mono_int*(1/sec_peak_rel_int*0.8):
+                                    not_good = True
+                                    break
+                            found = True
+                            continue
+                        if l > target_mz + tolerance and abs(l-((glycan_info['Isotopic_Distribution_Masses'][iso_distro]+adduct_mass)/adduct_charge)) <= tolerance:
+                            if sliced_int[l_l] > mono_int*glycan_info['Isotopic_Distribution'][iso_distro]:
+                                intensity += mono_int*glycan_info['Isotopic_Distribution'][iso_distro]
+                            if sliced_int[l_l] <= mono_int*glycan_info['Isotopic_Distribution'][iso_distro]:
+                                intensity += sliced_int[l_l]
+                            if iso_distro <= min_isotops - 1:
+                                iso_actual.append(sliced_int[l_l])
+                                iso_target.append(mono_int*glycan_info['Isotopic_Distribution'][iso_distro])
+                            iso_distro += 1
+                            continue
+                if not_good:
+                    ppm_info[i][j_j][-1] = inf
+                    iso_fitting_quality[i][j_j][-1] = 0.0
+                    data[i][j_j][1].append(0.0)
+                    continue
+                else:
+                    ppm_info[i][j_j][-1] = mean(mono_ppm)
+                    if len(iso_actual) <= 2 and len(iso_actual) > 0:
+                        temp_relation = []
+                        for l in range(len(iso_actual)):
+                            if iso_actual[l] >= iso_target[l]:
+                                temp_relation.append(iso_target[l]/iso_actual[l])
+                            else:
+                                temp_relation.append(iso_actual[l]/iso_target[l])
+                        R_sq = mean(temp_relation)
+                    if len(iso_actual) == 0:
+                        R_sq = 0.0
+                    if len(iso_actual) > 2:
+                        corr_matrix = numpy.corrcoef(iso_actual, iso_target)
+                        corr = corr_matrix[0,1]
+                        R_sq = corr**2
+                    iso_fitting_quality[i][j_j][-1] = R_sq
+                    data[i][j_j][1].append(intensity)
+    return data, ppm_info, iso_fitting_quality, verbose_info
+    
+def eic_smoothing(rt_int):
     '''
-    max_list = []
-    local_max = 0
-    local_max_id = 0
-    dormancy_id = 0
-    for i_i, i in enumerate(rt_int[0]):
-        if i_i >= dormancy_id and i >= rt_interval[0]:
-            for j in range(i_i, len(rt_int[0])):
-                if rt_int[0][j] >= i+peak_width:
-                    temp_max = max(rt_int[1][i_i:j])
-                    if temp_max > local_max:
-                        local_max = temp_max
-                        local_max_id = rt_int[1].index(temp_max)
-                    if rt_int[0][j] >= (rt_int[0][local_max_id]+peak_width/2):
-                        if local_max > threshold:
-                            max_list.append({'id' : local_max_id,
-                                            'rt' : rt_int[0][local_max_id],
-                                            'int' : local_max})
-                        local_max = 0
-                        dormancy_id = j
-                    break
-        if i + peak_width > rt_int[0][-1] or i + peak_width > rt_interval[1]:
-            if len(max_list) == 0:
-                return max_list, (0, 0)
-            max_list = sorted(max_list, key=lambda x: x['int'], reverse=True)[:max_peaks]
-            peaks_interval = (max_list[0]['rt']-peak_width*max_peaks,
-                              max_list[0]['rt']+peak_width*max_peaks)
-            to_be_removed = []
-            for i_i, i in enumerate(max_list):
-                if i_i != 0:
-                    if (abs(i['rt']-max_list[0]['rt']) > peak_width*max_peaks or
-                        i['int'] < max_list[0]['int']*peak_relative_int):
-                        to_be_removed.append(i)
-            for i in to_be_removed:
-                max_list.remove(i)
-            return max_list, peaks_interval
-
-def check_monoisotopic_charge(file,
-                              ms1_indexes,
-                              mz,
-                              sec_iso_peak,
-                              charges,
-                              threshold,
-                              peaks,
-                              tolerance):
-    '''Checks if the peaks identified for a given mz corresponds to monoisotopic,
-    correctly charge-assigned peaks.
-
-    Parameters
-    ----------
-    file : generator
-        A  generator obtained from the function pyteomics.mzxml.MzXML().
-
-    ms1_indexes : list
-        A list of indexes of the MS1 spectra in the file.
-
-    mz : float
-        The mz of each you want to do the checks.
-
-    charges : int
-        The number of charges calculated for the given mz, to be checked.
-
-    threshold : float
-        The minimum intensity of previous peak to consider non-monoisotopic.
-
-    peaks : list
-        A list of dictionaries, each containing the peak id, rt and intensity as keys,
-        with their respective values as values.
-
-    Returns
-    -------
-    monoisotopic_state : list
-        A list containing a boolean indicating if a mz at the corresponding peak is
-        monoisotopic or not.
-
-    charge_state : list
-        A list containing a boolean indicating if a mz at the corresponding peak is
-        correctly charge-assigned or not.
     '''
-    monoisotopic_state = []
-    charge_state = []
-    for i in peaks:
-        monoisotopic_state.append(True)
-        charge_state.append(False)
-        mz_int = 0
-        for j_j, j in enumerate(file[ms1_indexes[i['id']]]['m/z array']):
-            if abs(mz-j) <= tolerance:
-                mz_int = file[ms1_indexes[i['id']]]['intensity array'][j_j]
-            if j > mz+h_mass:
-                break
-            if (abs((mz-(h_mass/charges))-j) <= tolerance and
-                file[ms1_indexes[i['id']]]['intensity array'][j_j] > threshold):
-                monoisotopic_state[-1] = False
-            if (abs((mz+(h_mass/charges))-j) <= tolerance  and 
-                file[ms1_indexes[i['id']]]['intensity array'][j_j] > mz_int*(sec_iso_peak*0.8)):
-                charge_state[-1] = True
-                break
-    return monoisotopic_state, charge_state
-
-def deconvoluted_glycan_eic(file,
-                           ms1_indexes,
-                           isotopic_dist,
-                           mz,
-                           peaks_interval,
-                           threshold, 
-                           charges,
-                           tolerance):
-    '''Deconvolutes the data around the identified peaks retention time and creates a
-    deconvoluted EIC.
-
-    Parameters
-    ----------
-    file : generator
-        A  generator obtained from the function pyteomics.mzxml.MzXML().
-
-    ms1_indexes : list
-        A list of indexes of the MS1 spectra in the file.
-
-    isotopic_dist : list
-        A list containing the intensoids of the isotopic distribution of the glycan.
-
-    mz : float
-        The mz of each you want to do the checks.
-
-    peaks_interval : tuple
-         A tuple of the rt interval at which all peaks were found.
-
-    threshold : float
-        The minimum intensity of a peak for it to be considered into the deconvolution.
-
-    charges : int
-        The number of charges calculated for the given mz, to be checked.
-
-    tolerance : float
-        The mz acceptable tolerance.
-
-    Returns
-    -------
-    rt_int : list
-        A list of lists, with the first one containing the rt array and the second one
-        containing the intensity array.
+    points = int(0.333/(rt_int[0][1]-rt_int[0][0]))
+    filtered_ints = list(savgol_filter(rt_int[1], points, 2))
+    for i_i, i in enumerate(filtered_ints):
+        if i < 0:
+            filtered_ints[i_i] = 0.0
+    return rt_int[0], filtered_ints
+    
+def peak_curve_fit(rt_int, 
+                   peak):
     '''
-    rt_int = [[], []]
-    for i in ms1_indexes:
-        peak = 0
-        mono_int = 0.0
-        temp_int = 0.0
-        if file[i]['retentionTime'] > peaks_interval[1]:
-            rt_int[0].append(file[i]['retentionTime'])
-            rt_int[1].append(temp_int)
-            continue
-        elif file[i]['retentionTime'] > peaks_interval[0]:
-            rt_int[0].append(file[i]['retentionTime'])
-            for j_j, j in enumerate(file[i]['m/z array']):
-                if j > mz+(h_mass/charges)*len(isotopic_dist):
-                    break
-                elif abs(mz-j) <= tolerance:
-                    peak+=1
-                    mono_int = file[i]['intensity array'][j_j]
-                    temp_int+=file[i]['intensity array'][j_j]
-                elif abs((mz+(h_mass/charges)*peak)-j) <= tolerance:
-                    if (file[i]['intensity array'][j_j] > threshold and
-                        peak < len(isotopic_dist)):
-                        if (file[i]['intensity array'][j_j] >
-                            mono_int*isotopic_dist[peak]):
-                            temp_int+=mono_int*isotopic_dist[peak]
-                        else:
-                            temp_int+=file[i]['intensity array'][j_j]
-                        peak+= 1
-                    else:
-                        break                    
+    '''
+    x = rt_int[0][peak['peak_interval_id'][0]:peak['peak_interval_id'][1]+1]
+    y = rt_int[1][peak['peak_interval_id'][0]:peak['peak_interval_id'][1]+1]
+    interval = x[1]-x[0]
+    fits_list = []
+    for j in range(int(0.2/interval)):
+        before = []
+        after = []
+        y_adds = []
+        for k in range(j):
+            before.append(x[0]-k*interval)
+            after.append(x[-1]+k*interval)
+            y_adds.append(0.0)
+        before = sorted(before)
+        temp_x = before+x+after
+        temp_y = y_adds+y+y_adds
+        max_amp_id = temp_y.index(max(temp_y))
+        counts_max = 0
+        for i in temp_y:
+            if i == temp_y[max_amp_id]:
+                counts_max += 1
+        max_amp_id += int(counts_max/2)
+        y_gaussian = []
+        for i in temp_x:
+            y_gaussian.append(normpdf(i, temp_x[max_amp_id], (temp_x[-1]-temp_x[0])/6))
+        scaler = (temp_y[max_amp_id]/y_gaussian[max_amp_id])
+        y_gaussian_scaled = []
+        for j in y_gaussian:
+            y_gaussian_scaled.append(j*scaler)
+        if len(temp_y[len(y_adds):len(temp_y)-len(y_adds)]) <= 2:
+            temp_relation = []
+            for l in range(len(temp_y[len(y_adds):len(temp_y)-len(y_adds)])):
+                if temp_y[len(y_adds):len(temp_y)-len(y_adds)][l] >= y_gaussian_scaled[len(y_adds):len(temp_y)-len(y_adds)][l]:
+                    temp_relation.append(temp_y[len(y_adds):len(temp_y)-len(y_adds)][l]/y_gaussian_scaled[len(y_adds):len(temp_y)-len(y_adds)][l])
+                else:
+                    temp_relation.append(y_gaussian_scaled[len(y_adds):len(temp_y)-len(y_adds)][l]/temp_y[len(y_adds):len(temp_y)-len(y_adds)][l])
+            R_sq = mean(temp_relation)
         else:
-            rt_int[0].append(file[i]['retentionTime'])
-            rt_int[1].append(temp_int)
-            continue
-        rt_int[1].append(temp_int)
-    return rt_int
+            corr_matrix = numpy.corrcoef(temp_y[len(y_adds):len(temp_y)-len(y_adds)], y_gaussian_scaled[len(y_adds):len(temp_y)-len(y_adds)])
+            corr = corr_matrix[0,1]
+            R_sq = corr**2
+        fits_list.append((R_sq, temp_x[len(y_adds):len(temp_y)-len(y_adds)], temp_y[len(y_adds):len(temp_y)-len(y_adds)], y_gaussian_scaled[len(y_adds):len(temp_y)-len(y_adds)]))
+    fits_list = sorted(fits_list, reverse=True)
+    return fits_list[0]
+    
+def iso_fit_score_calc(iso_fits,
+                       peak):
+    '''
+    '''
+    return mean(iso_fits[peak['peak_interval_id'][0]:peak['peak_interval_id'][1]+1])
+    
+def average_ppm_calc(ppm_array,
+                     tolerance,
+                     peak):
+    '''
+    '''
+    ppms = []
+    missing_points = 0
+    for i in ppm_array[peak['peak_interval_id'][0]:peak['peak_interval_id'][1]+1]:
+        if i != inf:
+            ppms.append(i)
+        else:
+            ppms.append(calculate_ppm_diff(1000-tolerance, 1000))
+            missing_points+= 1
+    return mean(ppms), missing_points
+
+def peaks_from_eic(rt_int, 
+                   rt_int_smoothed,
+                   rt_interval,
+                   min_ppp):
+    '''
+    '''
+    peaks = []
+    temp_start = 0
+    temp_max = 0.0
+    temp_max_id_iu = 0
+    going_up = False
+    going_down = False
+    for i_i, i in enumerate(rt_int_smoothed[1]):
+        if (rt_int[0][i_i] >= rt_interval[1] or rt_int[0][i_i] == rt_int[0][-1]):
+            break
+        if rt_int[0][i_i] >= rt_interval[0]:
+            if (going_up and i < rt_int_smoothed[1][i_i-1]):
+                going_up = False
+                going_down = True
+                temp_max = rt_int[1][i_i-1]
+                if temp_max == 0.0:
+                    temp_max = rt_int[1][i_i]
+                temp_max_id_iu = i_i-1
+            if (going_down and (i > rt_int_smoothed[1][i_i-1] or rt_int_smoothed[1][i_i] == 0.0)):
+                temp_peak_width = (rt_int[0][i_i]-rt_int[0][temp_start])
+                going_down = False
+                good = False
+                if min_ppp[0]:
+                    if i_i-temp_start >= min_ppp[1]:
+                        good = True
+                else:
+                    if i_i-temp_start >= int(0.2/(rt_int[0][1]-rt_int[0][0])):
+                        good = True
+                if good:
+                    peaks.append({'id': temp_max_id_iu, 'rt': rt_int[0][temp_max_id_iu], 'int': temp_max, 'peak_width': temp_peak_width, 'peak_interval': (rt_int[0][temp_start], rt_int[0][i_i]), 'peak_interval_id': (temp_start, i_i)})
+            if (i_i != 0 and i > rt_int_smoothed[1][i_i-1] and not going_up and not going_down):
+                temp_start = i_i-1
+                going_up = True
+    return sorted(peaks, key=lambda x: x['rt'])
 
 def peaks_auc_from_eic(rt_int,
-                 peaks,
-                 peak_width):
+                       ms1_index,
+                       peaks):
     '''Calculates the area under curve of the picked peaks based on the EIC given.
     Overlapped portions of peaks are calculated as fractional proportion, based on peaks
     max intensity.
@@ -305,33 +355,7 @@ def peaks_auc_from_eic(rt_int,
     auc = []
     for i in peaks:
         temp_auc = 0
-        for j in range(i['id'], -1, -1):
-            hit = False
-            if rt_int[0][j] < rt_int[0][i['id']]-peak_width/2:
-                break
-            for k in peaks:
-                if (k != i and
-                    rt_int[0][k['id']] < rt_int[0][i['id']] and
-                    rt_int[0][j] < rt_int[0][k['id']]+peak_width/2):
-                    temp_auc+=rt_int[1][j]*(rt_int[1][i['id']]/
-                                            (rt_int[1][k['id']]+rt_int[1][i['id']]))
-                    hit = True
-                    break
-            if not hit:
-                temp_auc+=rt_int[1][j]
-        for j in range(i['id']+1, len(rt_int[0])):
-            hit = False
-            if rt_int[0][j] > rt_int[0][i['id']]+peak_width/2:
-                break
-            for k in peaks:
-                if (k != i and
-                    rt_int[0][k['id']] > rt_int[0][i['id']] and
-                    rt_int[0][j] > rt_int[0][k['id']]-peak_width/2):
-                    temp_auc+=rt_int[1][j]*(rt_int[1][i['id']]/
-                                            (rt_int[1][k['id']]+rt_int[1][i['id']]))
-                    hit = True
-                    break
-            if not hit:
-                temp_auc+=rt_int[1][j]
+        for j in range(i['peak_interval_id'][0], i['peak_interval_id'][1]):
+            temp_auc+=rt_int[1][j]
         auc.append(temp_auc)
     return auc

@@ -1,7 +1,9 @@
 from pyteomics import mzxml, mzml, mass, auxiliary
 from itertools import combinations_with_replacement
+from numpy import percentile
 from re import split
-from math import inf
+from math import inf, exp, pi
+from statistics import stdev, mean
 import sys
 import datetime
 
@@ -13,7 +15,7 @@ monosaccharides = {
     "N": ("N-Acetyl Hexosamine", "C8O6NH15", {"C": 8, "O": 5, "N": 1, "H": 13}),
     "S": ("Acetyl Neuraminic Acid", "C11O9NH19", {"C": 11, "O": 8, "N": 1, "H": 17}),
     "F": ("Fucose", "C6O5H12", {"C": 6, "O": 4, "N": 0, "H": 10}),
-    "G": ("Glycolil Neuraminic Acid", "C11O10NH19", {"C": 11, "O": 9, "N": 1, "H": 17})
+    "G": ("Glycolyl Neuraminic Acid", "C11O10NH19", {"C": 11, "O": 9, "N": 1, "H": 17})
     }
 '''A hardcoded dictionary containing each single letter code for monosaccharides as key
 and a tuple containing the full monosaccharide name, its full molecular formula and its
@@ -28,6 +30,28 @@ times during a run.
 ##---------------------------------------------------------------------------------------
 ##General functions (these functions use only external libraries, such as itertools and
 ##pyteomics).
+
+def calculate_ppm_diff(mz, target):
+    '''
+    '''
+    return ((target-mz)/target)*(10**6)
+    
+def noise_level_calc_mzarray(mz_int):
+    '''Verifies what is noise by adjusting a slope and the percentile between 1.5 
+    standard deviations to 2 standard deviations.
+    '''
+    int_list = []
+    for i in mz_int:
+        int_list.append(mz_int[i])
+    return percentile(int_list, 95)
+    
+def normpdf(x, mean, sd):
+    '''
+    '''
+    var = float(sd)**2
+    denom = (2*pi*var)**.5
+    num = exp(-(float(x)-float(mean))**2/(2*var))
+    return num/denom
 
 def form_to_comp(string):
     '''Separates a molecular formula or monosaccharides formula of glycans into a
@@ -46,6 +70,13 @@ def form_to_comp(string):
     '''
     counts = {}
     split_str = split('(\\d+)', string)
+    negative = False
+    for i_i, i in enumerate(split_str):
+        if i != '' and i[-1] == '-':
+            split_str[i_i] = i[:-1]
+            negative = True
+        if i_i%2 != 0 and i != '' and negative:
+            split_str[i_i] = '-'+i
     if len(split_str)%2 != 0:
         split_str.append('1')
     for i in range(len(split_str)-1):
@@ -105,6 +136,8 @@ def glycan_to_atoms(glycan_composition):
     '''
     atoms = {"C": 0, "O": 0, "N": 0, "H": 0}
     for i in glycan_composition:
+        if i == "T":
+            continue
         for j in atoms:
             atoms[j] += monosaccharides[i][2][j]*glycan_composition[i]
     return atoms
@@ -166,7 +199,7 @@ def sum_monos(*compositions):
     summed_comp : dict
         Dictionary containing the sum of each monosaccharides of the compositions.
     '''
-    summed_comp = {"H": 0, "N": 0, "S": 0, "F": 0, "G": 0}
+    summed_comp = {"H": 0, "N": 0, "S": 0, "F": 0, "G": 0, "T": 0}
     for i in compositions:
         for j in i:
             summed_comp[j]+=i[j]
@@ -174,7 +207,8 @@ def sum_monos(*compositions):
 
 def mz_int(mz_int_dict,
            target_mz,
-           tolerance):
+           tolerance,
+           start = 0):
     '''Extracts the intensity of the target mz within the given tolerance from a mz/int
     array dictionary.
 
@@ -197,13 +231,28 @@ def mz_int(mz_int_dict,
     float
         A float of the intensity for the given mz.
     '''
+    dict_keys_list = list(mz_int_dict.keys())
+    temp_matches = []
+    if len(mz_int_dict) == 0:
+            return 0.0, 'Empty Array'
     for i_i, i in enumerate(mz_int_dict):
         if i > target_mz+tolerance:
-            return 0.0
+            return 0.0, 'Not found'
         if abs(i-target_mz) <= tolerance:
-            return mz_int_dict[i]
-        if i_i == len(mz_int_dict)-1 or len(mz_int_dict) == 0:
-            return 0.0
+            temp_matches.append(i)
+            for j in range(i_i+1, len(mz_int_dict)):
+                if float(dict_keys_list[j]) > target_mz+tolerance:
+                    break
+                if abs(float(dict_keys_list[j])-target_mz) <= tolerance:
+                    temp_matches.append(float(dict_keys_list[j]))
+            intensity_sum = 0
+            ppms = []
+            for j in temp_matches:
+                ppms.append(calculate_ppm_diff(j, target_mz))
+                intensity_sum+=mz_int_dict[j]
+            return intensity_sum, mean(ppms)
+        if i_i == len(mz_int_dict)-1:
+            return 0.0, 'Not Found'
 
 def comp_to_formula(composition):
     '''Transforms a composition dictionary into string formula.
@@ -261,10 +310,10 @@ def calculate_comp_from_mass(tag_mass):
                 closest = (seq_readable, test_tag_mass)
         atoms_number -= 1      
     return closest
-
+    
 def calculate_isotopic_pattern(glycan_atoms,
-                               tolerance,
-                               fast=True):
+                               fast=True,
+                               high_res=False):
     '''Calculates up to 5 isotopic pattern peaks relative abundance in relation with the
     monoisotopic one.
 
@@ -313,22 +362,29 @@ def calculate_isotopic_pattern(glycan_atoms,
                                           overall_threshold = 1e-4)
     isotop_arranged = []
     relative_isotop_pattern = []
+    relative_isotop_mass = []
     for i in isotopologue:
         isotop_arranged.append({'mz' : mass.calculate_mass(i[0]), 'Ab' : i[1]})
     isotop_arranged = sorted(isotop_arranged, key=lambda x: x['mz'])
     for i_i, i in enumerate(isotop_arranged):
-        if (len(relative_isotop_pattern) >= 6):
-            return relative_isotop_pattern
-        elif i_i != 0:
-            if abs(i['mz']-isotop_arranged[i_i-1]['mz']) < tolerance:
-                relative_isotop_pattern[-1]+=i['Ab']/isotop_arranged[0]['Ab']
+        relative_isotop_pattern.append(i['Ab']/isotop_arranged[0]['Ab'])
+        relative_isotop_mass.append(i['mz'])
+    if not high_res and not fast:
+        relative_isotop_pattern_low_res = []
+        relative_isotop_mass_low_res = []
+        for i_i, i in enumerate(relative_isotop_mass):
+            if i_i == 0:
+                relative_isotop_pattern_low_res.append(relative_isotop_pattern[i_i])
+                relative_isotop_mass_low_res.append(i)
             else:
-                if abs(i['mz']-isotop_arranged[i_i-1]['mz']) > ((h_mass*2)-tolerance):
-                    relative_isotop_pattern.append(0.0)
-                relative_isotop_pattern.append(i['Ab']/isotop_arranged[0]['Ab'])
-        else:
-            relative_isotop_pattern.append(i['Ab']/isotop_arranged[0]['Ab'])
-    return relative_isotop_pattern
+                if abs(i-relative_isotop_mass[i_i-1]) < h_mass/2:
+                    relative_isotop_mass_low_res[-1] = (relative_isotop_mass_low_res[-1]+i)/2
+                    relative_isotop_pattern_low_res[-1]+= relative_isotop_pattern[i_i]
+                else:
+                    relative_isotop_mass_low_res.append(i)
+                    relative_isotop_pattern_low_res.append(relative_isotop_pattern[i_i])
+        return relative_isotop_pattern_low_res, relative_isotop_mass_low_res
+    return relative_isotop_pattern, relative_isotop_mass
 
 def gen_adducts_combo(adducts,
                       max_charge):
@@ -360,21 +416,27 @@ def gen_adducts_combo(adducts,
     adducts_combo_dict = []
     for i in adducts:
         adducts_list.append(i)
-    for i in range(1, max_charge+1):
+    for i in range(1, abs(max_charge)+1):
         for j in combinations_with_replacement(adducts_list, i):
             adducts_combo.append(j)
     for i in adducts_combo:
         temp_dict = {}
         for j in i:
             if j not in temp_dict:
-                temp_dict[j] = 1
+                if max_charge > 0:
+                    temp_dict[j] = 1
+                else:
+                    temp_dict[j] = -1
             else:
-                temp_dict[j]+= 1
+                if max_charge > 0:
+                    temp_dict[j]+= 1
+                else:
+                    temp_dict[j]-= 1
         adducts_combo_dict.append(temp_dict)
     to_remove = []
     for i in adducts_combo_dict:
         for j in i:
-            if i[j] > adducts[j]:
+            if abs(i[j]) > abs(adducts[j]):
                 to_remove.append(i)
                 break
     for i in to_remove:
