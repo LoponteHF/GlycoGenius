@@ -2,7 +2,7 @@ from pyteomics import mzxml, mzml, mass, auxiliary
 from itertools import combinations_with_replacement, islice
 from .General_Functions import form_to_comp, form_to_charge, noise_level_calc_mzarray, sum_monos
 from .Library_Tools import generate_glycans_library, full_glycans_library, fragments_library
-from .File_Accessing import eic_from_glycan, peaks_auc_from_eic, peaks_from_eic, eic_smoothing, iso_fit_score_calc, average_ppm_calc, peak_curve_fit
+from .File_Accessing import eic_from_glycan, peaks_auc_from_eic, peaks_from_eic, eic_smoothing, iso_fit_score_calc, average_ppm_calc, peak_curve_fit, make_mzxml
 from pandas import DataFrame, ExcelWriter
 from numpy import percentile
 from re import split
@@ -19,7 +19,7 @@ import traceback
 
 ##---------------------------------------------------------------------------------------
 ##Functions to be used for execution and organizing results data
-
+            
 def list_of_data(samples_list): ##mzML must be worked on or discarded
     '''Detects if a file is mzXML or mzML and processes it into a generator using
     pyteomics.
@@ -46,9 +46,11 @@ def list_of_data(samples_list): ##mzML must be worked on or discarded
     data = []
     for i in samples_list:
         if i[-5:] == "mzXML" or i[-5:] == "mzxml" or i[-5:] == "MzXML":
-            data.append(mzxml.MzXML(i))
-        elif i[-4:] == "mzML":
-            data.append(mzml.MzML(i))
+            mzxml_data = mzxml.MzXML(i)
+            data.append(mzxml_data)
+        elif i[-4:] == "mzML" or i[-4:] == "mzml" or i[-4:] == "MzML":
+            mzml_data = make_mzxml(i)
+            data.append(mzml_data)
         else:
             sys.exit(i+
                    " filename wrong."+
@@ -75,8 +77,12 @@ def index_ms1_from_file(files):
     for i_i, i in enumerate(files):
         temp_indexes = []
         for j_j, j in enumerate(i):
-            if j['msLevel'] == 1:
-                temp_indexes.append(j_j)
+            try:
+                if j['msLevel'] == 1:
+                    temp_indexes.append(j_j)
+            except:
+                if j['ms level'] == 1:
+                    temp_indexes.append(j_j)
         indexes[i_i] = temp_indexes
     return indexes
 
@@ -100,8 +106,12 @@ def index_ms2_from_file(files):
     for i_i, i in enumerate(files):
         temp_indexes = []
         for j_j, j in enumerate(i):
-            if j['msLevel'] == 2:
-                temp_indexes.append(j_j)
+            try:
+                if j['msLevel'] == 2:
+                    temp_indexes.append(j_j)
+            except:
+                if j['ms level'] == 2:
+                    temp_indexes.append(j_j)
         indexes[i_i] = temp_indexes
     return indexes
 

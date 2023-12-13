@@ -1,7 +1,7 @@
 ##---------------------------------------------------------------------------------------
 ##Parameters for the data analysis
 
-multithreaded_analysis = (True, 20)
+multithreaded_analysis = (False, 20)
 '''Set to true and specify the amount of threads you want to split your analysis
    in, if you want to do a multithreaded analysis. After running GlycoGenius,
    there will be several .py files in GlycoGenius' folder.
@@ -62,7 +62,7 @@ custom_noise_level = (False, [])
    each sample is comma separated in second parameter.
    > Warning: NOT RECOMMENDED unless you're really sure about what you're doing.
 '''
-samples_list = ["D:/Arquivos/Desktop/Data to analyze/221013_PatuS_0cell_01_S1-D4_01_4594.mzXML", "D:/Arquivos/Desktop/Data to analyze/221027_patuS_1cell_01_S1-D4_01_4605.mzXML", "D:/Arquivos/Desktop/Data to analyze/221027_patus_5cell_01_S1-D4_01_4607.mzXML"]
+samples_list = ["D:/Arquivos/Desktop/Data to analyze/250k mzml test.mzML", "D:/Arquivos/Desktop/Data to analyze/231116_250k_HeLa_10ul4_16ugul_5ulLE1200mM_10psi60s_DEN_MS1.mzXML"]
 '''A list where each index contains the path to a file to be analyzed together.
 '''
 results_save_path = ""

@@ -8,11 +8,39 @@ from math import inf
 import numpy
 import sys
 import datetime
+import copy
 
 ##---------------------------------------------------------------------------------------
 ##File accessing-associated functions (these are functions that deal with the data in
 ##some way. They make vast use of general functions and require a library to work).
-    
+
+class make_mzxml(object):
+    '''
+    '''
+    def __init__(self,it):
+        self.it = mzml.MzML(it)
+    def __iter__(self):
+        return self.it
+    def __getitem__(self,index):
+        if type(index) == int:
+            pre_data = self.it[index]
+            return {'num': pre_data['id'].split('=')[-1], 'retentionTime': float(pre_data['scanList']['scan'][0]['scan start time']), 'msLevel': pre_data['ms level'], 'm/z array': pre_data['m/z array'], 'intensity array': pre_data['intensity array']}
+        else:
+            first_index = str(index).split('(')[1].split(', ')[0]
+            if first_index != 'None':
+                first_index = int(first_index)
+            else:
+                first_index = 0
+            last_index = str(index).split('(')[1].split(', ')[1]
+            if last_index != 'None':
+                last_index = int(last_index)
+            else:
+                last_index = len(self.it)
+            data = []
+            for index in range(first_index, last_index):
+                data.append({'num': self.it[index]['id'].split('=')[-1], 'retentionTime': float(self.it[index]['scanList']['scan'][0]['scan start time']), 'msLevel': self.it[index]['ms level'], 'm/z array': self.it[index]['m/z array'], 'intensity array': self.it[index]['intensity array']})
+            return data
+        
 def eic_from_glycan(files,
                     glycan_info,
                     ms1_indexes,
