@@ -1,7 +1,7 @@
 ##---------------------------------------------------------------------------------------
 ##Parameters for building a library (needs some rearranging/rework)
 
-custom_glycans_list = (False, ['H3N2', 'H5N3S1'])
+custom_glycans_list = (True, ['H3N2'])
 '''custom_glycans_list (list of boolean and list) allows you to only search for target
    glycans, by setting the first parameter to True and inputing the target glycans in the
    list, as strings of formulas. If True, overrides imp_library.
