@@ -39,7 +39,7 @@ samples_list = []
 save_path = ''
 reanalysis = (False, False)
 
-multithreaded_execution = (False, 0)
+multithreaded_execution = (False, 0, 0)
 verbose = False
 
 if not os.isatty(0) or multithreaded_execution[0]:

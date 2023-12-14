@@ -1,7 +1,23 @@
 import pathlib
-import importlibfrom .General_Functions import form_to_comp, form_to_charge, noise_level_calc_mzarray, sum_monos
-from .Library_Tools import generate_glycans_library, full_glycans_library, fragments_library
-from .File_Accessing import eic_from_glycan, peaks_auc_from_eic, peaks_from_eic, eic_smoothing, iso_fit_score_calc, average_ppm_calc, peak_curve_fit, make_mzxml
+import importlib
+import_path = str(pathlib.Path(__file__).parent.resolve())
+for i_i, i in enumerate(import_path):
+    if i == "\\":
+        import_path = import_path[:i_i]+"/"+import_path[i_i+1:]
+        
+#Absolute import of General_Functions
+spec1 = importlib.util.spec_from_file_location("General_Functions", import_path+'/General_Functions.py')
+General_Functions = importlib.util.module_from_spec(spec1)
+spec1.loader.exec_module(General_Functions)
+#Absolute import of Library_Tools
+spec2 = importlib.util.spec_from_file_location("Library_Tools", import_path+'/Library_Tools.py')
+Library_Tools = importlib.util.module_from_spec(spec2)
+spec2.loader.exec_module(Library_Tools)
+#Absolute import of File_Accessing
+spec3 = importlib.util.spec_from_file_location("File_Accessing", import_path+'/File_Accessing.py')
+File_Accessing = importlib.util.module_from_spec(spec3)
+spec3.loader.exec_module(File_Accessing)
+
 from pyteomics import mzxml, mzml, mass, auxiliary
 from itertools import combinations_with_replacement, islice
 from pandas import DataFrame, ExcelWriter
@@ -93,7 +109,7 @@ def interactive_terminal():
                         glycans_list = []
                         continue
                 try:
-                    comp = form_to_comp(var)
+                    comp = General_Functions.form_to_comp(var)
                 except:
                     print('Wrong input')
                     continue
@@ -483,9 +499,9 @@ def interactive_terminal():
             if input_order[1] == 2:
                 return input_order, lib_settings, adducts, max_charges, tag_mass, fast_iso, high_res, ms2, accuracy_unit, accuracy_value, rt_int, min_isotop, max_ppm, iso_fit, curve_fit, sn, files, path
     if input_order[0] == 3:
-        path = ''
+        path = 'C:/Glycogenius/'
         while True:
-            var = input("Insert the working directory (where the 'raw_data' files are,i e. C:/Glycogenius/): ")
+            var = input("Insert the working directory (where the 'raw_data' files are, default: C:/Glycogenius/): ")
             print(var)
             var2 = input("Is this path correct? (y/n): ")
             if var2 == 'n':
@@ -554,9 +570,9 @@ def interactive_terminal():
             else:
                 print('Wrong input')
                 continue
-        path = ''
+        path = 'C:/GlycoGenius/'
         while True:
-            var = input("Insert the path to the folder to save the template file: ")
+            var = input("Insert the path to the folder to save the template file (Default: C:/GlycoGenius/): ")
             print(var)
             var2 = input("Is this path correct? (y/n): ")
             if var2 == 'n':
@@ -597,7 +613,7 @@ def list_of_data(samples_list): ##complete
             mzxml_data = mzxml.MzXML(i)
             data.append(mzxml_data)
         elif i[-4:] == "mzML" or i[-4:] == "mzml" or i[-4:] == "MzML":
-            mzml_data = make_mzxml(i)
+            mzml_data = File_Accessing.make_mzxml(i)
             data.append(mzml_data)
         else:
             sys.exit(i+
@@ -691,11 +707,11 @@ def imp_exp_gen_library(multithreaded_analysis,
 
     Uses
     ----
-    generate_glycans_library() : list
+    Library_Tools.generate_glycans_library() : list
         A list containing dictionaries of the monosaccharides compositions of all the
         glycans generated.
 
-    full_glycans_library() : dict
+    Library_Tools.full_glycans_library() : dict
         A dictionary with each key containing the glycan formula and each key containing
         a dictionary with monosaccharides composition, atoms composition with tag,
         neutral mass, neutral mass with tag, isotopic distribution and the mzs of the
@@ -714,8 +730,8 @@ def imp_exp_gen_library(multithreaded_analysis,
         custom_glycans_comp = []
         print('Building custom glycans library...')
         for i in custom_glycans_list[1]:
-            custom_glycans_comp.append(sum_monos(form_to_comp(i)))
-        full_library = full_glycans_library(custom_glycans_comp,
+            custom_glycans_comp.append(General_Functions.sum_monos(General_Functions.form_to_comp(i)))
+        full_library = Library_Tools.full_glycans_library(custom_glycans_comp,
                                             max_adducts,
                                             max_charges,
                                             tag_mass,
@@ -731,7 +747,7 @@ def imp_exp_gen_library(multithreaded_analysis,
     if multithreaded_analysis[0] and not only_gen_lib and not multithreaded_execution[0]:
         print('Preparing to split library and execution for multiple threads...')
         if not imp_exp_library[0] and not custom_glycans_list[0]:
-            monos_library = generate_glycans_library(min_max_monos,
+            monos_library = Library_Tools.generate_glycans_library(min_max_monos,
                                                      min_max_hex,
                                                      min_max_hexnac,
                                                      min_max_sia,
@@ -739,7 +755,7 @@ def imp_exp_gen_library(multithreaded_analysis,
                                                      min_max_ac,
                                                      min_max_gc,
                                                      force_nglycan)
-            full_library = full_glycans_library(monos_library,
+            full_library = Library_Tools.full_glycans_library(monos_library,
                                                 max_adducts,
                                                 max_charges,
                                                 tag_mass,
@@ -798,7 +814,7 @@ def imp_exp_gen_library(multithreaded_analysis,
                             g.write("spec2.loader.exec_module(General_Functions)\n")
                             continue
                         if i_i == 41:
-                            g.write("multithreaded_execution = (True, "+str(j)+")\n")
+                            g.write("multithreaded_execution = (True, "+str(j)+", "+str(multithreaded_analysis[1])+")\n")
                             continue
                         if i_i == 47:
                             g.write("    with open('glycogenius_parameters.ini', 'r') as f:\n")
@@ -828,7 +844,7 @@ def imp_exp_gen_library(multithreaded_analysis,
         return full_library
     if not custom_glycans_list[0]:
         print('Building glycans library...')
-        monos_library = generate_glycans_library(min_max_monos,
+        monos_library = Library_Tools.generate_glycans_library(min_max_monos,
                                                  min_max_hex,
                                                  min_max_hexnac,
                                                  min_max_sia,
@@ -836,7 +852,7 @@ def imp_exp_gen_library(multithreaded_analysis,
                                                  min_max_ac,
                                                  min_max_gc,
                                                  force_nglycan)
-        full_library = full_glycans_library(monos_library,
+        full_library = Library_Tools.full_glycans_library(monos_library,
                                             max_adducts,
                                             max_charges,
                                             tag_mass,
@@ -945,10 +961,10 @@ def output_filtered_data(curve_fit_score,
         results3_list = []
         results4_list = []
         for i in range(multithreaded_analysis[1]):
-            results1_list.append('results1_'+str(i))
-            results2_list.append('results2_'+str(i))
-            results3_list.append('results3_'+str(i))
-            results4_list.append('results4_'+str(i))
+            results1_list.append(save_path+'results1_'+str(i))
+            results2_list.append(save_path+'results2_'+str(i))
+            results3_list.append(save_path+'results3_'+str(i))
+            results4_list.append(save_path+'results4_'+str(i))
         try:
             for i_i, i in enumerate(results1_list):
                 with open(i, 'rb') as f:
@@ -1007,12 +1023,12 @@ def output_filtered_data(curve_fit_score,
                 dill.dump(curve_fitting_dataframes, f)
                 f.close()
             for i in range(multithreaded_analysis[1]):
-                p1 = pathlib.Path('Multithreaded_'+str(i)+'.py')
-                p2 = pathlib.Path('glycans_library_'+str(i)+'.py')
-                p3 = pathlib.Path('results1_'+str(i))
-                p4 = pathlib.Path('results2_'+str(i))
-                p5 = pathlib.Path('results3_'+str(i))
-                p6 = pathlib.Path('results4_'+str(i))
+                p1 = pathlib.Path(save_path+'Multithreaded_'+str(i)+'.py')
+                p2 = pathlib.Path(save_path+'glycans_library_'+str(i)+'.py')
+                p3 = pathlib.Path(save_path+'results1_'+str(i))
+                p4 = pathlib.Path(save_path+'results2_'+str(i))
+                p5 = pathlib.Path(save_path+'results3_'+str(i))
+                p6 = pathlib.Path(save_path+'results4_'+str(i))
                 p1.unlink(missing_ok=True)
                 p2.unlink(missing_ok=True)
                 p3.unlink(missing_ok=True)
@@ -1336,30 +1352,30 @@ def arrange_raw_data(analyzed_data,
                     i[j].append(None)
     if multithreaded_execution[0]:
         sleep(multithreaded_analysis[1])
-        with open('results1_'+str(multithreaded_execution[1]), 'wb') as f:
+        with open(save_path+'results1_'+str(multithreaded_execution[1]), 'wb') as f:
             if analyze_ms2:
                 dill.dump([df1, df2, fragments_dataframes], f)
             else:
                 dill.dump([df1, df2], f)
             f.close()
-        with open('results2_'+str(multithreaded_execution[1]), 'wb') as f:
+        with open(save_path+'results2_'+str(multithreaded_execution[1]), 'wb') as f:
             dill.dump(eic_dataframes, f)
             f.close()
-        with open('results3_'+str(multithreaded_execution[1]), 'wb') as f:
+        with open(save_path+'results3_'+str(multithreaded_execution[1]), 'wb') as f:
             dill.dump(smoothed_eic_dataframes, f)
             f.close()
-        with open('results4_'+str(multithreaded_execution[1]), 'wb') as f:
+        with open(save_path+'results4_'+str(multithreaded_execution[1]), 'wb') as f:
             dill.dump(curve_fitting_dataframes, f)
             f.close()
         results1_list = []
         results2_list = []
         results3_list = []
         results4_list = []
-        for i in range(multithreaded_analysis[1]):
-            results1_list.append('results1_'+str(i))
-            results2_list.append('results2_'+str(i))
-            results3_list.append('results3_'+str(i))
-            results4_list.append('results4_'+str(i))
+        for i in range(multithreaded_execution[2]):
+            results1_list.append(save_path+'results1_'+str(i))
+            results2_list.append(save_path+'results2_'+str(i))
+            results3_list.append(save_path+'results3_'+str(i))
+            results4_list.append(save_path+'results4_'+str(i))
         try:
             for i_i, i in enumerate(results1_list):
                 with open(i, 'rb') as f:
@@ -1417,13 +1433,13 @@ def arrange_raw_data(analyzed_data,
             with open(save_path+'raw_data_4', 'wb') as f:
                 dill.dump(curve_fitting_dataframes, f)
                 f.close()
-            for i in range(multithreaded_analysis[1]):
-                p1 = pathlib.Path('Multithreaded_'+str(i)+'.py')
-                p2 = pathlib.Path('glycans_library_'+str(i)+'.py')
-                p3 = pathlib.Path('results1_'+str(i))
-                p4 = pathlib.Path('results2_'+str(i))
-                p5 = pathlib.Path('results3_'+str(i))
-                p6 = pathlib.Path('results4_'+str(i))
+            for i in range(multithreaded_execution[2]):
+                p1 = pathlib.Path(save_path+'Multithreaded_'+str(i)+'.py')
+                p2 = pathlib.Path(save_path+'glycans_library_'+str(i)+'.py')
+                p3 = pathlib.Path(save_path+'results1_'+str(i))
+                p4 = pathlib.Path(save_path+'results2_'+str(i))
+                p5 = pathlib.Path(save_path+'results3_'+str(i))
+                p6 = pathlib.Path(save_path+'results4_'+str(i))
                 p1.unlink(missing_ok=True)
                 p2.unlink(missing_ok=True)
                 p3.unlink(missing_ok=True)
@@ -1477,10 +1493,10 @@ def analyze_files(library,
 
     Uses
     ----
-    eic_from_glycan() : dict
+    File_Accessing.eic_from_glycan() : dict
         Generates an EIC of the mzs calculated for a glycan.
 
-    peaks_from_eic() : list, tuple
+    File_Accessing.peaks_from_eic() : list, tuple
         Does multi-peak-picking in an EIC, based on the most intense peaks in the EIC,
         in the retention time interval of interest. This function works in-line.
 
@@ -1492,7 +1508,7 @@ def analyze_files(library,
         Deconvolutes the data around the identified peaks retention time and creates a
         deconvoluted EIC.
 
-    peaks_auc_from_eic() : list
+    File_Accessing.peaks_auc_from_eic() : list
         Calculates the area under curve of the picked peaks based on the EIC given.
         Overlapped portions of peaks are calculated as fractional proportion, based on
         peaks max intensity.
@@ -1524,7 +1540,7 @@ def analyze_files(library,
             if (i[j]['retentionTime'] < ret_time_interval[0] or i[j]['retentionTime'] > ret_time_interval[1]):
                 continue
             mz_ints = dict(zip(i[j]['m/z array'], i[j]['intensity array']))
-            noise_level = noise_level_calc_mzarray(mz_ints)
+            noise_level = General_Functions.noise_level_calc_mzarray(mz_ints)
             temp_noise.append(noise_level)
         noise[i_i] = percentile(temp_noise, 66.8)
     print('Done!')
@@ -1542,7 +1558,7 @@ def analyze_files(library,
             verbose_info.append(str(glycan_data))
             verbose_info.append('EIC RT Array: '+str(rt_array_report))
         glycan_data['Adducts_mz_data'] = {}
-        temp_eic = eic_from_glycan(data,
+        temp_eic = File_Accessing.eic_from_glycan(data,
                                    glycan_data,
                                    ms1_index,
                                    ret_time_interval,
@@ -1562,7 +1578,7 @@ def analyze_files(library,
                 if verbose:
                     verbose_info.append('Adduct: '+str(j)+' mz: '+str(glycan_data['Adducts_mz'][j])+' Sample: '+str(k))
                     verbose_info.append('EIC INT Array: '+str(temp_eic[0][j][k][1]))
-                temp_eic_smoothed = eic_smoothing(temp_eic[0][j][k])
+                temp_eic_smoothed = File_Accessing.eic_smoothing(temp_eic[0][j][k])
                 glycan_data['Adducts_mz_data'][j][k] = []
                 glycan_data['Adducts_mz_data'][j][k].append(temp_eic[0][j][k][1])
                 glycan_data['Adducts_mz_data'][j][k].append([])
@@ -1572,21 +1588,21 @@ def analyze_files(library,
                     verbose_info.append('Raw PPM error: '+str(temp_eic[1][j][k])+'\nRaw Isotopic Fitting Score: '+str(temp_eic[2][j][k]))
                 if max(temp_eic[0][j][k][1]) < noise[k]:
                     continue
-                temp_peaks = peaks_from_eic(temp_eic[0][j][k],
+                temp_peaks = File_Accessing.peaks_from_eic(temp_eic[0][j][k],
                                             temp_eic_smoothed,
                                             ret_time_interval,
                                             min_ppp)
                 if len(temp_peaks) == 0:
                     continue
-                temp_peaks_auc = peaks_auc_from_eic(temp_eic[0][j][k],
+                temp_peaks_auc = File_Accessing.peaks_auc_from_eic(temp_eic[0][j][k],
                                                     ms1_index[k],
                                                     temp_peaks)
                 for l_l, l in enumerate(temp_peaks):
                     l['AUC'] = temp_peaks_auc[l_l]
-                    l['Average_PPM'] = average_ppm_calc(temp_eic[1][j][k], tolerance, l)
-                    l['Iso_Fit_Score'] = iso_fit_score_calc(temp_eic[2][j][k], l)
+                    l['Average_PPM'] = File_Accessing.average_ppm_calc(temp_eic[1][j][k], tolerance, l)
+                    l['Iso_Fit_Score'] = File_Accessing.iso_fit_score_calc(temp_eic[2][j][k], l)
                     l['Signal-to-Noise'] = l['int']/noise[k]
-                    l['Curve_Fit_Score'] = peak_curve_fit(temp_eic_smoothed, l)
+                    l['Curve_Fit_Score'] = File_Accessing.peak_curve_fit(temp_eic_smoothed, l)
                     glycan_data['Adducts_mz_data'][j][k][1].append(l)
                 if verbose:
                     verbose_info.append('Adduct: '+str(j)+' mz: '+str(glycan_data['Adducts_mz'][j])+' Sample: '+str(k))
@@ -1621,7 +1637,7 @@ def analyze_ms2(ms2_index,
     '''
     begin_time = datetime.datetime.now()
     print('Analyzing MS2 data...')
-    fragments = fragments_library(min_max_monos,
+    fragments = Library_Tools.fragments_library(min_max_monos,
                                   min_max_hex,
                                   min_max_hexnac,
                                   min_max_sia,
@@ -1644,7 +1660,7 @@ def analyze_ms2(ms2_index,
                 for l in ms2_index[k_k]:
                     if k[l]['retentionTime'] < analyzed_data[0][i]['Adducts_mz_data'][j][k_k][1][0]['peak_interval'][0] or k[l]['retentionTime'] > analyzed_data[0][i]['Adducts_mz_data'][j][k_k][1][-1]['peak_interval'][1]:
                         continue
-                    if abs((k[l]['precursorMz'][0]['precursorMz']) - analyzed_data[0][i]['Adducts_mz'][j]) <= (1.0074/form_to_charge(j))+tolerance:
+                    if abs((k[l]['precursorMz'][0]['precursorMz']) - analyzed_data[0][i]['Adducts_mz'][j]) <= (1.0074/General_Functions.form_to_charge(j))+tolerance:
                         for m_m, m in enumerate(k[l]['m/z array']):
                             found = False
                             for n_n, n in enumerate(fragments):

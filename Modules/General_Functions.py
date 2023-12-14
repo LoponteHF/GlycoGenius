@@ -205,55 +205,6 @@ def sum_monos(*compositions):
             summed_comp[j]+=i[j]
     return summed_comp
 
-def mz_int(mz_int_dict,
-           target_mz,
-           tolerance,
-           start = 0):
-    '''Extracts the intensity of the target mz within the given tolerance from a mz/int
-    array dictionary.
-
-    Parameters
-    ----------
-    mz_int_dict : dict
-        A dictionary with each key containing an mz and each value containing the
-        intensity.
-
-    target_mz : float
-        The mz of which intensity you wish to extract from the list.
-
-    tolerance : float
-        Mass tolerance for isotopologues clumping. ie. 0.1 means an isotopologue with
-        mass 310.00 and another one with a mass of 310.09 will be clumped as a single
-        peak.
-
-    Returns
-    -------
-    float
-        A float of the intensity for the given mz.
-    '''
-    dict_keys_list = list(mz_int_dict.keys())
-    temp_matches = []
-    if len(mz_int_dict) == 0:
-            return 0.0, 'Empty Array'
-    for i_i, i in enumerate(mz_int_dict):
-        if i > target_mz+tolerance:
-            return 0.0, 'Not found'
-        if abs(i-target_mz) <= tolerance:
-            temp_matches.append(i)
-            for j in range(i_i+1, len(mz_int_dict)):
-                if float(dict_keys_list[j]) > target_mz+tolerance:
-                    break
-                if abs(float(dict_keys_list[j])-target_mz) <= tolerance:
-                    temp_matches.append(float(dict_keys_list[j]))
-            intensity_sum = 0
-            ppms = []
-            for j in temp_matches:
-                ppms.append(calculate_ppm_diff(j, target_mz))
-                intensity_sum+=mz_int_dict[j]
-            return intensity_sum, mean(ppms)
-        if i_i == len(mz_int_dict)-1:
-            return 0.0, 'Not Found'
-
 def comp_to_formula(composition):
     '''Transforms a composition dictionary into string formula.
 
