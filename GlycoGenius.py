@@ -39,15 +39,18 @@ samples_list = []
 save_path = ''
 reanalysis = (False, False)
 
-if not os.isatty(0):
+multithreaded_execution = (False, 0)
+verbose = False
+
+if not os.isatty(0) or multithreaded_execution[0]:
     config = configparser.ConfigParser()
     configs = ""
     for line in sys.stdin:
         configs+=line
     config.read_string(configs)
     custom_glycans = config['library_building']['custom_glycans_list'].split(",")
-    for i in custom_glycans:
-        i = i.strip()
+    for i_i, i in enumerate(custom_glycans):
+        custom_glycans[i_i] = i.strip()
     custom_glycans_list = (config['library_building'].getboolean('use_custom_glycans_list'), custom_glycans)
     min_max_monos = (int(config['library_building']['min_monos']), int(config['library_building']['max_monos']))
     min_max_hex = (int(config['library_building']['min_hex']), int(config['library_building']['max_hex']))
@@ -76,12 +79,12 @@ if not os.isatty(0):
     curve_fit_score = float(config['analysis_parameters']['curve_fitting_score'])
     s_to_n = int(config['analysis_parameters']['signal_to_noise'])
     noise_levels = config['analysis_parameters']['noise_levels'].split(",")
-    for i in noise_levels:
-        i = int(i.strip())
+    for i_i, i in enumerate(noise_levels):
+        noise_levels[i_i] = int(i.strip())
     custom_noise = (config['analysis_parameters'].getboolean('custom_noise_level'), noise_levels)
     samples_list = config['analysis_parameters']['samples_list'].split(",")
-    for i in samples_list:
-        i = i.strip()
+    for i_i, i in enumerate(samples_list):
+        samples_list[i_i] = i.strip()
     save_path = config['analysis_parameters']['working_path']
     reanalysis = (config['analysis_parameters'].getboolean('reanalysis'), config['analysis_parameters'].getboolean('output_plot_data'))
 else:
@@ -134,14 +137,14 @@ else:
     if parameters[0][0] == 4:
         comments = parameters[1]
         save_path = parameters[2]
+        if save_path[-1] != "/":
+            save_path+= "/"
+        Path(save_path).mkdir(exist_ok = True, parents = True)
         Execution_Functions.generate_cfg_file(save_path, comments)
 
 if save_path[-1] != "/":
     save_path+= "/"
 Path(save_path).mkdir(exist_ok = True, parents = True)
-
-verbose = False
-multithreaded_execution = (False, 0)
 
 ##-----------------------------------------------------------------------------
 

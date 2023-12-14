@@ -1,8 +1,9 @@
-from pyteomics import mzxml, mzml, mass, auxiliary
-from itertools import combinations_with_replacement, islice
-from .General_Functions import form_to_comp, form_to_charge, noise_level_calc_mzarray, sum_monos
+import pathlib
+import importlibfrom .General_Functions import form_to_comp, form_to_charge, noise_level_calc_mzarray, sum_monos
 from .Library_Tools import generate_glycans_library, full_glycans_library, fragments_library
 from .File_Accessing import eic_from_glycan, peaks_auc_from_eic, peaks_from_eic, eic_smoothing, iso_fit_score_calc, average_ppm_calc, peak_curve_fit, make_mzxml
+from pyteomics import mzxml, mzml, mass, auxiliary
+from itertools import combinations_with_replacement, islice
 from pandas import DataFrame, ExcelWriter
 from numpy import percentile
 from re import split
@@ -10,8 +11,6 @@ from math import inf, isnan
 from statistics import mean
 from time import sleep
 from random import randint
-import importlib
-import pathlib
 import dill
 import sys
 import datetime
@@ -33,6 +32,9 @@ def generate_cfg_file(path, comments):
     with open(path+'glycogenius_parameters.ini', 'w') as g:
         with open('Parameters_Template.ini', 'r') as f:
             for line in f:
+                if line == "working_path = C:/GlycoGenius/":
+                    g.write("working_path = "+path+"\n")
+                    continue
                 if not comments and line[0] == ';':
                     continue
                 g.write(line)
@@ -726,7 +728,7 @@ def imp_exp_gen_library(multithreaded_analysis,
                 f.close()
         print('Done building custom glycans library in '+
               str(datetime.datetime.now()-begin_time))
-    if multithreaded_analysis[0] and not only_gen_lib:
+    if multithreaded_analysis[0] and not only_gen_lib and not multithreaded_execution[0]:
         print('Preparing to split library and execution for multiple threads...')
         if not imp_exp_library[0] and not custom_glycans_list[0]:
             monos_library = generate_glycans_library(min_max_monos,
@@ -763,7 +765,7 @@ def imp_exp_gen_library(multithreaded_analysis,
                 multithreaded_analysis = (True, i)
                 break
             lib_names.append('glycans_library_'+str(i)+'.py')
-            with open(lib_names[-1], 'w') as f:
+            with open(save_path+lib_names[-1], 'w') as f:
                 f.write('full_library = {')
                 f.close()
             for j in range(start, start+split_s):
@@ -776,38 +778,51 @@ def imp_exp_gen_library(multithreaded_analysis,
                     if j < start+split_s-1:
                         f.write("'"+full_library_keys_list[j]+"'"+": "+str(full_library[full_library_keys_list[j]])+", ")
                         f.close()
-        with open('GlycoGenius.py', 'r') as f:
-            for i in f:
+        mt_path = str(pathlib.Path(__file__).parent.parent.resolve())
+        for i_i, i in enumerate(mt_path):
+            if i == "\\":
+                mt_path = mt_path[:i_i]+"/"+mt_path[i_i+1:]
+        with open(mt_path+'/GlycoGenius.py', 'r') as f:
+            for i_i, i in enumerate(f):
                 for j in range(multithreaded_analysis[1]):
-                    with open('Multithreaded_'+str(j)+'.py', 'a') as g:
-                        if i[:22] == 'custom_glycans_list = ':
-                            g.write(i[:22]+"(False, '')\n")
-                            g.close()
+                    with open(save_path+'Multithreaded_'+str(j)+'.py', 'a') as g:
+                        if i_i == 0:
+                            g.write("import importlib\n")
+                            g.write("spec1 = importlib.util.spec_from_file_location('Execution_Functions', '"+mt_path+"/Modules/Execution_Functions.py')\n")
+                            g.write("Execution_Functions = importlib.util.module_from_spec(spec1)\n")
+                            g.write("spec1.loader.exec_module(Execution_Functions)\n")
                             continue
-                        if i[:18] == 'imp_exp_library = ':
-                            g.write(i[:18]+"(True, False)\n")
-                            g.close()
+                        if i_i == 1:
+                            g.write("spec2 = importlib.util.spec_from_file_location('General_Functions', '"+mt_path+"/Modules/General_Functions.py')\n")
+                            g.write("General_Functions = importlib.util.module_from_spec(spec2)\n")
+                            g.write("spec2.loader.exec_module(General_Functions)\n")
                             continue
-                        if i[:25] == 'multithreaded_analysis = ':
-                            g.write(i[:25]+"(False, "+str(multithreaded_analysis[1])+")\n")
-                            g.close()
+                        if i_i == 41:
+                            g.write("multithreaded_execution = (True, "+str(j)+")\n")
                             continue
-                        if i[:26] == 'multithreaded_execution = ':
-                            g.write(i[:26]+"(True, "+str(j)+")\n")
-                            g.close()
+                        if i_i == 47:
+                            g.write("    with open('glycogenius_parameters.ini', 'r') as f:\n")
+                            continue
+                        if i_i == 48:
+                            g.write("        for line in f:\n")
+                            g.write("            configs+=line\n")
                             continue
                         g.write(i)
                         g.close()
             f.close()
         input("Multithreaded run setup done. Press Enter to exit and run the 'Multithreaded_n.py' files to execute each part of the script.")
         sys.exit()
-    if imp_exp_library[0]:
+    if imp_exp_library[0] or multithreaded_execution[0]:
         print('Importing existing library...', end = '', flush = True)
         if multithreaded_execution[0]:
-            lib_module = importlib.import_module('glycans_library_'+str(multithreaded_execution[1]))
+            spec = importlib.util.spec_from_file_location("glycans_library", save_path+'glycans_library_'+str(multithreaded_execution[1])+'.py')
+            lib_module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(lib_module)
             full_library = lib_module.full_library
         else:
-            lib_module = importlib.import_module(save_path+'glycans_library') #might not work, potentially
+            spec = importlib.util.spec_from_file_location("glycans_library", save_path+'glycans_library.py')
+            lib_module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(lib_module)
             full_library = lib_module.full_library
         print("Done!")
         return full_library
