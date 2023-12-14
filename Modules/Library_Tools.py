@@ -1,6 +1,17 @@
+import pathlib
+import importlib
+import_path = str(pathlib.Path(__file__).parent.resolve())
+for i_i, i in enumerate(import_path):
+    if i == "\\":
+        import_path = import_path[:i_i]+"/"+import_path[i_i+1:]
+        
+#Absolute import of General_Functions
+spec1 = importlib.util.spec_from_file_location("General_Functions", import_path+'/General_Functions.py')
+General_Functions = importlib.util.module_from_spec(spec1)
+spec1.loader.exec_module(General_Functions)
+
 from pyteomics import mzxml, mzml, mass, auxiliary
 from itertools import combinations_with_replacement
-from .General_Functions import count_seq_letters, sum_monos, calculate_comp_from_mass, gen_adducts_combo, comp_to_formula, sum_atoms, glycan_to_atoms, form_to_comp, calculate_isotopic_pattern
 from re import split
 from math import inf
 import sys
@@ -59,7 +70,7 @@ def generate_glycans_library(min_max_mono,
 
     Uses
     ----
-    count_seq_letters(string) : string
+    General_Functions.count_seq_letters(string) : string
         If you make anything with itertools for combinatorial analysis, it will produce a
         string that's not very human readable. This converts it into a human readable
         form.
@@ -68,7 +79,7 @@ def generate_glycans_library(min_max_mono,
         Return r length subsequences of elements from the input iterable allowing
         individual elements to be repeated more than once.
 
-    sum_monos(*compositions) : dict
+    General_Functions.sum_monos(*compositions) : dict
         Sums the monosaccharides of two glycan compositions.
 
     Returns
@@ -81,7 +92,7 @@ def generate_glycans_library(min_max_mono,
     def_glycan_comp = {"H": 0, "N": 0, "S": 0, "F": 0, "G": 0}
     for i in range(min_max_mono[0], min_max_mono[1]+1):
         for j in combinations_with_replacement("HNSFG", i):
-            glycans.append(sum_monos(def_glycan_comp, count_seq_letters("".join(j))))
+            glycans.append(General_Functions.sum_monos(def_glycan_comp, General_Functions.count_seq_letters("".join(j))))
     to_be_removed = []
     for i_i, i in enumerate(glycans):
         if ((i['H'] < min_max_hex[0]) or (i['H'] > min_max_hex[1])
@@ -140,24 +151,24 @@ def full_glycans_library(library,
 
     Uses
     ----
-    calculate_comp_from_mass(tag_mass) : dict
+    General_Functions.calculate_comp_from_mass(tag_mass) : dict
         Calculates the composition of a molecule based on its mass. Intended to use with
         small tags added to the glycans.
         
-    gen_adducts_combo(adducts, max_charge) : list
+    General_Functions.gen_adducts_combo(adducts, max_charge) : list
         Generates a list of dictionaries with compositions of adducts combinations,
         based on parameters set.
 
-    comp_to_formula(composition) : string
+    General_Functions.comp_to_formula(composition) : string
         Transforms a composition dictionary into string formula.
 
-    sum_atoms(*compositions) : dict
+    General_Functions.sum_atoms(*compositions) : dict
         Sums the atoms of two compositions.
 
-    glycan_to_atoms(glycan_composition) : dict
+    General_Functions.glycan_to_atoms(glycan_composition) : dict
         Calculates the amounts of atoms based on glycan monosaccharides.
 
-    form_to_comp(string) : dict
+    General_Functions.form_to_comp(string) : dict
         Separates a molecular formula or monosaccharides composition of glycans into a
         dictionary with each atom/monosaccharide as a key and its amount as value.
 
@@ -165,7 +176,7 @@ def full_glycans_library(library,
         Calculates the monoisotopic mass of a polypeptide defined by a sequence string,
         parsed sequence, chemical formula or Composition object.
 
-    calculate_isotopic_pattern(glycan_atoms,
+    General_Functions.calculate_isotopic_pattern(glycan_atoms,
                                tolerance,
                                fast=True) : list
         Calculates up to 5 isotopic pattern peaks relative abundance in relation with
@@ -181,17 +192,17 @@ def full_glycans_library(library,
     '''
     full_library = {}
     if tag_mass != 0:
-        tag = calculate_comp_from_mass(tag_mass)
+        tag = General_Functions.calculate_comp_from_mass(tag_mass)
     else:
         tag = {"C": 0, "O": 0, "N": 0, "H": 0}
-    adducts_combo = gen_adducts_combo(max_adducts, max_charges)
+    adducts_combo = General_Functions.gen_adducts_combo(max_adducts, max_charges)
     for i in library:
-        i_formula = comp_to_formula(i)
-        i_atoms = sum_atoms(glycan_to_atoms(i), form_to_comp('H2O'))
-        i_atoms_tag = sum_atoms(i_atoms, tag[0])
+        i_formula = General_Functions.comp_to_formula(i)
+        i_atoms = General_Functions.sum_atoms(General_Functions.glycan_to_atoms(i), General_Functions.form_to_comp('H2O'))
+        i_atoms_tag = General_Functions.sum_atoms(i_atoms, tag[0])
         i_neutral_mass = mass.calculate_mass(composition=i_atoms)
         i_neutral_tag = i_neutral_mass+tag[1]
-        i_iso_dist = calculate_isotopic_pattern(i_atoms_tag, fast, high_res)
+        i_iso_dist = General_Functions.calculate_isotopic_pattern(i_atoms_tag, fast, high_res)
         full_library[i_formula] = {}
         full_library[i_formula]['Monos_Composition'] = i
         full_library[i_formula]['Atoms_Glycan+Tag'] = i_atoms_tag
@@ -206,7 +217,7 @@ def full_glycans_library(library,
                                      charge = charges,
                                      charge_carrier = j,
                                      carrier_charge = charges)
-            full_library[i_formula]['Adducts_mz'][comp_to_formula(j)] = mz        
+            full_library[i_formula]['Adducts_mz'][General_Functions.comp_to_formula(j)] = mz        
     return full_library
 
 def fragments_library(min_max_mono,
@@ -226,7 +237,7 @@ def fragments_library(min_max_mono,
     def_glycan_comp = {"H": 0, "N": 0, "S": 0, "F": 0, "G": 0, "T" : 0}
     for i in range(1, 18):
         for j in combinations_with_replacement("HNSFGT", i):
-            glycans.append(sum_monos(def_glycan_comp, count_seq_letters("".join(j))))
+            glycans.append(General_Functions.sum_monos(def_glycan_comp, General_Functions.count_seq_letters("".join(j))))
     to_be_removed = []
     for i_i, i in enumerate(glycans):
         if ((i['T'] > 1) 
@@ -241,10 +252,10 @@ def fragments_library(min_max_mono,
     for i in sorted(to_be_removed, reverse = True):
         del glycans[i]
     if tag_mass != 0:
-        tag = calculate_comp_from_mass(tag_mass)
+        tag = General_Functions.calculate_comp_from_mass(tag_mass)
     else:
         tag = {"C": 0, "O": 0, "N": 0, "H": 0}
-    adducts_combo = gen_adducts_combo({'H' : 2}, max_charges)
+    adducts_combo = General_Functions.gen_adducts_combo({'H' : 2}, max_charges)
     frag_library = []
     combo_frags_lib = []
     adducts_mz = [[], [], []]
@@ -252,18 +263,18 @@ def fragments_library(min_max_mono,
     for i_i, i in enumerate(glycans):
         for j_j, j in enumerate(range(-1, 2)):
             if j < 0:
-                i_formula = comp_to_formula(i)+str(j)+'H2O'
+                i_formula = General_Functions.comp_to_formula(i)+str(j)+'H2O'
             elif j > 0:
-                i_formula = comp_to_formula(i)+'+'+str(j)+'H2O'
+                i_formula = General_Functions.comp_to_formula(i)+'+'+str(j)+'H2O'
             else:
-                i_formula = comp_to_formula(i)
-            glycan_atoms = glycan_to_atoms(i)
+                i_formula = General_Functions.comp_to_formula(i)
+            glycan_atoms = General_Functions.glycan_to_atoms(i)
             glycan_atoms['H'] += j*2
             glycan_atoms['O'] += j*1
             i_atoms = glycan_atoms
             i_neutral_mass = mass.calculate_mass(composition=i_atoms)
             if i['T'] == 1:
-                i_atoms_tag = sum_atoms(i_atoms, tag[0])
+                i_atoms_tag = General_Functions.sum_atoms(i_atoms, tag[0])
                 i_neutral_tag = i_neutral_mass+tag[1]
             else:
                 i_atoms_tag = i_atoms
@@ -283,24 +294,24 @@ def fragments_library(min_max_mono,
                 for k_k, k in enumerate(adducts_mz[0]):
                     if abs(mz - k) <= tolerance*2:
                         combo_frags_lib.append({})
-                        combo_frags_lib[-1]['Formula'] = frag_library[adducts_mz[2][k_k]]['Formula']+'_'+adducts_mz[1][k_k]+'/'+frag_library[index]['Formula']+'_'+comp_to_formula(j)
+                        combo_frags_lib[-1]['Formula'] = frag_library[adducts_mz[2][k_k]]['Formula']+'_'+adducts_mz[1][k_k]+'/'+frag_library[index]['Formula']+'_'+General_Functions.comp_to_formula(j)
                         combo_frags_lib[-1]['Adducts_mz'] = {}
-                        combo_frags_lib[-1]['Adducts_mz'][comp_to_formula(j)] = mz
+                        combo_frags_lib[-1]['Adducts_mz'][General_Functions.comp_to_formula(j)] = mz
                         combo_frags_lib[-1]['Adducts_mz'][adducts_mz[1][k_k]] = mz
                         try:
                             del frag_library[adducts_mz[2][k_k]]['Adducts_mz'][adducts_mz[1][k_k]]
                         except:
                             pass
                         adducts_mz[0].append(mz)
-                        adducts_mz[1].append(comp_to_formula(j))
+                        adducts_mz[1].append(General_Functions.comp_to_formula(j))
                         adducts_mz[2].append(index)
                         found = True
                         break
                 if not found:
                     adducts_mz[0].append(mz)
-                    adducts_mz[1].append(comp_to_formula(j))
+                    adducts_mz[1].append(General_Functions.comp_to_formula(j))
                     adducts_mz[2].append(index)
-                    frag_library[index]['Adducts_mz'][comp_to_formula(j)] = mz
+                    frag_library[index]['Adducts_mz'][General_Functions.comp_to_formula(j)] = mz
                     
     frag_library = frag_library+combo_frags_lib
     print("Done!")

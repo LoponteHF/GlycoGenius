@@ -1,6 +1,17 @@
+import pathlib
+import importlib
+import_path = str(pathlib.Path(__file__).parent.resolve())
+for i_i, i in enumerate(import_path):
+    if i == "\\":
+        import_path = import_path[:i_i]+"/"+import_path[i_i+1:]
+        
+#Absolute import of General_Functions
+spec1 = importlib.util.spec_from_file_location("General_Functions", import_path+'/General_Functions.py')
+General_Functions = importlib.util.module_from_spec(spec1)
+spec1.loader.exec_module(General_Functions)
+
 from pyteomics import mzxml, mzml, mass, auxiliary
 from itertools import combinations_with_replacement
-from .General_Functions import mz_int, count_seq_letters, sum_monos, calculate_comp_from_mass, gen_adducts_combo, comp_to_formula, sum_atoms, glycan_to_atoms, form_to_comp, calculate_isotopic_pattern, h_mass, form_to_charge, noise_level_calc_mzarray, calculate_ppm_diff, normpdf
 from scipy.signal import savgol_filter
 from statistics import mean
 from re import split
@@ -89,8 +100,8 @@ def eic_from_glycan(files,
         if verbose:
             print('Adduct: '+str(i)+" mz: "+str(glycan_info['Adducts_mz'][i]))
             verbose_info.append('Adduct: '+str(i)+" mz: "+str(glycan_info['Adducts_mz'][i]))
-        adduct_mass = mass.calculate_mass(composition=form_to_comp(i))
-        adduct_charge = form_to_charge(i)
+        adduct_mass = mass.calculate_mass(composition=General_Functions.form_to_comp(i))
+        adduct_charge = General_Functions.form_to_charge(i)
         ppm_info[i] = {}
         iso_fitting_quality[i] = {}
         data[i] = {}
@@ -127,7 +138,7 @@ def eic_from_glycan(files,
                     sec_peak_rel_int = glycan_info['Isotopic_Distribution'][1]
                     last_peak = (glycan_info['Isotopic_Distribution_Masses'][-1]+adduct_mass)/adduct_charge
                     no_iso_peaks = len(glycan_info['Isotopic_Distribution_Masses'])
-                    before_target = glycan_info['Adducts_mz'][i]-h_mass-tolerance
+                    before_target = glycan_info['Adducts_mz'][i]-General_Functions.h_mass-tolerance
                     mono_ppm = []
                     iso_actual = []
                     iso_target = []
@@ -174,24 +185,24 @@ def eic_from_glycan(files,
                             if iso_distro < min_isotops:
                                 not_good = True
                             break
-                        if l > target_mz + tolerance and l < target_mz + h_mass and found:
+                        if l > target_mz + tolerance and l < target_mz + General_Functions.h_mass and found:
                             for m in m_range:
-                                if abs(l-(target_mz+(h_mass/m))) <= tolerance and m != adduct_charge and sliced_int[l_l] < mono_int*(sec_peak_rel_int*1.2) and sliced_int[l_l] > mono_int*(sec_peak_rel_int*0.8):
+                                if abs(l-(target_mz+(General_Functions.h_mass/m))) <= tolerance and m != adduct_charge and sliced_int[l_l] < mono_int*(sec_peak_rel_int*1.2) and sliced_int[l_l] > mono_int*(sec_peak_rel_int*0.8):
                                     if verbose:
                                         verbose_info.append("------m/z "+str(l)+", int "+str(sliced_int[l_l]))
                                         verbose_info.append("--------Incorrect charge assigned.")
                                     not_good = True
                                     break
-                        if l > target_mz - h_mass - tolerance and l < target_mz - tolerance:
+                        if l > target_mz - General_Functions.h_mass - tolerance and l < target_mz - tolerance:
                             for m in m_range:
-                                if abs(l-(target_mz-(h_mass/m))) <= tolerance:
+                                if abs(l-(target_mz-(General_Functions.h_mass/m))) <= tolerance:
                                     if verbose:
                                         verbose_info.append("------m/z "+str(l)+", int "+str(sliced_int[l_l]))
                                         verbose_info.append("--------Not monoisotopic.")
                                     bad_peaks_before_target.append(sliced_int[l_l])
                                     break
                         if l >= target_mz - tolerance and abs(l-target_mz) <= tolerance:
-                            mono_ppm.append(calculate_ppm_diff(l, target_mz))
+                            mono_ppm.append(General_Functions.calculate_ppm_diff(l, target_mz))
                             intensity += sliced_int[l_l]
                             mono_int += sliced_int[l_l]
                             for m in bad_peaks_before_target:
@@ -272,7 +283,7 @@ def peak_curve_fit(rt_int,
         max_amp_id += int(counts_max/2)
         y_gaussian = []
         for i in temp_x:
-            y_gaussian.append(normpdf(i, temp_x[max_amp_id], (temp_x[-1]-temp_x[0])/6))
+            y_gaussian.append(General_Functions.normpdf(i, temp_x[max_amp_id], (temp_x[-1]-temp_x[0])/6))
         scaler = (temp_y[max_amp_id]/y_gaussian[max_amp_id])
         y_gaussian_scaled = []
         for j in y_gaussian:
@@ -310,7 +321,7 @@ def average_ppm_calc(ppm_array,
         if i != inf:
             ppms.append(i)
         else:
-            ppms.append(calculate_ppm_diff(1000-tolerance, 1000))
+            ppms.append(General_Functions.calculate_ppm_diff(1000-tolerance, 1000))
             missing_points+= 1
     return mean(ppms), missing_points
 
