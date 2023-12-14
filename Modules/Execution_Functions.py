@@ -19,8 +19,554 @@ import traceback
 
 ##---------------------------------------------------------------------------------------
 ##Functions to be used for execution and organizing results data
-            
-def list_of_data(samples_list): ##mzML must be worked on or discarded
+
+def print_header():
+    '''
+    '''
+    print("GlycoGenius: Glycomics Data Analysis Tool")
+    print_sep()
+    
+def generate_cfg_file(path, comments):
+    '''
+    '''
+    print("Creating settings file...")
+    with open(path+'glycogenius_parameters.ini', 'w') as g:
+        with open('Parameters_Template.ini', 'r') as f:
+            for line in f:
+                if not comments and line[0] == ';':
+                    continue
+                g.write(line)
+        f.close()
+    g.close()
+    input("Done! Press Enter to exit.")
+    sys.exit()
+
+def interactive_terminal():
+    '''
+    '''
+    date = datetime.datetime.now()
+    begin_time = str(date)[2:4]+str(date)[5:7]+str(date)[8:10]+"_"+str(date)[11:13]+str(date)[14:16]+str(date)[17:19]
+    print_header()
+    input_order = [None]
+    while input_order[0] == None:
+        print("1 - Build and output glycans library.\n2 - Analyze sample files in single-threaded mode\n3 - Reanalyze raw results files with new parameters\n4 - Create template parameters file for command-line execution")
+        var = input("Select your option: ")
+        try:
+            var = int(var)
+        except:
+            print("Wrong Input")
+            continue
+        if var < 1 or var > 4:
+            print("Wrong Input")
+            continue
+        if var > 0 and var <= 4:
+            input_order[0] = var
+    print_sep()
+    if input_order[0] == 1 or input_order[0] == 2:
+        input_order.append(None)
+        while input_order[1] == None:
+            print("1 - Use a custom glycans list\n2 - Generate a library based on possible monosaccharides numbers")
+            var = input("Select your option: ")
+            try:
+                var = int(var)
+            except:
+                continue
+            if var < 1 or var > 2:
+                continue
+            if var > 0 and var <= 2:
+                input_order[1] = var
+        print_sep()
+        if input_order[1] == 1:
+            glycans_list = []
+            print("Warning: Glycans must be inputted in the format of 'H5N4S1F1G1' where 'H' = Hexose, 'N' = N-Acetylhexosamine, 'S' = N-Acetyl-Neuraminic Acid, 'F' = Deoxyhexose, 'G' = N-Glycolyl-Neuraminic Acid and each number next to it corresponds to the amount of said monosaccharide")
+            while True:
+                var = input("Insert a glycan, leave blank to end list: ")
+                if var == "":
+                    print(glycans_list)
+                    var2 = input("Proceed with this list? (y/n): ")
+                    if var2 == 'y':
+                        break
+                    if var2 == 'n':
+                        print("Emptied glycans list.")
+                        glycans_list = []
+                        continue
+                try:
+                    comp = form_to_comp(var)
+                except:
+                    print('Wrong input')
+                    continue
+                for i in comp:
+                    if i != 'H' and i != 'N' and i != 'S' and i != 'F' and i != 'G':
+                        print('Wrong input')
+                        continue
+                glycans_list.append(var)
+                print("Current glycans: ", glycans_list)
+        if input_order[1] == 2:
+            lib_settings = [None, None, None, None, None, None, None, None, None, None, None, None, None, None, None]
+            for i in range(len(lib_settings)):
+                if i == 0:
+                    while lib_settings[0] == None:
+                        var = input("Type the minimum amount of total monosaccharides: ")
+                        try:
+                            var = int(var)
+                        except:
+                            continue
+                        lib_settings[0] = var
+                if i == 1:
+                    while lib_settings[1] == None:
+                        var = input("Type the maximum amount of total monosaccharides: ")
+                        try:
+                            var = int(var)
+                        except:
+                            continue
+                        lib_settings[1] = var
+                if i == 2:
+                    while lib_settings[2] == None:
+                        var = input("Type the minimum amount of hexoses: ")
+                        try:
+                            var = int(var)
+                        except:
+                            continue
+                        lib_settings[2] = var
+                if i == 3:
+                    while lib_settings[3] == None:
+                        var = input("Type the maximum amount of hexoses: ")
+                        try:
+                            var = int(var)
+                        except:
+                            continue
+                        lib_settings[3] = var
+                if i == 4:
+                    while lib_settings[4] == None:
+                        var = input("Type the minimum amount of N-acetylhexosamines: ")
+                        try:
+                            var = int(var)
+                        except:
+                            continue
+                        lib_settings[4] = var
+                if i == 5:
+                    while lib_settings[5] == None:
+                        var = input("Type the maximum amount of N-acetylhexosamines: ")
+                        try:
+                            var = int(var)
+                        except:
+                            continue
+                        lib_settings[5] = var
+                if i == 6:
+                    while lib_settings[6] == None:
+                        var = input("Type the minimum amount of deoxyhexoses (fucoses): ")
+                        try:
+                            var = int(var)
+                        except:
+                            continue
+                        lib_settings[6] = var
+                if i == 7:
+                    while lib_settings[7] == None:
+                        var = input("Type the maximum amount of deoxyhexoses (fucoses): ")
+                        try:
+                            var = int(var)
+                        except:
+                            continue
+                        lib_settings[7] = var
+                if i == 8:
+                    while lib_settings[8] == None:
+                        var = input("Type the minimum amount of N-acetyl neuraminic acids: ")
+                        try:
+                            var = int(var)
+                        except:
+                            continue
+                        lib_settings[8] = var
+                if i == 9:
+                    while lib_settings[9] == None:
+                        var = input("Type the maximum amount of N-acetyl neuraminic acids: ")
+                        try:
+                            var = int(var)
+                        except:
+                            continue
+                        lib_settings[9] = var
+                if i == 10:
+                    while lib_settings[10] == None:
+                        var = input("Type the minimum amount of N-glycolyl neuraminic acids: ")
+                        try:
+                            var = int(var)
+                        except:
+                            continue
+                        lib_settings[10] = var
+                if i == 11:
+                    while lib_settings[11] == None:
+                        var = input("Type the maximum amount of N-glycolyl neuraminic acids: ")
+                        try:
+                            var = int(var)
+                        except:
+                            continue
+                        lib_settings[11] = var
+                if i == 12:
+                    while lib_settings[12] == None:
+                        var = input("Type the minimum amount of total sialic acids: ")
+                        try:
+                            var = int(var)
+                        except:
+                            continue
+                        lib_settings[12] = var
+                if i == 13:
+                    while lib_settings[13] == None:
+                        var = input("Type the maximum amount of total sialic acids: ")
+                        try:
+                            var = int(var)
+                        except:
+                            continue
+                        lib_settings[13] = var
+                if i == 14:
+                    while lib_settings[14] == None:
+                        var = input("Force compositions to be closer to N-glycans structure (y/n): ")
+                        if var == 'y':
+                            lib_settings[14] = True
+                        if var == 'n':
+                            lib_settings[14] = False
+                        else:
+                            continue
+        print_sep()
+        adducts = {}
+        while True:
+            var = input("Type the first element to calculate as adduct (ie. Na or H). Leave blank to finish: ")
+            if var == '':
+                print(adducts)
+                var2 = input("Proceed with these adducts? (y/n): ")
+                if var2 == 'y':
+                    break
+                if var2 == 'n':
+                    print("Emptied adducts list.")
+                    adducts = {}
+                    continue
+            var2 = input("Type the maximum number of such adduct: ")
+            try:
+                var2 = int(var2)
+            except:
+                print('Wrong input')
+                continue
+            adducts[var] = var2
+        print_sep()
+        max_charges = 0
+        while True:
+            var = input("Type the maximum amount of charges for the glycans: ")
+            try:
+                var = int(var)
+            except:
+                print('Wrong input')
+                continue
+            max_charges = var
+            break
+        print_sep()
+        tag_mass = 0
+        while True:
+            var = input("Do you have a reducing end tag attached to your glycans? (y/n): ")
+            if var == 'y' or var == 'n':
+                break
+            else:
+                print("Wrong Input")
+                continue
+            break
+        if var == 'y':
+            while True:
+                var2 = input("Insert the tag added mass (ie. 133.0644 for GirP or 219.1735 for ProA): ")
+                try:
+                    var2 = float(var2)
+                except:
+                    print('Wrong input')
+                    continue
+                tag_mass = var2
+                break
+        print_sep()
+        fast_iso = True
+        while True:
+            var = input("Do you want to do a quick isotopic distribution calculation? If 'n', then isotopic distribution calculation may take several hours, depending on library size (y/n): ")
+            if var == 'y':
+                break
+            if var == 'n':
+                fast_iso = False
+                break
+            else:
+                print('Wrong input')
+                continue
+        high_res = False
+        if not fast_iso:
+            while True:
+                var = input("Do you need a high resolution isotopic distribution? It may be important for very high accuracy mass spectrometers, such as FT-ICR (y/n): ")
+                if var == 'y':
+                    high_res = True
+                    break
+                if var == 'n':
+                    break
+                else:
+                    print('Wrong input')
+                    continue
+        if input_order[0] == 1: #Outputs of input_order == 1
+            path = 'C:/GlycoGenius_'+begin_time+'/'
+            while True:
+                var = input("Insert the path to save the files produced by the script (leave blank for default: C:/GlycoGenius_[current_date_and_time]): ")
+                if var == '':
+                    var = path
+                print(var)
+                var2 = input("Is this path correct? (y/n): ")
+                if var2 == 'n':
+                    continue
+                if var2 == 'y':
+                    if var[-1] != "/":
+                        var = var+"/"
+                    path = var
+                    break
+            if input_order[1] == 1:
+                return input_order, glycans_list, adducts, max_charges, tag_mass, fast_iso, high_res, path
+            if input_order[1] == 2:
+                return input_order, lib_settings, adducts, max_charges, tag_mass, fast_iso, high_res, path
+        else:
+            print_sep()
+            ms2 = [False, False]
+            while True:
+                var = input("Do you wish to analyze MS2 data? (y/n): ")
+                if var == 'y':
+                    ms2[0] = True
+                    break
+                if var == 'n':
+                    break
+                else:
+                    print('Wrong input')
+                    continue
+            if ms2[0]:
+                while True:
+                    var = input("Do you want to only output fragments compatible with identified precursor glycan? (y/n): ")
+                    if var == 'y':
+                        ms2[1] = True
+                        break
+                    if var == 'n':
+                        break
+                    else:
+                        print('Wrong input')
+                        continue
+            accuracy_unit = "pw"
+            while True:
+                var = input("What is the accuracy unit you want to input for mz tolerance? (ppm/pw): ")
+                if var == 'ppm':
+                    accuracy_unit = var
+                    break
+                if var == 'pw':
+                    break
+                else:
+                    print('Wrong input')
+                    continue
+            accuracy_value = 0.0
+            while True:
+                var = input("Insert the accuracy value for the unit you've chosen (ie. '0.01' or '10'): ")
+                try:
+                    var = float(var)
+                except:
+                    print('Wrong input')
+                    continue
+                accuracy_value = var
+                break
+            rt_int = [0.0, 999]
+            while True:
+                var = input("Insert the beggining of the retention time interval at which you want to analyze, in minutes: ")
+                try:
+                    var = float(var)
+                except:
+                    print('Wrong input')
+                    continue
+                rt_int[0] = var
+                break
+            while True:
+                var = input("Insert the end of the retention time interval at which you want to analyze, in minutes: ")
+                try:
+                    var = float(var)
+                except:
+                    print('Wrong input')
+                    continue
+                rt_int[1] = var
+                break
+            min_isotop = 2
+            while True:
+                var = input("Insert the minimum amount of detected isotopologue peaks for a mz in a spectrum to be included in the processed EIC: ")
+                try:
+                    var = int(var)
+                except:
+                    print('Wrong input')
+                    continue
+                min_isotop = var
+                break
+            max_ppm = 10
+            while True:
+                var = input("Insert the maximum amount of PPM difference that a detected glycan must have in order to show up in results' table: ")
+                try:
+                    var = int(var)
+                except:
+                    print('Wrong input')
+                    continue
+                max_ppm = var
+                break
+            iso_fit = 0.5
+            while True:
+                var = input("Insert the minimum isotopic fitting score for a glycan in order for it to show up in the results' table (values between 0.0 and 1.0): ")
+                try:
+                    var = float(var)
+                except:
+                    print('Wrong input')
+                    continue
+                if var < 0.0 or var > 1.0:
+                    print('Wrong input')
+                    continue
+                iso_fit = var
+                break
+            curve_fit = 0.5
+            while True:
+                var = input("Insert the minimum curve fitting score for a glycan in order for it to show up in the results' table (values between 0.0 and 1.0): ")
+                try:
+                    var = float(var)
+                except:
+                    print('Wrong input')
+                    continue
+                if var < 0.0 or var > 1.0:
+                    print('Wrong input')
+                    continue
+                curve_fit = var
+                break
+            sn = 3
+            while True:
+                var = input("Insert the minimum signal-to-noise ratio that a detected glycan must have in order to show up in results' table: ")
+                try:
+                    var = int(var)
+                except:
+                    print('Wrong input')
+                    continue
+                sn = var
+                break
+            files = []
+            while True:
+                var = input("Insert the path to the file to be analyzed (ie. C:/GlycoGenius/file.mzxml). Leave blank to finalize: ")
+                if var == '':
+                    print(files)
+                    var2 = input("Proceed with these files? (y/n): ")
+                    if var2 == 'y':
+                        break
+                    if var2 == 'n':
+                        print("Emptied files list.")
+                        files = []
+                        continue
+                if var[0] == "'" or var[0] == "\"":
+                    var = var[1:-1]
+                print(var)
+                var2 = input("Is this path correct? (y/n): ")
+                if var2 == 'n':
+                    continue
+                if var2 == 'y':
+                    if var[-1] != "/":
+                        var = var+"/"
+                    files.append(var)
+                    continue
+            path = 'C:/GlycoGenius_'+begin_time+'/'
+            while True:
+                var = input("Insert the path to save the files produced by the script (leave blank for default: C:/GlycoGenius_[current_date_and_time]): ")
+                if var == '':
+                    var = path
+                print(var)
+                var2 = input("Is this path correct? (y/n): ")
+                if var2 == 'n':
+                    continue
+                if var2 == 'y':
+                    if var[-1] != "/":
+                        var = var+"/"
+                    path = var
+                    break
+            if input_order[1] == 1:
+                return input_order, glycans_list, adducts, max_charges, tag_mass, fast_iso, high_res, ms2, accuracy_unit, accuracy_value, rt_int, min_isotop, max_ppm, iso_fit, curve_fit, sn, files, path
+            if input_order[1] == 2:
+                return input_order, lib_settings, adducts, max_charges, tag_mass, fast_iso, high_res, ms2, accuracy_unit, accuracy_value, rt_int, min_isotop, max_ppm, iso_fit, curve_fit, sn, files, path
+    if input_order[0] == 3:
+        path = ''
+        while True:
+            var = input("Insert the working directory (where the 'raw_data' files are,i e. C:/Glycogenius/): ")
+            print(var)
+            var2 = input("Is this path correct? (y/n): ")
+            if var2 == 'n':
+                continue
+            if var2 == 'y':
+                if var[-1] != "/":
+                    var = var+"/"
+                path = var
+                break
+        max_ppm = 10
+        while True:
+            var = input("Insert the maximum amount of PPM difference that a detected glycan must have in order to show up in results' table: ")
+            try:
+                var = int(var)
+            except:
+                print('Wrong input')
+                continue
+            max_ppm = var
+            break
+        iso_fit = 0.5
+        while True:
+            var = input("Insert the minimum isotopic fitting score for a glycan in order for it to show up in the results' table (values between 0.0 and 1.0): ")
+            try:
+                var = float(var)
+            except:
+                print('Wrong input')
+                continue
+            if var < 0.0 or var > 1.0:
+                print('Wrong input')
+                continue
+            iso_fit = var
+            break
+        curve_fit = 0.5
+        while True:
+            var = input("Insert the minimum curve fitting score for a glycan in order for it to show up in the results' table (values between 0.0 and 1.0): ")
+            try:
+                var = float(var)
+            except:
+                print('Wrong input')
+                continue
+            if var < 0.0 or var > 1.0:
+                print('Wrong input')
+                continue
+            curve_fit = var
+            break
+        sn = 3
+        while True:
+            var = input("Insert the minimum signal-to-noise ratio that a detected glycan must have in order to show up in results' table: ")
+            try:
+                var = int(var)
+            except:
+                print('Wrong input')
+                continue
+            sn = var
+            break
+        return input_order, path, max_ppm, iso_fit, curve_fit, sn
+    if input_order[0] == 4:
+        commented = False
+        while True:
+            var = input("Do you want the template file to contain commented information on each parameter? (y/n): ")
+            if var == 'y':
+                commented = True
+                break
+            if var == 'n':
+                break
+            else:
+                print('Wrong input')
+                continue
+        path = ''
+        while True:
+            var = input("Insert the path to the folder to save the template file: ")
+            print(var)
+            var2 = input("Is this path correct? (y/n): ")
+            if var2 == 'n':
+                continue
+            if var2 == 'y':
+                if var[-1] != "/":
+                    var = var+"/"
+                path = var
+                break
+        return input_order, commented, path
+                
+def list_of_data(samples_list): ##complete
     '''Detects if a file is mzXML or mzML and processes it into a generator using
     pyteomics.
 
@@ -133,7 +679,8 @@ def imp_exp_gen_library(multithreaded_analysis,
                         fast_iso,
                         high_res,
                         imp_exp_library,
-                        only_gen_lib):
+                        only_gen_lib,
+                        save_path):
     '''Imports, generates and/or exports a glycans library.
 
     Parameters
@@ -174,7 +721,7 @@ def imp_exp_gen_library(multithreaded_analysis,
                                             high_res)
         if imp_exp_library[1]:
             print('Exporting glycans library...')
-            with open('glycans_library.py', 'w') as f:
+            with open(save_path+'glycans_library.py', 'w') as f:
                 f.write('full_library = '+str(full_library))
                 f.close()
         print('Done building custom glycans library in '+
@@ -198,7 +745,7 @@ def imp_exp_gen_library(multithreaded_analysis,
                                                 high_res)
             if imp_exp_library[1]:
                 print('Exporting glycans library...')
-                with open('glycans_library.py', 'w') as f:
+                with open(save_path+'glycans_library.py', 'w') as f:
                     f.write('full_library = '+str(full_library))
                     f.close()
         elif imp_exp_library[0]:
@@ -260,7 +807,7 @@ def imp_exp_gen_library(multithreaded_analysis,
             lib_module = importlib.import_module('glycans_library_'+str(multithreaded_execution[1]))
             full_library = lib_module.full_library
         else:
-            lib_module = importlib.import_module('glycans_library')
+            lib_module = importlib.import_module(save_path+'glycans_library') #might not work, potentially
             full_library = lib_module.full_library
         print("Done!")
         return full_library
@@ -284,7 +831,7 @@ def imp_exp_gen_library(multithreaded_analysis,
               str(datetime.datetime.now()-begin_time)+'!')
     if imp_exp_library[1] or only_gen_lib:
         print('Exporting glycans library...')
-        with open('glycans_library.py', 'w') as f:
+        with open(save_path+'glycans_library.py', 'w') as f:
             f.write('full_library = '+str(full_library))
             f.close()
         df = {'Glycan' : [], 'Hex' : [], 'HexNAc' : [], 'dHex' : [], 'Neu5Ac' : [], 'Neu5Gc' : [], 'Isotopic Distribution' : [], 'Neutral Mass + Tag' : []}
@@ -306,7 +853,7 @@ def imp_exp_gen_library(multithreaded_analysis,
                 else:
                     df[j].append(float("%.4f" % round(full_library[i]['Adducts_mz'][j], 4)))
         df = DataFrame(df)
-        with ExcelWriter('Glycans_Library.xlsx') as writer:
+        with ExcelWriter(save_path+'Glycans_Library.xlsx') as writer:
             df.to_excel(writer, index = False)
     if only_gen_lib:
         print('Library length: '+str(len(full_library)))
@@ -429,19 +976,19 @@ def output_filtered_data(curve_fit_score,
                         for j_j, j in enumerate(fragments_dataframes_import):
                             for k in j:
                                 fragments_dataframes[j_j][k] = fragments_dataframes[j_j][k] + fragments_dataframes_import[j_j][k]
-            with open('raw_data_1', 'wb') as f:
+            with open(save_path+'raw_data_1', 'wb') as f:
                 if analyze_ms2:
                     dill.dump([df1, df2, fragments_dataframes], f)
                 else:
                     dill.dump([df1, df2], f)
                     f.close()
-            with open('raw_data_2', 'wb') as f:
+            with open(save_path+'raw_data_2', 'wb') as f:
                 dill.dump(eic_dataframes, f)
                 f.close()
-            with open('raw_data_3', 'wb') as f:
+            with open(save_path+'raw_data_3', 'wb') as f:
                 dill.dump(smoothed_eic_dataframes, f)
                 f.close()
-            with open('raw_data_4', 'wb') as f:
+            with open(save_path+'raw_data_4', 'wb') as f:
                 dill.dump(curve_fitting_dataframes, f)
                 f.close()
             for i in range(multithreaded_analysis[1]):
@@ -462,7 +1009,7 @@ def output_filtered_data(curve_fit_score,
     else:
         print("Analyzing raw data...")
     try:
-        with open('raw_data_1', 'rb') as f:
+        with open(save_path+'raw_data_1', 'rb') as f:
             file = dill.load(f)
             df1 = file[0]
             df2 = file[1]
@@ -611,13 +1158,13 @@ def output_filtered_data(curve_fit_score,
         df2.to_excel(writer, sheet_name="Index references", index = False)
     print("Done!")
     if (reanalysis[1] and reanalysis[0]) or not reanalysis[0]:
-        with open('raw_data_2', 'rb') as f:
+        with open(save_path+'raw_data_2', 'rb') as f:
             eic_dataframes = dill.load(f)
             f.close()
-        with open('raw_data_3', 'rb') as f:
+        with open(save_path+'raw_data_3', 'rb') as f:
             smoothed_eic_dataframes = dill.load(f)
             f.close()
-        with open('raw_data_4', 'rb') as f:
+        with open(save_path+'raw_data_4', 'rb') as f:
             curve_fitting_dataframes = dill.load(f)
             f.close()
         with ExcelWriter(save_path+begin_time+'_Plot_Data.xlsx') as writer:
@@ -649,7 +1196,8 @@ def arrange_raw_data(analyzed_data,
                      samples_names,
                      multithreaded_analysis,
                      multithreaded_execution,
-                     analyze_ms2): ##Complete
+                     analyze_ms2,
+                     save_path): ##Complete
     '''Arrange the raw data to print. Information printed: Glycan formula, Adduct, sum of
     the corresponding peak in all adducts, mz or neutral mass (for total adducts),
     retention time of each peak and AUC of it.
@@ -839,19 +1387,19 @@ def arrange_raw_data(analyzed_data,
                         for j_j, j in enumerate(fragments_dataframes_import):
                             for k in j:
                                 fragments_dataframes[j_j][k] = fragments_dataframes[j_j][k] + fragments_dataframes_import[j_j][k]
-            with open('raw_data_1', 'wb') as f:
+            with open(save_path+'raw_data_1', 'wb') as f:
                 if analyze_ms2:
                     dill.dump([df1, df2, fragments_dataframes], f)
                 else:
                     dill.dump([df1, df2], f)
                     f.close()
-            with open('raw_data_2', 'wb') as f:
+            with open(save_path+'raw_data_2', 'wb') as f:
                 dill.dump(eic_dataframes, f)
                 f.close()
-            with open('raw_data_3', 'wb') as f:
+            with open(save_path+'raw_data_3', 'wb') as f:
                 dill.dump(smoothed_eic_dataframes, f)
                 f.close()
-            with open('raw_data_4', 'wb') as f:
+            with open(save_path+'raw_data_4', 'wb') as f:
                 dill.dump(curve_fitting_dataframes, f)
                 f.close()
             for i in range(multithreaded_analysis[1]):
@@ -870,19 +1418,19 @@ def arrange_raw_data(analyzed_data,
         except Exception:
             pass
     else:
-        with open('raw_data_1', 'wb') as f:
+        with open(save_path+'raw_data_1', 'wb') as f:
             if analyze_ms2:
                 dill.dump([df1, df2, fragments_dataframes], f)
             else:
                 dill.dump([df1, df2], f)
                 f.close()
-        with open('raw_data_2', 'wb') as f:
+        with open(save_path+'raw_data_2', 'wb') as f:
             dill.dump(eic_dataframes, f)
             f.close()
-        with open('raw_data_3', 'wb') as f:
+        with open(save_path+'raw_data_3', 'wb') as f:
             dill.dump(smoothed_eic_dataframes, f)
             f.close()
-        with open('raw_data_4', 'wb') as f:
+        with open(save_path+'raw_data_4', 'wb') as f:
             dill.dump(curve_fitting_dataframes, f)
             f.close()
     print("Done!")
