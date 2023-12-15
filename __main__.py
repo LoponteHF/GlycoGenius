@@ -30,6 +30,7 @@ accuracy_value = 0.0
 ret_time_interval = (0, 99999)
 min_isotopologue_peaks = 0
 min_ppp = (False, 0)
+close_peaks = (False, 3)
 max_ppm = 0
 iso_fit_score = 1.0
 curve_fit_score = 1.0
@@ -74,6 +75,7 @@ if not os.isatty(0) or multithreaded_execution[0]:
     ret_time_interval = (float(config['analysis_parameters']['ret_time_begin']), float(config['analysis_parameters']['ret_time_end']))
     min_isotopologue_peaks = int(config['analysis_parameters']['min_isotopologue_peaks'])
     min_ppp = (config['analysis_parameters'].getboolean('custom_min_points_per_peak'), int(config['analysis_parameters']['number_points_per_peak']))
+    close_peaks = (config['analysis_parameters'].getboolean('limit_peaks_picked'), int(config['analysis_parameters']['max_number_peaks']))
     max_ppm = int(config['analysis_parameters']['max_ppm'])
     iso_fit_score = float(config['analysis_parameters']['isotopic_fitting_score'])
     curve_fit_score = float(config['analysis_parameters']['curve_fitting_score'])
@@ -207,6 +209,7 @@ else:
                                                       min_ppp,
                                                       max_charges,
                                                       custom_noise,
+                                                      close_peaks,
                                                       verbose)
     if analyze_ms2[0]:
         Execution_Functions.print_sep()
@@ -242,4 +245,7 @@ else:
                                              multithreaded_analysis,
                                              analyze_ms2[0])
                                              
-input('Execution complete. Time elapsed: '+str(datetime.datetime.now() - begin_time)+'\nPress Enter to exit.')
+if not os.isatty(0):
+    print('Execution complete. Time elapsed: '+str(datetime.datetime.now() - begin_time))
+else:
+    input('Execution complete. Time elapsed: '+str(datetime.datetime.now() - begin_time)+'\nPress Enter to exit.')

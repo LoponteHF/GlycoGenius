@@ -34,14 +34,9 @@ Pyteomics:
 
 Dill for Python:
 
-	M.M. McKerns, L. Strand, T. Sullivan, A. Fang, M.A.G. Aivazis,
-	"Building a framework for predictive science", Proceedings of
-	the 10th Python in Science Conference, 2011;
-	http://arxiv.org/pdf/1202.1056
+	M.M. McKerns, L. Strand, T. Sullivan, A. Fang, M.A.G. Aivazis, "Building a framework for predictive science", Proceedings of the 10th Python in Science Conference, 2011; http://arxiv.org/pdf/1202.1056
 
-	Michael McKerns and Michael Aivazis,
-	"pathos: a framework for heterogeneous computing", 2010- ;
-	https://uqfoundation.github.io/project/pathos
+	Michael McKerns and Michael Aivazis, "pathos: a framework for heterogeneous computing", 2010- ;	https://uqfoundation.github.io/project/pathos
 
 Numpy:
 
@@ -57,4 +52,4 @@ Pandas:
 
 ## License
 
-This project is licensed under [GNU GPLv3 or later](https://spdx.org/licenses/GPL-3.0-or-later.html)
+This project is licensed under [GNU GPLv3](https://spdx.org/licenses/GPL-3.0-or-later.html)
