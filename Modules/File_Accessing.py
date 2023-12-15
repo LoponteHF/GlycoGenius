@@ -328,7 +328,8 @@ def average_ppm_calc(ppm_array,
 def peaks_from_eic(rt_int, 
                    rt_int_smoothed,
                    rt_interval,
-                   min_ppp):
+                   min_ppp,
+                   close_peaks):
     '''
     '''
     peaks = []
@@ -337,17 +338,23 @@ def peaks_from_eic(rt_int,
     temp_max_id_iu = 0
     going_up = False
     going_down = False
+    counter = 0
+    max_counter = int(0.1/(rt_int[0][1]-rt_int[0][0]))
     for i_i, i in enumerate(rt_int_smoothed[1]):
         if (rt_int[0][i_i] >= rt_interval[1] or rt_int[0][i_i] == rt_int[0][-1]):
             break
         if rt_int[0][i_i] >= rt_interval[0]:
             if (going_up and i < rt_int_smoothed[1][i_i-1]):
-                going_up = False
-                going_down = True
-                temp_max = rt_int[1][i_i-1]
-                if temp_max == 0.0:
+                if rt_int[1][i_i] > temp_max:
                     temp_max = rt_int[1][i_i]
-                temp_max_id_iu = i_i-1
+                    temp_max_id_iu = i_i
+                counter+=1
+                if counter <= max_counter:
+                    continue
+                else:
+                    counter = 0
+                    going_up = False
+                    going_down = True
             if (going_down and (i > rt_int_smoothed[1][i_i-1] or rt_int_smoothed[1][i_i] == 0.0)):
                 temp_peak_width = (rt_int[0][i_i]-rt_int[0][temp_start])
                 going_down = False
@@ -360,9 +367,17 @@ def peaks_from_eic(rt_int,
                         good = True
                 if good:
                     peaks.append({'id': temp_max_id_iu, 'rt': rt_int[0][temp_max_id_iu], 'int': temp_max, 'peak_width': temp_peak_width, 'peak_interval': (rt_int[0][temp_start], rt_int[0][i_i]), 'peak_interval_id': (temp_start, i_i)})
+                    temp_max = 0
+                    temp_max_id_iu = 0
             if (i_i != 0 and i > rt_int_smoothed[1][i_i-1] and not going_up and not going_down):
                 temp_start = i_i-1
                 going_up = True
+    if close_peaks[0]:
+        peaks = sorted(peaks, key=lambda x: x['int'], reverse = True)
+        for i_i, i in enumerate(peaks):
+            peaks[i_i]['proximity'] = abs(i['rt']-peaks[0]['rt'])
+        peaks = sorted(peaks, key=lambda x: x['proximity'])
+        return sorted(peaks[:close_peaks[1]], key=lambda x: x['rt'])
     return sorted(peaks, key=lambda x: x['rt'])
 
 def peaks_auc_from_eic(rt_int,
