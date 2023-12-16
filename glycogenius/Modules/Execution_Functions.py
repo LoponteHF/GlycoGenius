@@ -26,7 +26,6 @@ from re import split
 from math import inf, isnan
 from statistics import mean
 from time import sleep
-from random import randint
 import os
 import dill
 import sys
@@ -36,14 +35,15 @@ import traceback
 ##---------------------------------------------------------------------------------------
 ##Functions to be used for execution and organizing results data
 
-def print_header():
+def print_header(complete = True):
     '''
     '''
     print("\n    GlycoGenius: Glycomics Data Analysis Tool")
     print("    Copyright (C) 2023 by Hector Franco Loponte")
-    print("This program comes with ABSOLUTELY NO WARRANTY; for details type 'warranty'.")
-    print("This is free software, and can redistribute it under certain conditions.")
-    print("If you want to know more details about the licensing, type 'license'.")
+    if complete:
+        print("This program comes with ABSOLUTELY NO WARRANTY; for details type 'warranty'.")
+        print("This is free software, and can redistribute it under certain conditions.")
+        print("If you want to know more details about the licensing, type 'license'.")
     print_sep()
     
 def generate_cfg_file(path, comments):
@@ -348,9 +348,9 @@ def interactive_terminal():
                     print('Wrong input')
                     continue
         if input_order[0] == 1: #Outputs of input_order == 1
-            path = 'C:/GlycoGenius_'+begin_time+'/'
+            path = 'C:\\GlycoGenius_'+begin_time+'\\'
             while True:
-                var = input("Insert the path to save the files produced by the script (leave blank for default: C:/GlycoGenius_[current_date_and_time]): ")
+                var = input("Insert the path to save the files produced by the script (leave blank for default: C:\\GlycoGenius_[current_date_and_time]): ")
                 if var == '':
                     var = path
                 print(var)
@@ -358,6 +358,9 @@ def interactive_terminal():
                 if var2 == 'n':
                     continue
                 if var2 == 'y':
+                    for i_i, i in enumerate(var):
+                        if i == "\\":
+                            var = var[:i_i]+"/"+var[i_i+1:]
                     if var[-1] != "/":
                         var = var+"/"
                     path = var
@@ -488,7 +491,7 @@ def interactive_terminal():
                 break
             files = []
             while True:
-                var = input("Insert the path to the file to be analyzed (ie. C:/GlycoGenius/file.mzxml). Leave blank to finalize: ")
+                var = input("Insert the path to the file to be analyzed (ie. C:\\GlycoGenius\\file.mzxml). Leave blank to finalize: ")
                 if var == '':
                     print(files)
                     var2 = input("Proceed with these files? (y/n): ")
@@ -505,13 +508,16 @@ def interactive_terminal():
                 if var2 == 'n':
                     continue
                 if var2 == 'y':
+                    for i_i, i in enumerate(var):
+                        if i == "\\":
+                            var = var[:i_i]+"/"+var[i_i+1:]
                     if var[-1] != "/":
                         var = var+"/"
                     files.append(var)
                     continue
-            path = 'C:/GlycoGenius_'+begin_time+'/'
+            path = 'C:\\GlycoGenius_'+begin_time+'\\'
             while True:
-                var = input("Insert the path to save the files produced by the script (leave blank for default: C:/GlycoGenius_[current_date_and_time]): ")
+                var = input("Insert the path to save the files produced by the script (leave blank for default: C:\\GlycoGenius_[current_date_and_time]): ")
                 if var == '':
                     var = path
                 print(var)
@@ -519,6 +525,9 @@ def interactive_terminal():
                 if var2 == 'n':
                     continue
                 if var2 == 'y':
+                    for i_i, i in enumerate(var):
+                        if i == "\\":
+                            var = var[:i_i]+"/"+var[i_i+1:]
                     if var[-1] != "/":
                         var = var+"/"
                     path = var
@@ -528,7 +537,7 @@ def interactive_terminal():
             if input_order[1] == 2:
                 return input_order, lib_settings, adducts, max_charges, tag_mass, fast_iso, high_res, ms2, accuracy_unit, accuracy_value, rt_int, min_isotop, max_ppm, iso_fit, curve_fit, sn, files, path
     if input_order[0] == 3:
-        path = 'C:/Glycogenius/'
+        path = 'C:\\Glycogenius\\'
         while True:
             var = input("Insert the working directory (where the 'raw_data' files are, default: C:/Glycogenius/): ")
             print(var)
@@ -536,6 +545,9 @@ def interactive_terminal():
             if var2 == 'n':
                 continue
             if var2 == 'y':
+                for i_i, i in enumerate(var):
+                    if i == "\\":
+                        var = var[:i_i]+"/"+var[i_i+1:]
                 if var[-1] != "/":
                     var = var+"/"
                 path = var
@@ -599,9 +611,9 @@ def interactive_terminal():
             else:
                 print('Wrong input')
                 continue
-        path = 'C:/GlycoGenius/'
+        path = 'C:\\GlycoGenius\\'
         while True:
-            var = input("Insert the path to the folder to save the template file (Default: C:/GlycoGenius/): ")
+            var = input("Insert the path to the folder to save the template file (Default: C:\\GlycoGenius\\): ")
             if var == "":
                 var = path
             print(var)
@@ -609,6 +621,9 @@ def interactive_terminal():
             if var2 == 'n':
                 continue
             if var2 == 'y':
+                for i_i, i in enumerate(var):
+                    if i == "\\":
+                        var = var[:i_i]+"/"+var[i_i+1:]
                 if var[-1] != "/":
                     var = var+"/"
                 path = var
@@ -710,6 +725,56 @@ def index_ms2_from_file(files):
         indexes[i_i] = temp_indexes
     return indexes
 
+def sample_names(samples_list):
+    '''Extracts the sample names from the file path.
+    Parameters
+    ----------
+    No parameters needed, but must be executed after parameters section of script.
+
+    Returns
+    -------
+    curated_samples : list
+        A list of strings, each string with a sample name.
+    '''
+    curated_samples = []
+    for i in samples_list:
+        dot = 0
+        backlash = 0
+        for j in range(len(i)-1, -1, -1):
+            if i[j] == '.':
+                dot = j
+            if i[j] == '/' or i[j] == '\\':
+                backlash = j
+                break
+        curated_samples.append(i[backlash+1:dot])
+    return curated_samples
+
+def tolerance(unit,
+              value):
+    '''A fast, but not super accurate way to convert 'ppm' mass accuracy into 'pw' (peak
+    width, aka. mz tolerance).
+
+    Parameters
+    ----------
+    unit : string
+        Can be either "ppm" (particles-per-million) or "pw" (peak width [tolerance]).
+
+    value : float
+        Float value of the tolerance, based on the unit inputted.
+
+    Returns
+    -------
+    tolerance : float
+        If unit == "ppm", converts value into "pw", if unit == "pw", outputs value as is.
+        ie. 10 ppm gets converted to 0.01 pw tolerance.
+    '''
+    if unit == "ppm":
+        return (1000.0-(-((value*1000)/10**6)+1000))
+    elif unit == "pw":
+        return value
+    else:
+        return("Unit for tolerance not 'ppm' or 'pw'.")
+
 def imp_exp_gen_library(multithreaded_analysis,
                         multithreaded_execution,
                         samples_names,
@@ -757,6 +822,8 @@ def imp_exp_gen_library(multithreaded_analysis,
         glycans with the desired adducts combination.
     '''
     begin_time = datetime.datetime.now()
+    if multithreaded_execution[0]:
+        return
     if custom_glycans_list[0] and not imp_exp_library[0]:
         custom_glycans_comp = []
         print('Building custom glycans library...')
@@ -807,24 +874,20 @@ def imp_exp_gen_library(multithreaded_analysis,
         else:
             split_s = int(len(full_library)/multithreaded_analysis[1])+1
         start = 0
+        libraries = []
         for i in range(multithreaded_analysis[1]):
             if start >= len(full_library):
                 multithreaded_analysis = (True, i)
                 break
-            lib_names.append('glycans_library_'+str(i)+'.py')
-            with open(save_path+lib_names[-1], 'w') as f:
-                f.write('full_library = {')
-                f.close()
+            temp_library = []
             for j in range(start, start+split_s):
-                with open(save_path+lib_names[-1], 'a') as f:
-                    if j == start+split_s-1 or j == len(full_library)-1:
-                        f.write("'"+full_library_keys_list[j]+"'"+": "+str(full_library[full_library_keys_list[j]])+"}")
-                        start+=split_s
-                        f.close()
-                        break
-                    if j < start+split_s-1:
-                        f.write("'"+full_library_keys_list[j]+"'"+": "+str(full_library[full_library_keys_list[j]])+", ")
-                        f.close()
+                if j == start+split_s-1 or j == len(full_library)-1:
+                    temp_library.append("'"+full_library_keys_list[j]+"'"+": "+str(full_library[full_library_keys_list[j]]))
+                    start+=split_s
+                    break
+                if j < start+split_s-1:
+                    temp_library.append("'"+full_library_keys_list[j]+"'"+": "+str(full_library[full_library_keys_list[j]])+", ")
+            libraries.append(temp_library)
         mt_path = str(pathlib.Path(__file__).parent.resolve())
         for i_i, i in enumerate(mt_path):
             if i == "\\":
@@ -832,7 +895,7 @@ def imp_exp_gen_library(multithreaded_analysis,
         with open(mt_path+'/core.py', 'r') as f:
             for i_i, i in enumerate(f):
                 for j in range(multithreaded_analysis[1]):
-                    with open(save_path+'Multithreaded_'+str(j)+'.py', 'a') as g:
+                    with open(save_path+'glycogenius_'+str(j)+'.py', 'a') as g:
                         if i_i == 0:
                             g.write("import importlib\n")
                             g.write("spec1 = importlib.util.spec_from_file_location('Execution_Functions', '"+mt_path+"/Execution_Functions.py')\n")
@@ -844,36 +907,33 @@ def imp_exp_gen_library(multithreaded_analysis,
                             g.write("General_Functions = importlib.util.module_from_spec(spec2)\n")
                             g.write("spec2.loader.exec_module(General_Functions)\n")
                             continue
-                        if i_i == 43:
+                        if i[-28:] == "#editted by multithreaded 1\n":
                             g.write("    multithreaded_execution = (True, "+str(j)+", "+str(multithreaded_analysis[1])+")\n")
                             continue
-                        if i_i == 49:
+                        if i[-28:] == "#editted by multithreaded 2\n":
                             g.write("        with open('glycogenius_parameters.ini', 'r') as f:\n")
                             continue
-                        if i_i == 50:
+                        if i[-28:] == "#editted by multithreaded 3\n":
                             g.write("            for line in f:\n")
                             g.write("                configs+=line\n")
                             continue
-                        if i_i == 252:
+                        if i == "#line to add multithreaded library\n":
+                            g.write("        full_library = {"+str(libraries[j])[2:-2]+"}\n")
+                            continue
+                        if i == "#here multithreaded prints execution of main()":
                             g.write("main()")
                             continue
                         g.write(i)
                         g.close()
             f.close()
-        print("Multithreaded run setup done. Run the 'Multithreaded_n.py' files to execute each part of the script.")
+        print("Multithreaded run setup done. Run the 'glycogenius_n.py' files to execute each part of the script.")
         os._exit(1)
-    if imp_exp_library[0] or multithreaded_execution[0]:
+    if imp_exp_library[0]:
         print('Importing existing library...', end = '', flush = True)
-        if multithreaded_execution[0]:
-            spec = importlib.util.spec_from_file_location("glycans_library", save_path+'glycans_library_'+str(multithreaded_execution[1])+'.py')
-            lib_module = importlib.util.module_from_spec(spec)
-            spec.loader.exec_module(lib_module)
-            full_library = lib_module.full_library
-        else:
-            spec = importlib.util.spec_from_file_location("glycans_library", save_path+'glycans_library.py')
-            lib_module = importlib.util.module_from_spec(spec)
-            spec.loader.exec_module(lib_module)
-            full_library = lib_module.full_library
+        spec = importlib.util.spec_from_file_location("glycans_library", save_path+'glycans_library.py')
+        lib_module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(lib_module)
+        full_library = lib_module.full_library
         print("Done!")
         return full_library
     if not custom_glycans_list[0]:
@@ -925,56 +985,6 @@ def imp_exp_gen_library(multithreaded_analysis,
         input("Check it in glycans_library.py and Glycans_Library.xlsx, for a readable form. If you wish to analyze files, set 'only_gen_lib' to False and input remaining parameters.\nPress Enter to exit.")
         os._exit(1)
     return full_library
-
-def sample_names(samples_list):
-    '''Extracts the sample names from the file path.
-    Parameters
-    ----------
-    No parameters needed, but must be executed after parameters section of script.
-
-    Returns
-    -------
-    curated_samples : list
-        A list of strings, each string with a sample name.
-    '''
-    curated_samples = []
-    for i in samples_list:
-        dot = 0
-        backlash = 0
-        for j in range(len(i)-1, -1, -1):
-            if i[j] == '.':
-                dot = j
-            if i[j] == '/':
-                backlash = j
-                break
-        curated_samples.append(i[backlash+1:dot])
-    return curated_samples
-
-def tolerance(unit,
-              value):
-    '''A fast, but not super accurate way to convert 'ppm' mass accuracy into 'pw' (peak
-    width, aka. mz tolerance).
-
-    Parameters
-    ----------
-    unit : string
-        Can be either "ppm" (particles-per-million) or "pw" (peak width [tolerance]).
-
-    value : float
-        Float value of the tolerance, based on the unit inputted.
-
-    Returns
-    -------
-    tolerance : float
-        If unit == "ppm", converts value into "pw", if unit == "pw", outputs value as is.
-        ie. 10 ppm gets converted to 0.01 pw tolerance.
-    '''
-    if unit == "ppm":
-        return (1000.0-(-((value*1000)/10**6)+1000))
-    elif unit == "pw":
-        return value
-    else:
-        return("Unit for tolerance not 'ppm' or 'pw'.")
         
 def output_filtered_data(curve_fit_score,
                          iso_fit_score,
@@ -1384,9 +1394,18 @@ def arrange_raw_data(analyzed_data,
                         else:
                             df1[k_k]["Detected_Fragments"].append('No')
                     for m_m, m in enumerate(temp_rts):
-                        curve_fitting_dataframes[k_k][str(i)+"+"+str(j)+"_"+str(m)+"_RTs"] = float("%.4f" % round(temp_curve_data_total[m_m][0], 4))
-                        curve_fitting_dataframes[k_k][str(i)+"+"+str(j)+"_"+str(m)+"_Found_ints"] = int(temp_curve_data_total[m_m][1])
-                        curve_fitting_dataframes[k_k][str(i)+"+"+str(j)+"_"+str(m)+"_Ideal_ints"] = int(temp_curve_data_total[m_m][2])
+                        temp_array = []
+                        for n in temp_curve_data_total[m_m][0]:
+                            temp_array.append(float("%.4f" % round(n, 4)))
+                        curve_fitting_dataframes[k_k][str(i)+"+"+str(j)+"_"+str(m)+"_RTs"] = temp_array
+                        temp_array = []
+                        for n in temp_curve_data_total[m_m][1]:
+                            temp_array.append(int(n))
+                        curve_fitting_dataframes[k_k][str(i)+"+"+str(j)+"_"+str(m)+"_Found_ints"] = temp_array
+                        temp_array = []
+                        for n in temp_curve_data_total[m_m][2]:
+                            temp_array.append(int(n))
+                        curve_fitting_dataframes[k_k][str(i)+"+"+str(j)+"_"+str(m)+"_Ideal_ints"] = temp_array
     biggest_len = 1000
     for i in curve_fitting_dataframes:
         for j in i:
@@ -1410,10 +1429,8 @@ def arrange_raw_data(analyzed_data,
         with open(save_path+'results4_'+str(multithreaded_execution[1]), 'wb') as f:
             dill.dump(curve_fitting_dataframes, f)
             f.close()
-        p1 = pathlib.Path(save_path+'Multithreaded_'+str(multithreaded_execution[1])+'.py')
-        p2 = pathlib.Path(save_path+'glycans_library_'+str(multithreaded_execution[1])+'.py')
+        p1 = pathlib.Path(save_path+'glycogenius_'+str(multithreaded_execution[1])+'.py')
         p1.unlink(missing_ok=True)
-        p2.unlink(missing_ok=True)
         results1_list = []
         results2_list = []
         results3_list = []
