@@ -250,3 +250,4 @@ def main():
         print('Execution complete. Time elapsed: '+str(datetime.datetime.now() - begin_time))
     else:
         input('Execution complete. Time elapsed: '+str(datetime.datetime.now() - begin_time)+'\nPress Enter to exit.')
+##Here multithreaded prints execution of main()

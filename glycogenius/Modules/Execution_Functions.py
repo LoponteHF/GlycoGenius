@@ -825,34 +825,37 @@ def imp_exp_gen_library(multithreaded_analysis,
                     if j < start+split_s-1:
                         f.write("'"+full_library_keys_list[j]+"'"+": "+str(full_library[full_library_keys_list[j]])+", ")
                         f.close()
-        mt_path = str(pathlib.Path(__file__).parent.parent.resolve())
+        mt_path = str(pathlib.Path(__file__).parent.resolve())
         for i_i, i in enumerate(mt_path):
             if i == "\\":
                 mt_path = mt_path[:i_i]+"/"+mt_path[i_i+1:]
-        with open(mt_path+'/__main__.py', 'r') as f:
+        with open(mt_path+'/core.py', 'r') as f:
             for i_i, i in enumerate(f):
                 for j in range(multithreaded_analysis[1]):
                     with open(save_path+'Multithreaded_'+str(j)+'.py', 'a') as g:
                         if i_i == 0:
                             g.write("import importlib\n")
-                            g.write("spec1 = importlib.util.spec_from_file_location('Execution_Functions', '"+mt_path+"/Modules/Execution_Functions.py')\n")
+                            g.write("spec1 = importlib.util.spec_from_file_location('Execution_Functions', '"+mt_path+"/Execution_Functions.py')\n")
                             g.write("Execution_Functions = importlib.util.module_from_spec(spec1)\n")
                             g.write("spec1.loader.exec_module(Execution_Functions)\n")
                             continue
                         if i_i == 1:
-                            g.write("spec2 = importlib.util.spec_from_file_location('General_Functions', '"+mt_path+"/Modules/General_Functions.py')\n")
+                            g.write("spec2 = importlib.util.spec_from_file_location('General_Functions', '"+mt_path+"/General_Functions.py')\n")
                             g.write("General_Functions = importlib.util.module_from_spec(spec2)\n")
                             g.write("spec2.loader.exec_module(General_Functions)\n")
                             continue
-                        if i_i == 42:
-                            g.write("multithreaded_execution = (True, "+str(j)+", "+str(multithreaded_analysis[1])+")\n")
-                            continue
-                        if i_i == 48:
-                            g.write("    with open('glycogenius_parameters.ini', 'r') as f:\n")
+                        if i_i == 43:
+                            g.write("    multithreaded_execution = (True, "+str(j)+", "+str(multithreaded_analysis[1])+")\n")
                             continue
                         if i_i == 49:
-                            g.write("        for line in f:\n")
-                            g.write("            configs+=line\n")
+                            g.write("        with open('glycogenius_parameters.ini', 'r') as f:\n")
+                            continue
+                        if i_i == 50:
+                            g.write("            for line in f:\n")
+                            g.write("                configs+=line\n")
+                            continue
+                        if i_i == 252:
+                            g.write("main()")
                             continue
                         g.write(i)
                         g.close()
@@ -1240,17 +1243,17 @@ def output_filtered_data(curve_fit_score,
                     for j in range(int(len(curve_fitting_dataframes[i_i])/16384)+1):
                         if j == 0:
                             curve_df = DataFrame(dict(islice(curve_fitting_dataframes[i_i].items(), 16384)))
-                            curve_df.to_excel(writer, sheet_name="Sample_"+str(i_i)+"_Curve_Fits_0", index = True)
+                            curve_df.to_excel(writer, sheet_name="Sample_"+str(i_i)+"_Curve_Fits_0", index = False)
                         else:
                             if len(dict(islice(curve_fitting_dataframes[i_i].items(), j*16384, len(curve_fitting_dataframes[i_i])))) <= 16384:
                                 curve_df = DataFrame(dict(islice(curve_fitting_dataframes[i_i].items(), j*16384, len(curve_fitting_dataframes[i_i]))))
-                                curve_df.to_excel(writer, sheet_name="Sample_"+str(i_i)+"_Curve_Fits_"+str(j), index = True)
+                                curve_df.to_excel(writer, sheet_name="Sample_"+str(i_i)+"_Curve_Fits_"+str(j), index = False)
                             else:
                                 curve_df = DataFrame(dict(islice(curve_fitting_dataframes[i_i].items(), j*16384, (j+1)*16384)))
-                                curve_df.to_excel(writer, sheet_name="Sample_"+str(i_i)+"_Curve_Fits_"+str(j), index = True)
+                                curve_df.to_excel(writer, sheet_name="Sample_"+str(i_i)+"_Curve_Fits_"+str(j), index = False)
                 else:
                     curve_df = DataFrame(curve_fitting_dataframes[i_i])
-                    curve_df.to_excel(writer, sheet_name="Sample_"+str(i_i)+"_Curve_Fits", index = True)
+                    curve_df.to_excel(writer, sheet_name="Sample_"+str(i_i)+"_Curve_Fits", index = False)
             df2.to_excel(writer, sheet_name="Index references", index = False)
         print("Done!")
 
@@ -1381,9 +1384,9 @@ def arrange_raw_data(analyzed_data,
                         else:
                             df1[k_k]["Detected_Fragments"].append('No')
                     for m_m, m in enumerate(temp_rts):
-                        curve_fitting_dataframes[k_k][str(i)+"+"+str(j)+"_"+str(m)+"_RTs"] = temp_curve_data_total[m_m][0]
-                        curve_fitting_dataframes[k_k][str(i)+"+"+str(j)+"_"+str(m)+"_Found_ints"] = temp_curve_data_total[m_m][1]
-                        curve_fitting_dataframes[k_k][str(i)+"+"+str(j)+"_"+str(m)+"_Ideal_ints"] = temp_curve_data_total[m_m][2]
+                        curve_fitting_dataframes[k_k][str(i)+"+"+str(j)+"_"+str(m)+"_RTs"] = float("%.4f" % round(temp_curve_data_total[m_m][0], 4))
+                        curve_fitting_dataframes[k_k][str(i)+"+"+str(j)+"_"+str(m)+"_Found_ints"] = int(temp_curve_data_total[m_m][1])
+                        curve_fitting_dataframes[k_k][str(i)+"+"+str(j)+"_"+str(m)+"_Ideal_ints"] = int(temp_curve_data_total[m_m][2])
     biggest_len = 1000
     for i in curve_fitting_dataframes:
         for j in i:

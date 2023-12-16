@@ -19,7 +19,6 @@ from math import inf
 import numpy
 import sys
 import datetime
-import copy
 
 ##---------------------------------------------------------------------------------------
 ##File accessing-associated functions (these are functions that deal with the data in
