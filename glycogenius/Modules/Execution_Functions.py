@@ -49,7 +49,7 @@ def print_header(complete = True):
         print("          for details type 'warranty'.")
         print(" This is free software and can be redistributed")
         print("  under certain conditions. If you want to know")
-        print("more details about the licensing, type 'license'.")
+        print(" more details about the license, type 'license'.")
     print_sep()
     
 def generate_cfg_file(path, comments):
@@ -82,7 +82,7 @@ def interactive_terminal():
     input_order = [None]
     while input_order[0] == None:
         print_header()
-        print("1 - Build and output glycans library.\n2 - Analyze sample files in single-threaded mode\n3 - Reanalyze raw results files with new parameters\n4 - Create template parameters file for command-line execution\n")
+        print("1 - Build and output glycans library.\n2 - Analyze sample files in single-threaded mode\n3 - Reanalyze raw results files with new \n    parameters\n4 - Create template parameters file for command-\n    line execution\n")
         var = input("Select your option: ")
         if var == 'warranty':
             print("\nDisclaimer of Warranty.\n")
