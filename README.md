@@ -18,11 +18,15 @@ In order to do that, this tool is able to do several different tasks:
 
 ## Installation
 
-WIP.
+	pip install glycogenius
 
 ## Usage
 
-Export your MS data to an MzXML file and then edit the parameters in the parameters files.
+1. Export your MS data to an MzXML or MzML file;
+2. Type 'glycogenius' in the terminal;
+3. Follow instructions or export parameters file;
+4. If you exported the parameters file, pipeline it to glycogenius after setting it up.
+	ie. in terminal type "cat .\glycogenius_parameters.ini | glycogenius"
 
 ## Credits
 
