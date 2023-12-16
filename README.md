@@ -17,32 +17,34 @@ In order to do that, this tool is able to do several different tasks:
 - Identifies MS2 glycans' fragments and assign them to its respective precursor.
 
 ## Installation
-
+'''
 	pip install glycogenius
-
+'''
 ## Usage
 
 1. Export your MS data to an MzXML or MzML file;
 2. Type 'glycogenius' in the terminal;
-3. Follow instructions or export parameters file;
+3. Follow instructions;
+   - You can analyze directly on the CLI;
+   - You can export a parameters file for advanced executions;
 4. If you exported the parameters file, pipeline it to glycogenius after setting it up.
-ie. in terminal type:
-
+   - ie. in terminal type:
+'''
 	cat .\glycogenius_parameters.ini | glycogenius
-
+'''
 ## Credits
 
 Pyteomics:
 
-	Goloborodko, A.A.; Levitsky, L.I.; Ivanov, M.V.; and Gorshkov, M.V. (2013) “Pyteomics - a Python Framework for Exploratory Data Analysis and Rapid Software Prototyping in Proteomics”, Journal of The American Society for Mass Spectrometry, 24(2), 301–304. DOI: 10.1007/s13361-012-0516-6
+> Goloborodko, A.A.; Levitsky, L.I.; Ivanov, M.V.; and Gorshkov, M.V. (2013) “Pyteomics - a Python Framework for Exploratory Data Analysis and Rapid Software Prototyping in Proteomics”, Journal of The American Society for Mass Spectrometry, 24(2), 301–304. DOI: 10.1007/s13361-012-0516-6
 
-	Levitsky, L.I.; Klein, J.; Ivanov, M.V.; and Gorshkov, M.V. (2018) “Pyteomics 4.0: five years of development of a Python proteomics framework”, Journal of Proteome Research. DOI: 10.1021/acs.jproteome.8b00717
+> Levitsky, L.I.; Klein, J.; Ivanov, M.V.; and Gorshkov, M.V. (2018) “Pyteomics 4.0: five years of development of a Python proteomics framework”, Journal of Proteome Research. DOI: 10.1021/acs.jproteome.8b00717
 
 Dill for Python:
 
-	M.M. McKerns, L. Strand, T. Sullivan, A. Fang, M.A.G. Aivazis, "Building a framework for predictive science", Proceedings of the 10th Python in Science Conference, 2011; http://arxiv.org/pdf/1202.1056
+> M.M. McKerns, L. Strand, T. Sullivan, A. Fang, M.A.G. Aivazis, "Building a framework for predictive science", Proceedings of the 10th Python in Science Conference, 2011; http://arxiv.org/pdf/1202.1056
 
-	Michael McKerns and Michael Aivazis, "pathos: a framework for heterogeneous computing", 2010- ;	https://uqfoundation.github.io/project/pathos
+> wMichael McKerns and Michael Aivazis, "pathos: a framework for heterogeneous computing", 2010- ;	https://uqfoundation.github.io/project/pathos
 
 Numpy:
 
