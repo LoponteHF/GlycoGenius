@@ -40,9 +40,12 @@ def print_header(complete = True):
     '''
     print("\n    GlycoGenius: Glycomics Data Analysis Tool")
     print("    Copyright (C) 2023 by Hector Franco Loponte")
+    if not complete:
+        print("For more details about the license, run the package stand-alone by")
+        print("typing 'python -m glycogenius' in terminal and then type 'license'.")
     if complete:
         print("This program comes with ABSOLUTELY NO WARRANTY; for details type 'warranty'.")
-        print("This is free software, and can redistribute it under certain conditions.")
+        print("This is free software and can be redistributed under certain conditions.")
         print("If you want to know more details about the licensing, type 'license'.")
     print_sep()
     

@@ -9,7 +9,6 @@ import configparser
 #-----------------------------------------------------------------------------
 
 def main():
-    Execution_Functions.print_header(False)
     custom_glycans_list = (False, [])
     min_max_monos = (0, 0)
     min_max_hex = (0, 0)
@@ -48,6 +47,7 @@ def main():
     verbose = False
 
     if not os.isatty(0) or multithreaded_execution[0]:
+        Execution_Functions.print_header(False)
         config = configparser.ConfigParser()
         configs = ""
         for line in sys.stdin:              #editted by multithreaded 2
@@ -91,7 +91,14 @@ def main():
         samples_list = config['analysis_parameters']['samples_list'].split(",")
         for i_i, i in enumerate(samples_list):
             samples_list[i_i] = i.strip()
+        for i_i, i in enumerate(samples_list):
+            samples_list[i_i] = i.strip("'")
+        for i_i, i in enumerate(samples_list):
+            samples_list[i_i] = i.strip("\"")
         save_path = config['analysis_parameters']['working_path']
+        save_path = save_path.strip()
+        save_path = save_path.strip("'")
+        save_path = save_path.strip("\"")
         for i_i, i in enumerate(save_path):
             if i == "\\":
                 save_path = save_path[:i_i]+"/"+save_path[i_i+1:]
@@ -171,6 +178,7 @@ def main():
 
     else:
         if multithreaded_execution[0]:
+            Execution_Functions.print_header(False)
             print('Multithreaded Execution: '+str(multithreaded_execution[1]))
         samples_names = Execution_Functions.sample_names(samples_list)
         library = Execution_Functions.imp_exp_gen_library(multithreaded_analysis,
