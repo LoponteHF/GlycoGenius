@@ -45,7 +45,7 @@ def print_header(complete = True):
         print("   package stand-alone by typing 'glycogenius'")
         print("      in terminal and then typing 'license'.")
     if complete:
-        print(" \nThis program comes with ABSOLUTELY NO WARRANTY;")
+        print("\n This program comes with ABSOLUTELY NO WARRANTY;")
         print("          for details type 'warranty'.")
         print(" This is free software and can be redistributed")
         print("  under certain conditions. If you want to know")
