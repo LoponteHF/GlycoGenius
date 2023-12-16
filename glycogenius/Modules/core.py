@@ -6,6 +6,8 @@ import os
 import datetime
 import configparser
 
+#-----------------------------------------------------------------------------
+
 def main():
     custom_glycans_list = (False, [])
     min_max_monos = (0, 0)
@@ -41,14 +43,15 @@ def main():
     save_path = ''
     reanalysis = (False, False)
 
-    multithreaded_execution = (False, 0, 0)
+    multithreaded_execution = (False, 0, 0) #editted by multithreaded 1
     verbose = False
 
     if not os.isatty(0) or multithreaded_execution[0]:
+        Execution_Functions.print_header(False)
         config = configparser.ConfigParser()
         configs = ""
-        for line in sys.stdin:
-            configs+=line
+        for line in sys.stdin:              #editted by multithreaded 2
+            configs+=line                   #editted by multithreaded 3
         config.read_string(configs)
         custom_glycans = config['library_building']['custom_glycans_list'].split(",")
         for i_i, i in enumerate(custom_glycans):
@@ -88,7 +91,17 @@ def main():
         samples_list = config['analysis_parameters']['samples_list'].split(",")
         for i_i, i in enumerate(samples_list):
             samples_list[i_i] = i.strip()
+        for i_i, i in enumerate(samples_list):
+            samples_list[i_i] = i.strip("'")
+        for i_i, i in enumerate(samples_list):
+            samples_list[i_i] = i.strip("\"")
         save_path = config['analysis_parameters']['working_path']
+        save_path = save_path.strip()
+        save_path = save_path.strip("'")
+        save_path = save_path.strip("\"")
+        for i_i, i in enumerate(save_path):
+            if i == "\\":
+                save_path = save_path[:i_i]+"/"+save_path[i_i+1:]
         reanalysis = (config['analysis_parameters'].getboolean('reanalysis'), config['analysis_parameters'].getboolean('output_plot_data'))
     else:
         parameters = Execution_Functions.interactive_terminal()
@@ -149,7 +162,7 @@ def main():
         save_path+= "/"
     Path(save_path).mkdir(exist_ok = True, parents = True)
 
-    ##-----------------------------------------------------------------------------
+#-----------------------------------------------------------------------------
 
     begin_time = datetime.datetime.now()
 
@@ -187,6 +200,9 @@ def main():
                                                           imp_exp_library,
                                                           only_gen_lib,
                                                           save_path)
+#line to add multithreaded library
+        if multithreaded_execution[0]:
+            library = full_library
         print('Library length: '+str(len(library)))
         Execution_Functions.print_sep()
         tolerance = Execution_Functions.tolerance(accuracy_unit,
@@ -250,3 +266,4 @@ def main():
         print('Execution complete. Time elapsed: '+str(datetime.datetime.now() - begin_time))
     else:
         input('Execution complete. Time elapsed: '+str(datetime.datetime.now() - begin_time)+'\nPress Enter to exit.')
+#here multithreaded prints execution of main()

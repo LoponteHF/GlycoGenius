@@ -15,4 +15,9 @@ setup(
     python_requires='>=3.6',
     install_requres=["pandas", "scipy", "pyteomics",
                      "dill", "numpy"],
+    entry_points={
+        'console_scripts': [
+            'glycogenius = glycogenius:glycogenius',
+        ]
+    }
 )

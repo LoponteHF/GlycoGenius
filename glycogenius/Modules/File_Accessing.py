@@ -19,7 +19,6 @@ from math import inf
 import numpy
 import sys
 import datetime
-import copy
 
 ##---------------------------------------------------------------------------------------
 ##File accessing-associated functions (these are functions that deal with the data in
@@ -262,7 +261,7 @@ def peak_curve_fit(rt_int,
     '''
     x = rt_int[0][peak['peak_interval_id'][0]:peak['peak_interval_id'][1]+1]
     y = rt_int[1][peak['peak_interval_id'][0]:peak['peak_interval_id'][1]+1]
-    interval = x[1]-x[0]
+    interval = x[-1]-x[-2]
     fits_list = []
     for j in range(int(0.2/interval)):
         before = []
@@ -339,19 +338,19 @@ def peaks_from_eic(rt_int,
     going_up = False
     going_down = False
     counter = 0
-    max_counter = int(0.1/(rt_int[0][1]-rt_int[0][0]))
+    max_counter = int(0.1/(rt_int[0][-1]-rt_int[0][-2]))
     for i_i, i in enumerate(rt_int_smoothed[1]):
         if (rt_int[0][i_i] >= rt_interval[1] or rt_int[0][i_i] == rt_int[0][-1]):
             break
         if rt_int[0][i_i] >= rt_interval[0]:
-            if (going_up and i < rt_int_smoothed[1][i_i-1]):
+            if (going_up and (i < rt_int_smoothed[1][i_i-1] or rt_int_smoothed[1][i_i] == 0)):
+                counter+=1
                 if rt_int[1][i_i] > temp_max:
                     temp_max = rt_int[1][i_i]
                     temp_max_id_iu = i_i
-                counter+=1
                 if counter <= max_counter:
                     continue
-                else:
+                elif counter > max_counter:
                     counter = 0
                     going_up = False
                     going_down = True
@@ -363,7 +362,7 @@ def peaks_from_eic(rt_int,
                     if i_i-temp_start >= min_ppp[1]:
                         good = True
                 else:
-                    if i_i-temp_start >= int(0.2/(rt_int[0][1]-rt_int[0][0])):
+                    if i_i-temp_start >= int(0.2/(rt_int[0][-1]-rt_int[0][-2])):
                         good = True
                 if good:
                     peaks.append({'id': temp_max_id_iu, 'rt': rt_int[0][temp_max_id_iu], 'int': temp_max, 'peak_width': temp_peak_width, 'peak_interval': (rt_int[0][temp_start], rt_int[0][i_i]), 'peak_interval_id': (temp_start, i_i)})
