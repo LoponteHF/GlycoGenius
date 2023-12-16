@@ -39,14 +39,17 @@ def print_header(complete = True):
     '''
     '''
     print("\n    GlycoGenius: Glycomics Data Analysis Tool")
-    print("    Copyright (C) 2023 by Hector Franco Loponte")
+    print("   Copyright (C) 2023 by Hector Franco Loponte")
     if not complete:
-        print("For more details about the license, run the package stand-alone by")
-        print("typing 'python -m glycogenius' in terminal and then type 'license'.")
+        print("\n   For more details about the license, run the")
+        print("   package stand-alone by typing 'glycogenius'")
+        print("      in terminal and then typing 'license'.")
     if complete:
-        print("This program comes with ABSOLUTELY NO WARRANTY; for details type 'warranty'.")
-        print("This is free software and can be redistributed under certain conditions.")
-        print("If you want to know more details about the licensing, type 'license'.")
+        print(" \nThis program comes with ABSOLUTELY NO WARRANTY;")
+        print("          for details type 'warranty'.")
+        print(" This is free software and can be redistributed")
+        print("  under certain conditions. If you want to know")
+        print("more details about the licensing, type 'license'.")
     print_sep()
     
 def generate_cfg_file(path, comments):
@@ -829,7 +832,7 @@ def imp_exp_gen_library(multithreaded_analysis,
         return
     if custom_glycans_list[0] and not imp_exp_library[0]:
         custom_glycans_comp = []
-        print('Building custom glycans library...')
+        print('Building custom glycans library...', end = "", flush = True)
         for i in custom_glycans_list[1]:
             custom_glycans_comp.append(General_Functions.sum_monos(General_Functions.form_to_comp(i)))
         full_library = Library_Tools.full_glycans_library(custom_glycans_comp,
@@ -843,10 +846,9 @@ def imp_exp_gen_library(multithreaded_analysis,
             with open(save_path+'glycans_library.py', 'w') as f:
                 f.write('full_library = '+str(full_library))
                 f.close()
-        print('Done building custom glycans library in '+
-              str(datetime.datetime.now()-begin_time))
+        print('Done!')
     if multithreaded_analysis[0] and not only_gen_lib and not multithreaded_execution[0]:
-        print('Preparing to split library and execution for multiple threads...')
+        print('Splitting execution for multiple threads...')
         if not imp_exp_library[0] and not custom_glycans_list[0]:
             monos_library = Library_Tools.generate_glycans_library(min_max_monos,
                                                      min_max_hex,
@@ -929,7 +931,7 @@ def imp_exp_gen_library(multithreaded_analysis,
                         g.write(i)
                         g.close()
             f.close()
-        print("Multithreaded run setup done. Run the 'glycogenius_n.py' files to execute each part of the script.")
+        print("Setup done. Run 'glycogenius_n.py' files now.")
         os._exit(1)
     if imp_exp_library[0]:
         print('Importing existing library...', end = '', flush = True)
@@ -940,7 +942,7 @@ def imp_exp_gen_library(multithreaded_analysis,
         print("Done!")
         return full_library
     if not custom_glycans_list[0]:
-        print('Building glycans library...')
+        print('Building glycans library...', end = "", flush = True)
         monos_library = Library_Tools.generate_glycans_library(min_max_monos,
                                                  min_max_hex,
                                                  min_max_hexnac,
@@ -955,8 +957,7 @@ def imp_exp_gen_library(multithreaded_analysis,
                                             tag_mass,
                                             fast_iso,
                                             high_res)
-        print('Done building glycans library in '+ 
-              str(datetime.datetime.now()-begin_time)+'!')
+        print('Done!')
     if imp_exp_library[1] or only_gen_lib:
         print('Exporting glycans library...')
         with open(save_path+'glycans_library.py', 'w') as f:
@@ -985,7 +986,10 @@ def imp_exp_gen_library(multithreaded_analysis,
             df.to_excel(writer, index = False)
     if only_gen_lib:
         print('Library length: '+str(len(full_library)))
-        input("Check it in glycans_library.py and Glycans_Library.xlsx, for a readable form. If you wish to analyze files, set 'only_gen_lib' to False and input remaining parameters.\nPress Enter to exit.")
+        print("Check it in Glycans_Library.xlsx.")
+        print("If you wish to analyze files,")
+        print("set 'only_gen_lib' to False and input")
+        input("remaining parameters.\nPress Enter to exit.")
         os._exit(1)
     return full_library
         
@@ -1663,12 +1667,13 @@ def analyze_files(library,
                                                     ms1_index[k],
                                                     temp_peaks)
                 for l_l, l in enumerate(temp_peaks):
-                    l['AUC'] = temp_peaks_auc[l_l]
-                    l['Average_PPM'] = File_Accessing.average_ppm_calc(temp_eic[1][j][k], tolerance, l)
-                    l['Iso_Fit_Score'] = File_Accessing.iso_fit_score_calc(temp_eic[2][j][k], l)
-                    l['Signal-to-Noise'] = l['int']/noise[k]
-                    l['Curve_Fit_Score'] = File_Accessing.peak_curve_fit(temp_eic_smoothed, l)
-                    glycan_data['Adducts_mz_data'][j][k][1].append(l)
+                    if temp_peaks_auc[l_l] >= noise[k]:
+                        l['AUC'] = temp_peaks_auc[l_l]
+                        l['Average_PPM'] = File_Accessing.average_ppm_calc(temp_eic[1][j][k], tolerance, l)
+                        l['Iso_Fit_Score'] = File_Accessing.iso_fit_score_calc(temp_eic[2][j][k], l)
+                        l['Signal-to-Noise'] = l['int']/noise[k]
+                        l['Curve_Fit_Score'] = File_Accessing.peak_curve_fit(temp_eic_smoothed, l)
+                        glycan_data['Adducts_mz_data'][j][k][1].append(l)
                 if verbose:
                     verbose_info.append('Adduct: '+str(j)+' mz: '+str(glycan_data['Adducts_mz'][j])+' Sample: '+str(k))
                     verbose_info.append('Peaks found: '+str(temp_peaks))

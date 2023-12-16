@@ -178,7 +178,6 @@ def main():
 
     else:
         if multithreaded_execution[0]:
-            Execution_Functions.print_header(False)
             print('Multithreaded Execution: '+str(multithreaded_execution[1]))
         samples_names = Execution_Functions.sample_names(samples_list)
         library = Execution_Functions.imp_exp_gen_library(multithreaded_analysis,
