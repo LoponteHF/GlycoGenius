@@ -34,7 +34,16 @@ class make_mzxml(object):
     def __getitem__(self,index):
         if type(index) == int:
             pre_data = self.it[index]
-            return {'num': pre_data['id'].split('=')[-1], 'retentionTime': float(pre_data['scanList']['scan'][0]['scan start time']), 'msLevel': pre_data['ms level'], 'm/z array': pre_data['m/z array'], 'intensity array': pre_data['intensity array']}
+            if pre_data['ms level'] == 2:
+                if float(self.it[-1]['scanList']['scan'][0]['scan start time']) > 210: #210 scan time should allow for the correct evaluation of scan time being in seconds or minutes for every run that lasts between 3.5 minutes and 3.5 hours
+                    return {'num': pre_data['id'].split('=')[-1], 'retentionTime': float(pre_data['scanList']['scan'][0]['scan start time'])/60, 'msLevel': pre_data['ms level'], 'm/z array': pre_data['m/z array'], 'intensity array': pre_data['intensity array'], 'precursorMz': [{'precursorMz': pre_data['precursorList']['precursor'][0]['isolationWindow']['isolation window target m/z']}]}
+                else:
+                    return {'num': pre_data['id'].split('=')[-1], 'retentionTime': float(pre_data['scanList']['scan'][0]['scan start time']), 'msLevel': pre_data['ms level'], 'm/z array': pre_data['m/z array'], 'intensity array': pre_data['intensity array'], 'precursorMz': [{'precursorMz': pre_data['precursorList']['precursor'][0]['isolationWindow']['isolation window target m/z']}]}
+            else:
+                if float(self.it[-1]['scanList']['scan'][0]['scan start time']) > 210:
+                    return {'num': pre_data['id'].split('=')[-1], 'retentionTime': float(pre_data['scanList']['scan'][0]['scan start time'])/60, 'msLevel': pre_data['ms level'], 'm/z array': pre_data['m/z array'], 'intensity array': pre_data['intensity array']}
+                else:
+                    return {'num': pre_data['id'].split('=')[-1], 'retentionTime': float(pre_data['scanList']['scan'][0]['scan start time']), 'msLevel': pre_data['ms level'], 'm/z array': pre_data['m/z array'], 'intensity array': pre_data['intensity array']}
         else:
             first_index = str(index).split('(')[1].split(', ')[0]
             if first_index != 'None':
@@ -48,7 +57,16 @@ class make_mzxml(object):
                 last_index = len(self.it)
             data = []
             for index in range(first_index, last_index):
-                data.append({'num': self.it[index]['id'].split('=')[-1], 'retentionTime': float(self.it[index]['scanList']['scan'][0]['scan start time']), 'msLevel': self.it[index]['ms level'], 'm/z array': self.it[index]['m/z array'], 'intensity array': self.it[index]['intensity array']})
+                if self.it[index]['ms level'] == 2:
+                    if float(self.it[-1]['scanList']['scan'][0]['scan start time']) > 210:
+                        data.append({'num': self.it[index]['id'].split('=')[-1], 'retentionTime': float(self.it[index]['scanList']['scan'][0]['scan start time'])/60, 'msLevel': self.it[index]['ms level'], 'm/z array': self.it[index]['m/z array'], 'intensity array': self.it[index]['intensity array'], 'precursorMz': [{'precursorMz': self.it[index]['precursorList']['precursor'][0]['isolationWindow']['isolation window target m/z']}]})
+                    else:
+                        data.append({'num': self.it[index]['id'].split('=')[-1], 'retentionTime': float(self.it[index]['scanList']['scan'][0]['scan start time']), 'msLevel': self.it[index]['ms level'], 'm/z array': self.it[index]['m/z array'], 'intensity array': self.it[index]['intensity array'], 'precursorMz': [{'precursorMz': self.it[index]['precursorList']['precursor'][0]['isolationWindow']['isolation window target m/z']}]})
+                else:
+                    if float(self.it[-1]['scanList']['scan'][0]['scan start time']) > 210:
+                        data.append({'num': self.it[index]['id'].split('=')[-1], 'retentionTime': float(self.it[index]['scanList']['scan'][0]['scan start time'])/60, 'msLevel': self.it[index]['ms level'], 'm/z array': self.it[index]['m/z array'], 'intensity array': self.it[index]['intensity array']})
+                    else:
+                        data.append({'num': self.it[index]['id'].split('=')[-1], 'retentionTime': float(self.it[index]['scanList']['scan'][0]['scan start time']), 'msLevel': self.it[index]['ms level'], 'm/z array': self.it[index]['m/z array'], 'intensity array': self.it[index]['intensity array']})
             return data
         
 def eic_from_glycan(files,
@@ -95,6 +113,7 @@ def eic_from_glycan(files,
     ppm_info = {}
     iso_fitting_quality = {}
     verbose_info = []
+    raw_data = {}
     for i in glycan_info['Adducts_mz']:
         if verbose:
             print('Adduct: '+str(i)+" mz: "+str(glycan_info['Adducts_mz'][i]))
@@ -104,6 +123,7 @@ def eic_from_glycan(files,
         ppm_info[i] = {}
         iso_fitting_quality[i] = {}
         data[i] = {}
+        raw_data[i] = {}
         for j_j, j in enumerate(files):
             if verbose:
                 print("--Drawing EIC for Sample: "+str(j_j))
@@ -111,6 +131,7 @@ def eic_from_glycan(files,
             ppm_info[i][j_j] = []
             iso_fitting_quality[i][j_j] = []
             data[i][j_j] = [[], []]
+            raw_data[i][j_j] = [[], []]
             for k_k, k in enumerate(ms1_indexes[j_j]):
                 iso_fitting_quality[i][j_j].append(0.0)
                 ppm_info[i][j_j].append(inf)
@@ -118,8 +139,10 @@ def eic_from_glycan(files,
                 found = False
                 rt = j[k]['retentionTime']
                 data[i][j_j][0].append(rt)
+                raw_data[i][j_j][0].append(rt)
                 if (j[k]['retentionTime'] < rt_interval[0] or j[k]['retentionTime'] > rt_interval[1]):
                     data[i][j_j][1].append(0.0)
+                    raw_data[i][j_j][1].append(0.0)
                     continue
                 else:   
                     if verbose:
@@ -142,6 +165,7 @@ def eic_from_glycan(files,
                     iso_actual = []
                     iso_target = []
                     bad_peaks_before_target = []
+                    nearby_id = 0
                     for l_l, l in enumerate(sliced_mz):
                         if not_good: #Here are checks for quick skips
                             break
@@ -193,6 +217,7 @@ def eic_from_glycan(files,
                                     not_good = True
                                     break
                         if l > target_mz - General_Functions.h_mass - tolerance and l < target_mz - tolerance:
+                            nearby_id = l_l
                             for m in m_range:
                                 if abs(l-(target_mz-(General_Functions.h_mass/m))) <= tolerance:
                                     if verbose:
@@ -200,16 +225,6 @@ def eic_from_glycan(files,
                                         verbose_info.append("--------Not monoisotopic.")
                                     bad_peaks_before_target.append(sliced_int[l_l])
                                     break
-                        if l >= target_mz - tolerance and abs(l-target_mz) <= tolerance:
-                            mono_ppm.append(General_Functions.calculate_ppm_diff(l, target_mz))
-                            intensity += sliced_int[l_l]
-                            mono_int += sliced_int[l_l]
-                            for m in bad_peaks_before_target:
-                                if m > mono_int*(1/sec_peak_rel_int*0.8):
-                                    not_good = True
-                                    break
-                            found = True
-                            continue
                         if l > target_mz + tolerance and abs(l-((glycan_info['Isotopic_Distribution_Masses'][iso_distro]+adduct_mass)/adduct_charge)) <= tolerance:
                             if sliced_int[l_l] > mono_int*glycan_info['Isotopic_Distribution'][iso_distro]:
                                 intensity += mono_int*glycan_info['Isotopic_Distribution'][iso_distro]
@@ -220,6 +235,25 @@ def eic_from_glycan(files,
                                 iso_target.append(mono_int*glycan_info['Isotopic_Distribution'][iso_distro])
                             iso_distro += 1
                             continue
+                        if sliced_int[l_l] < noise[j_j]: #Everything from here is dependent on noise level
+                            continue
+                        if l >= target_mz - tolerance and abs(l-target_mz) <= tolerance:
+                            mono_ppm.append(General_Functions.calculate_ppm_diff(l, target_mz))
+                            intensity += sliced_int[l_l]
+                            mono_int += sliced_int[l_l]
+                            for m in bad_peaks_before_target:
+                                if m > mono_int*(1/sec_peak_rel_int*0.8):
+                                    not_good = True
+                                    break
+                            found = True
+                            continue
+                    for l_l in range(nearby_id, len(sliced_mz)):
+                        if sliced_mz[l_l] > target_mz+tolerance or l_l == len(sliced_mz)-1:
+                            raw_data[i][j_j][1].append(0.0)
+                            break
+                        if abs(sliced_mz[l_l] - target_mz) <= tolerance:
+                            raw_data[i][j_j][1].append(sliced_int[l_l])
+                            break
                 if not_good:
                     ppm_info[i][j_j][-1] = inf
                     iso_fitting_quality[i][j_j][-1] = 0.0
@@ -243,13 +277,17 @@ def eic_from_glycan(files,
                         R_sq = corr**2
                     iso_fitting_quality[i][j_j][-1] = R_sq
                     data[i][j_j][1].append(intensity)
-    return data, ppm_info, iso_fitting_quality, verbose_info
+    return data, ppm_info, iso_fitting_quality, verbose_info, raw_data
     
 def eic_smoothing(rt_int):
     '''
     '''
-    points = int(0.333/(rt_int[0][1]-rt_int[0][0]))
-    filtered_ints = list(savgol_filter(rt_int[1], points, 2))
+    points = int(0.333/(rt_int[0][-1]-rt_int[0][-2]))
+    polynomial_degree = 3
+    while polynomial_degree >= points:
+        points = points*polynomial_degree
+        polynomial_degree+= 1
+    filtered_ints = list(savgol_filter(rt_int[1], points, polynomial_degree))
     for i_i, i in enumerate(filtered_ints):
         if i < 0:
             filtered_ints[i_i] = 0.0

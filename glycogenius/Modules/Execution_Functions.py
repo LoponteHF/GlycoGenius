@@ -43,7 +43,7 @@ def print_header(complete = True):
     if not complete:
         print("\n   For more details about the license, run the")
         print("   package stand-alone by typing 'glycogenius'")
-        print("      in terminal and then typing 'license'.")
+        print("     in terminal and then typing 'license'.")
     if complete:
         print("\n This program comes with ABSOLUTELY NO WARRANTY;")
         print("          for details type 'warranty'.")
@@ -82,18 +82,22 @@ def interactive_terminal():
     input_order = [None]
     while input_order[0] == None:
         print_header()
-        print("1 - Build and output glycans library.\n2 - Analyze sample files in single-threaded mode\n3 - Reanalyze raw results files with new \n    parameters\n4 - Create template parameters file for command-\n    line execution\n")
+        print("1 - Build and output glycans library.\n2 - Analyze sample files in single-threaded mode\n3 - Reanalyze raw results files with new\n    parameters\n4 - Create template parameters file for command-\n    line execution\n")
         var = input("Select your option: ")
         if var == 'warranty':
             print("\nDisclaimer of Warranty.\n")
-            print("THERE IS NO WARRANTY FOR THE PROGRAM, TO THE EXTENT PERMITTED BY")
-            print("APPLICABLE LAW.  EXCEPT WHEN OTHERWISE STATED IN WRITING THE COPYRIGHT")
-            print("HOLDERS AND/OR OTHER PARTIES PROVIDE THE PROGRAM \"AS IS\" WITHOUT WARRANTY")
-            print("OF ANY KIND, EITHER EXPRESSED OR IMPLIED, INCLUDING, BUT NOT LIMITED TO,")
-            print("THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR")
-            print("PURPOSE.  THE ENTIRE RISK AS TO THE QUALITY AND PERFORMANCE OF THE PROGRAM")
-            print("IS WITH YOU.  SHOULD THE PROGRAM PROVE DEFECTIVE, YOU ASSUME THE COST OF")
-            print("ALL NECESSARY SERVICING, REPAIR OR CORRECTION.\n")
+            print("THERE IS NO WARRANTY FOR THE PROGRAM, TO THE")
+            print("EXTENT PERMITTED BY APPLICABLE LAW. EXCEPT WHEN")
+            print("OTHERWISE STATED IN WRITING THE COPYRIGHT")
+            print("HOLDERS AND/OR OTHER PARTIES PROVIDE THE PROGRAM")
+            print("\"AS IS\" WITHOUT WARRANTY OF ANY KIND, EITHER")
+            print("EXPRESSED OR IMPLIED, INCLUDING, BUT NOT LIMITED")
+            print("TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY")
+            print("AND FITNESS FOR A PARTICULAR PURPOSE. THE ENTIRE")
+            print("RISK AS TO THE QUALITY AND PERFORMANCE OF THE")
+            print("PROGRAM IS WITH YOU. SHOULD THE PROGRAM PROVE")
+            print("DEFECTIVE, YOU ASSUME THE COST OF ALL NECESSARY")
+            print("SERVICING, REPAIR OR CORRECTION.\n")
             continue
         if var == 'license':
             license_path = str(pathlib.Path(__file__).parent.parent.resolve())
@@ -118,7 +122,7 @@ def interactive_terminal():
     if input_order[0] == 1 or input_order[0] == 2:
         input_order.append(None)
         while input_order[1] == None:
-            print("1 - Use a custom glycans list\n2 - Generate a library based on possible monosaccharides numbers")
+            print("1 - Use a custom glycans list\n2 - Generate a library based on possible\n    monosaccharides numbers")
             var = input("Select your option: ")
             try:
                 var = int(var)
@@ -131,7 +135,7 @@ def interactive_terminal():
         print_sep()
         if input_order[1] == 1:
             glycans_list = []
-            print("Warning: Glycans must be inputted in the format of 'H5N4S1F1G1' where 'H' = Hexose, 'N' = N-Acetylhexosamine, 'S' = N-Acetyl-Neuraminic Acid, 'F' = Deoxyhexose, 'G' = N-Glycolyl-Neuraminic Acid and each number next to it corresponds to the amount of said monosaccharide")
+            print("Warning: Glycans must be inputted in the format\nof 'H5N4S1F1G1' where 'H' = Hexose,'N' =\nN-Acetylhexosamine, 'S' = N-Acetyl-Neuraminic\nAcid, 'F' = Deoxyhexose, 'G' =\nN-Glycolyl-Neuraminic Acid and each number next\nto it corresponds to the amount of said\nmonosaccharide")
             while True:
                 var = input("Insert a glycan, leave blank to end list: ")
                 if var == "":
@@ -159,7 +163,7 @@ def interactive_terminal():
             for i in range(len(lib_settings)):
                 if i == 0:
                     while lib_settings[0] == None:
-                        var = input("Type the minimum amount of total monosaccharides: ")
+                        var = input("Type the minimum amount of monosaccharides: ")
                         try:
                             var = int(var)
                         except:
@@ -167,7 +171,7 @@ def interactive_terminal():
                         lib_settings[0] = var
                 if i == 1:
                     while lib_settings[1] == None:
-                        var = input("Type the maximum amount of total monosaccharides: ")
+                        var = input("Type the maximum amount of monosaccharides: ")
                         try:
                             var = int(var)
                         except:
@@ -175,7 +179,7 @@ def interactive_terminal():
                         lib_settings[1] = var
                 if i == 2:
                     while lib_settings[2] == None:
-                        var = input("Type the minimum amount of hexoses: ")
+                        var = input("Type the minimum amount of Hex: ")
                         try:
                             var = int(var)
                         except:
@@ -183,7 +187,7 @@ def interactive_terminal():
                         lib_settings[2] = var
                 if i == 3:
                     while lib_settings[3] == None:
-                        var = input("Type the maximum amount of hexoses: ")
+                        var = input("Type the maximum amount of Hex: ")
                         try:
                             var = int(var)
                         except:
@@ -191,7 +195,7 @@ def interactive_terminal():
                         lib_settings[3] = var
                 if i == 4:
                     while lib_settings[4] == None:
-                        var = input("Type the minimum amount of N-acetylhexosamines: ")
+                        var = input("Type the minimum amount of HexNAc: ")
                         try:
                             var = int(var)
                         except:
@@ -199,7 +203,7 @@ def interactive_terminal():
                         lib_settings[4] = var
                 if i == 5:
                     while lib_settings[5] == None:
-                        var = input("Type the maximum amount of N-acetylhexosamines: ")
+                        var = input("Type the maximum amount of HexNAc: ")
                         try:
                             var = int(var)
                         except:
@@ -207,7 +211,7 @@ def interactive_terminal():
                         lib_settings[5] = var
                 if i == 6:
                     while lib_settings[6] == None:
-                        var = input("Type the minimum amount of deoxyhexoses (fucoses): ")
+                        var = input("Type the minimum amount of dHex: ")
                         try:
                             var = int(var)
                         except:
@@ -215,7 +219,7 @@ def interactive_terminal():
                         lib_settings[6] = var
                 if i == 7:
                     while lib_settings[7] == None:
-                        var = input("Type the maximum amount of deoxyhexoses (fucoses): ")
+                        var = input("Type the maximum amount of dHex: ")
                         try:
                             var = int(var)
                         except:
@@ -223,7 +227,7 @@ def interactive_terminal():
                         lib_settings[7] = var
                 if i == 8:
                     while lib_settings[8] == None:
-                        var = input("Type the minimum amount of N-acetyl neuraminic acids: ")
+                        var = input("Type the minimum amount of Neu5Ac: ")
                         try:
                             var = int(var)
                         except:
@@ -231,7 +235,7 @@ def interactive_terminal():
                         lib_settings[8] = var
                 if i == 9:
                     while lib_settings[9] == None:
-                        var = input("Type the maximum amount of N-acetyl neuraminic acids: ")
+                        var = input("Type the maximum amount of Neu5Ac: ")
                         try:
                             var = int(var)
                         except:
@@ -239,7 +243,7 @@ def interactive_terminal():
                         lib_settings[9] = var
                 if i == 10:
                     while lib_settings[10] == None:
-                        var = input("Type the minimum amount of N-glycolyl neuraminic acids: ")
+                        var = input("Type the minimum amount of Neu5Gc: ")
                         try:
                             var = int(var)
                         except:
@@ -247,7 +251,7 @@ def interactive_terminal():
                         lib_settings[10] = var
                 if i == 11:
                     while lib_settings[11] == None:
-                        var = input("Type the maximum amount of N-glycolyl neuraminic acids: ")
+                        var = input("Type the maximum amount of Neu5Gc: ")
                         try:
                             var = int(var)
                         except:
@@ -271,7 +275,7 @@ def interactive_terminal():
                         lib_settings[13] = var
                 if i == 14:
                     while lib_settings[14] == None:
-                        var = input("Force compositions to be closer to N-glycans structure (y/n): ")
+                        var = input("Force compositions to N-glycans structure (y/n): ")
                         if var == 'y':
                             lib_settings[14] = True
                         if var == 'n':
@@ -281,7 +285,7 @@ def interactive_terminal():
         print_sep()
         adducts = {}
         while True:
-            var = input("Type the first element to calculate as adduct (ie. Na or H). Leave blank to finish: ")
+            var = input("Type the first element to calculate as adduct\n(ie. Na or H). Leave blank to finish: ")
             if var == '':
                 print(adducts)
                 var2 = input("Proceed with these adducts? (y/n): ")
@@ -301,7 +305,7 @@ def interactive_terminal():
         print_sep()
         max_charges = 0
         while True:
-            var = input("Type the maximum amount of charges for the glycans: ")
+            var = input("Type the maximum amount of charges: ")
             try:
                 var = int(var)
             except:
@@ -312,7 +316,7 @@ def interactive_terminal():
         print_sep()
         tag_mass = 0
         while True:
-            var = input("Do you have a reducing end tag attached to your glycans? (y/n): ")
+            var = input("Do the glycans have a reducing end tag? (y/n): ")
             if var == 'y' or var == 'n':
                 break
             else:
@@ -321,7 +325,7 @@ def interactive_terminal():
             break
         if var == 'y':
             while True:
-                var2 = input("Insert the tag added mass (ie. 133.0644 for GirP or 219.1735 for ProA): ")
+                var2 = input("Insert the tag added mass\n(ie. 133.0644 for GirP or 219.1735 for ProA): ")
                 try:
                     var2 = float(var2)
                 except:
@@ -332,7 +336,7 @@ def interactive_terminal():
         print_sep()
         fast_iso = True
         while True:
-            var = input("Do you want to do a quick isotopic distribution calculation? If 'n', then isotopic distribution calculation may take several hours, depending on library size (y/n): ")
+            var = input("Do you want to do a quick isotopic distribution\ncalculation? If 'n', then isotopic distribution\ncalculation may take several hours, depending on\nlibrary size (y/n): ")
             if var == 'y':
                 break
             if var == 'n':
@@ -344,7 +348,7 @@ def interactive_terminal():
         high_res = False
         if not fast_iso:
             while True:
-                var = input("Do you need a high resolution isotopic distribution? It may be important for very high accuracy mass spectrometers, such as FT-ICR (y/n): ")
+                var = input("Do you need a high resolution isotopic\ndistribution? It may be important for very high\naccuracy mass spectrometers, such as\nFT-ICR (y/n): ")
                 if var == 'y':
                     high_res = True
                     break
@@ -356,7 +360,7 @@ def interactive_terminal():
         if input_order[0] == 1: #Outputs of input_order == 1
             path = 'C:\\GlycoGenius_'+begin_time+'\\'
             while True:
-                var = input("Insert the path to save the files produced by the script (leave blank for default: C:\\GlycoGenius_[current_date_and_time]): ")
+                var = input("Insert the path to save the files produced by\nthe script (leave blank for\ndefault: C:\\GlycoGenius_[current_date_and_time]): ")
                 if var == '':
                     var = path
                 print(var)
@@ -390,7 +394,7 @@ def interactive_terminal():
                     continue
             if ms2[0]:
                 while True:
-                    var = input("Do you want to only output fragments compatible with identified precursor glycan? (y/n): ")
+                    var = input("Do you want to only output fragments compatible\nwith identified precursor glycan? (y/n): ")
                     if var == 'y':
                         ms2[1] = True
                         break
@@ -401,7 +405,7 @@ def interactive_terminal():
                         continue
             accuracy_unit = "pw"
             while True:
-                var = input("What is the accuracy unit you want to input for mz tolerance? (ppm/pw): ")
+                var = input("What is the accuracy unit you want to input for\nmz tolerance? (ppm/pw): ")
                 if var == 'ppm':
                     accuracy_unit = var
                     break
@@ -412,7 +416,7 @@ def interactive_terminal():
                     continue
             accuracy_value = 0.0
             while True:
-                var = input("Insert the accuracy value for the unit you've chosen (ie. '0.01' or '10'): ")
+                var = input("Insert the accuracy value for the unit you've\nchosen (ie. '0.01' or '10'): ")
                 try:
                     var = float(var)
                 except:
@@ -422,7 +426,7 @@ def interactive_terminal():
                 break
             rt_int = [0.0, 999]
             while True:
-                var = input("Insert the beggining of the retention time interval at which you want to analyze, in minutes: ")
+                var = input("Insert the start of the retention time interval\nat which you want to analyze, in minutes: ")
                 try:
                     var = float(var)
                 except:
@@ -431,7 +435,7 @@ def interactive_terminal():
                 rt_int[0] = var
                 break
             while True:
-                var = input("Insert the end of the retention time interval at which you want to analyze, in minutes: ")
+                var = input("Insert the end of the retention time interval at\nwhich you want to analyze, in minutes: ")
                 try:
                     var = float(var)
                 except:
@@ -441,7 +445,7 @@ def interactive_terminal():
                 break
             min_isotop = 2
             while True:
-                var = input("Insert the minimum amount of detected isotopologue peaks for a mz in a spectrum to be included in the processed EIC: ")
+                var = input("Insert the minimum amount of detected\nisotopologue peaks for a mz in a spectrum to be\nincluded in the processed EIC: ")
                 try:
                     var = int(var)
                 except:
@@ -451,7 +455,7 @@ def interactive_terminal():
                 break
             max_ppm = 10
             while True:
-                var = input("Insert the maximum amount of PPM difference that a detected glycan must have in order to show up in results' table: ")
+                var = input("Insert the maximum amount of PPM difference that\na detected glycan must have in order to show up\nin results' table: ")
                 try:
                     var = int(var)
                 except:
@@ -461,7 +465,7 @@ def interactive_terminal():
                 break
             iso_fit = 0.5
             while True:
-                var = input("Insert the minimum isotopic fitting score for a glycan in order for it to show up in the results' table (values between 0.0 and 1.0): ")
+                var = input("Insert the minimum isotopic fitting score for a\nglycan in order for it to show up in the\nresults' table (values between 0.0 and 1.0): ")
                 try:
                     var = float(var)
                 except:
@@ -474,7 +478,7 @@ def interactive_terminal():
                 break
             curve_fit = 0.5
             while True:
-                var = input("Insert the minimum curve fitting score for a glycan in order for it to show up in the results' table (values between 0.0 and 1.0): ")
+                var = input("Insert the minimum curve fitting score for a\nglycan in order for it to show up in the\nresults' table (values between 0.0 and 1.0): ")
                 try:
                     var = float(var)
                 except:
@@ -487,7 +491,7 @@ def interactive_terminal():
                 break
             sn = 3
             while True:
-                var = input("Insert the minimum signal-to-noise ratio that a detected glycan must have in order to show up in results' table: ")
+                var = input("Insert the minimum signal-to-noise ratio that a\ndetected glycan must have in order to show up in\nresults' table: ")
                 try:
                     var = int(var)
                 except:
@@ -497,7 +501,7 @@ def interactive_terminal():
                 break
             files = []
             while True:
-                var = input("Insert the path to the file to be analyzed (ie. C:\\GlycoGenius\\file.mzxml). Leave blank to finalize: ")
+                var = input("Insert the path to the file to be analyzed\n(ie. C:\\GlycoGenius\\file.mzxml). Leave blank\nto finalize: ")
                 if var == '':
                     print(files)
                     var2 = input("Proceed with these files? (y/n): ")
@@ -523,7 +527,7 @@ def interactive_terminal():
                     continue
             path = 'C:\\GlycoGenius_'+begin_time+'\\'
             while True:
-                var = input("Insert the path to save the files produced by the script (leave blank for default: C:\\GlycoGenius_[current_date_and_time]): ")
+                var = input("Insert the path to save the files produced by\nthe script (leave blank for default:\nC:\\GlycoGenius_[current_date_and_time]): ")
                 if var == '':
                     var = path
                 print(var)
@@ -545,7 +549,9 @@ def interactive_terminal():
     if input_order[0] == 3:
         path = 'C:\\Glycogenius\\'
         while True:
-            var = input("Insert the working directory (where the 'raw_data' files are, default: C:/Glycogenius/): ")
+            var = input("Insert the working directory (where the\n'raw_data' files are, default: C:/Glycogenius/): ")
+            if var == "":
+                var = path
             print(var)
             var2 = input("Is this path correct? (y/n): ")
             if var2 == 'n':
@@ -560,7 +566,7 @@ def interactive_terminal():
                 break
         max_ppm = 10
         while True:
-            var = input("Insert the maximum amount of PPM difference that a detected glycan must have in order to show up in results' table: ")
+            var = input("Insert the maximum amount of PPM difference that\na detected glycan must have in order to show up\nin results' table: ")
             try:
                 var = int(var)
             except:
@@ -570,7 +576,7 @@ def interactive_terminal():
             break
         iso_fit = 0.5
         while True:
-            var = input("Insert the minimum isotopic fitting score for a glycan in order for it to show up in the results' table (values between 0.0 and 1.0): ")
+            var = input("Insert the minimum isotopic fitting score for a\nglycan in order for it to show up in the\nresults' table (values between 0.0 and 1.0): ")
             try:
                 var = float(var)
             except:
@@ -583,7 +589,7 @@ def interactive_terminal():
             break
         curve_fit = 0.5
         while True:
-            var = input("Insert the minimum curve fitting score for a glycan in order for it to show up in the results' table (values between 0.0 and 1.0): ")
+            var = input("Insert the minimum curve fitting score for a\nglycan in order for it to show up in the\nresults' table (values between 0.0 and 1.0): ")
             try:
                 var = float(var)
             except:
@@ -596,7 +602,7 @@ def interactive_terminal():
             break
         sn = 3
         while True:
-            var = input("Insert the minimum signal-to-noise ratio that a detected glycan must have in order to show up in results' table: ")
+            var = input("Insert the minimum signal-to-noise ratio that\na detected glycan must have in order to show up\nin results' table: ")
             try:
                 var = int(var)
             except:
@@ -608,7 +614,7 @@ def interactive_terminal():
     if input_order[0] == 4:
         commented = False
         while True:
-            var = input("Do you want the template file to contain commented information on each parameter? (y/n): ")
+            var = input("Do you want the template file to contain\ncommented information on each parameter? (y/n): ")
             if var == 'y':
                 commented = True
                 break
@@ -619,7 +625,7 @@ def interactive_terminal():
                 continue
         path = 'C:\\GlycoGenius\\'
         while True:
-            var = input("Insert the path to the folder to save the template file (Default: C:\\GlycoGenius\\): ")
+            var = input("Insert the path to the folder to save the\ntemplate file (Default: C:\\GlycoGenius\\): ")
             if var == "":
                 var = path
             print(var)
@@ -884,14 +890,14 @@ def imp_exp_gen_library(multithreaded_analysis,
             if start >= len(full_library):
                 multithreaded_analysis = (True, i)
                 break
-            temp_library = []
+            temp_library = ""
             for j in range(start, start+split_s):
                 if j == start+split_s-1 or j == len(full_library)-1:
-                    temp_library.append("'"+full_library_keys_list[j]+"'"+": "+str(full_library[full_library_keys_list[j]]))
+                    temp_library+= "'"+full_library_keys_list[j]+"'"+": "+str(full_library[full_library_keys_list[j]])
                     start+=split_s
                     break
                 if j < start+split_s-1:
-                    temp_library.append("'"+full_library_keys_list[j]+"'"+": "+str(full_library[full_library_keys_list[j]])+", ")
+                    temp_library+= "'"+full_library_keys_list[j]+"'"+": "+str(full_library[full_library_keys_list[j]])+", "
             libraries.append(temp_library)
         mt_path = str(pathlib.Path(__file__).parent.resolve())
         for i_i, i in enumerate(mt_path):
@@ -923,7 +929,7 @@ def imp_exp_gen_library(multithreaded_analysis,
                             g.write("                configs+=line\n")
                             continue
                         if i == "#line to add multithreaded library\n":
-                            g.write("        full_library = {"+str(libraries[j])[2:-2]+"}\n")
+                            g.write("        full_library = {"+str(libraries[j])+"}\n")
                             continue
                         if i == "#here multithreaded prints execution of main()":
                             g.write("main()")
@@ -1000,6 +1006,7 @@ def output_filtered_data(curve_fit_score,
                          reanalysis,
                          save_path,
                          multithreaded_analysis,
+                         multithreaded_execution,
                          analyze_ms2):
     '''
     '''
@@ -1011,11 +1018,13 @@ def output_filtered_data(curve_fit_score,
         results2_list = []
         results3_list = []
         results4_list = []
+        results5_list = []
         for i in range(multithreaded_analysis[1]):
             results1_list.append(save_path+'results1_'+str(i))
             results2_list.append(save_path+'results2_'+str(i))
             results3_list.append(save_path+'results3_'+str(i))
             results4_list.append(save_path+'results4_'+str(i))
+            results5_list.append(save_path+'results5_'+str(i))
         try:
             for i_i, i in enumerate(results1_list):
                 with open(i, 'rb') as f:
@@ -1028,6 +1037,9 @@ def output_filtered_data(curve_fit_score,
                 with open(results2_list[i_i], 'rb') as f:
                     eic_dataframes_import = dill.load(f)
                     f.close()
+                with open(results5_list[i_i], 'rb') as f:
+                    raw_eic_dataframes_import = dill.load(f)
+                    f.close()
                 with open(results3_list[i_i], 'rb') as f:
                     smoothed_eic_dataframes_import = dill.load(f)
                     f.close()
@@ -1037,6 +1049,7 @@ def output_filtered_data(curve_fit_score,
                 if i_i == 0:
                     df1 = df1_import
                     df2 = df2_import
+                    raw_eic_dataframes = raw_eic_dataframes_import
                     eic_dataframes = eic_dataframes_import
                     smoothed_eic_dataframes = smoothed_eic_dataframes_import
                     curve_fitting_dataframes = curve_fitting_dataframes_import
@@ -1049,6 +1062,7 @@ def output_filtered_data(curve_fit_score,
                     for j_j, j in enumerate(eic_dataframes_import):
                         for k in j:
                             if k[:4] != 'RTs_':
+                                raw_eic_dataframes[j_j][k] = raw_eic_dataframes_import[j_j][k]
                                 eic_dataframes[j_j][k] = eic_dataframes_import[j_j][k]
                                 smoothed_eic_dataframes[j_j][k] = smoothed_eic_dataframes_import[j_j][k]
                     for j_j, j in enumerate(curve_fitting_dataframes_import):
@@ -1063,7 +1077,7 @@ def output_filtered_data(curve_fit_score,
                     dill.dump([df1, df2, fragments_dataframes], f)
                 else:
                     dill.dump([df1, df2], f)
-                    f.close()
+                f.close()
             with open(save_path+'raw_data_2', 'wb') as f:
                 dill.dump(eic_dataframes, f)
                 f.close()
@@ -1073,23 +1087,22 @@ def output_filtered_data(curve_fit_score,
             with open(save_path+'raw_data_4', 'wb') as f:
                 dill.dump(curve_fitting_dataframes, f)
                 f.close()
+            with open(save_path+'raw_data_5', 'wb') as f:
+                dill.dump(raw_eic_dataframes, f)
+                f.close()
             for i in range(multithreaded_analysis[1]):
-                p1 = pathlib.Path(save_path+'Multithreaded_'+str(i)+'.py')
-                p2 = pathlib.Path(save_path+'glycans_library_'+str(i)+'.py')
                 p3 = pathlib.Path(save_path+'results1_'+str(i))
                 p4 = pathlib.Path(save_path+'results2_'+str(i))
                 p5 = pathlib.Path(save_path+'results3_'+str(i))
                 p6 = pathlib.Path(save_path+'results4_'+str(i))
-                p1.unlink(missing_ok=True)
-                p2.unlink(missing_ok=True)
+                p7 = pathlib.Path(save_path+'results5_'+str(i))
                 p3.unlink(missing_ok=True)
                 p4.unlink(missing_ok=True)
                 p5.unlink(missing_ok=True)
                 p6.unlink(missing_ok=True)
+                p7.unlink(missing_ok=True)
         except Exception:
             pass
-    else:
-        print("Analyzing raw data...")
     try:
         with open(save_path+'raw_data_1', 'rb') as f:
             file = dill.load(f)
@@ -1100,6 +1113,8 @@ def output_filtered_data(curve_fit_score,
             f.close()
     except:
         return
+    if not reanalysis[0]:
+        print("Analyzing raw data...")
     for i_i, i in enumerate(df2["Sample_Number"]): #QCs cutoff
         for j_j, j in enumerate(df1[i_i]["Adduct"]): 
             temp_rt = df1[i_i]["RT"][j_j]
@@ -1238,24 +1253,46 @@ def output_filtered_data(curve_fit_score,
                 fragments_df = DataFrame(fragments_dataframes[i_i])
                 fragments_df.to_excel(writer, sheet_name="Sample_"+str(i_i)+"_Fragments", index = False)
         df2.to_excel(writer, sheet_name="Index references", index = False)
+    del df1
+    del result_df
     print("Done!")
     if (reanalysis[1] and reanalysis[0]) or not reanalysis[0]:
+        print("Creating data plotting files...", end= "", flush=True)
         with open(save_path+'raw_data_2', 'rb') as f:
             eic_dataframes = dill.load(f)
             f.close()
+        with ExcelWriter(save_path+begin_time+'_processed_EIC_Plot_Data.xlsx') as writer:
+            for i_i, i in enumerate(eic_dataframes):
+                eic_df = DataFrame(i)
+                eic_df.to_excel(writer, sheet_name="Sample_"+str(i_i), index = False)
+            df2.to_excel(writer, sheet_name="Index references", index = False)
+        del eic_dataframes
+        del eic_df
         with open(save_path+'raw_data_3', 'rb') as f:
             smoothed_eic_dataframes = dill.load(f)
             f.close()
+        with ExcelWriter(save_path+begin_time+'_smoothed_EIC_Plot_Data.xlsx') as writer:
+            for i_i, i in enumerate(smoothed_eic_dataframes):
+                smoothed_eic_df = DataFrame(i)
+                smoothed_eic_df.to_excel(writer, sheet_name="Sample_"+str(i_i), index = False)
+            df2.to_excel(writer, sheet_name="Index references", index = False)
+        del smoothed_eic_dataframes
+        del smoothed_eic_df
+        with open(save_path+'raw_data_5', 'rb') as f:
+            raw_eic_dataframes = dill.load(f)
+            f.close()
+        with ExcelWriter(save_path+begin_time+'_raw_EIC_Plot_Data.xlsx') as writer:
+            for i_i, i in enumerate(raw_eic_dataframes):
+                raw_eic_df = DataFrame(i)
+                raw_eic_df.to_excel(writer, sheet_name="Sample_"+str(i_i), index = False)
+            df2.to_excel(writer, sheet_name="Index references", index = False)
+        del raw_eic_dataframes
+        del raw_eic_df
         with open(save_path+'raw_data_4', 'rb') as f:
             curve_fitting_dataframes = dill.load(f)
             f.close()
-        with ExcelWriter(save_path+begin_time+'_Plot_Data.xlsx') as writer:
-            print("Creating data plotting files...", end= "", flush=True)
-            for i_i, i in enumerate(eic_dataframes):
-                eic_df = DataFrame(i)
-                eic_df.to_excel(writer, sheet_name="Sample_"+str(i_i)+"_EICs", index = False)
-                smoothed_eic_df = DataFrame(smoothed_eic_dataframes[i_i])
-                smoothed_eic_df.to_excel(writer, sheet_name="Sample_"+str(i_i)+"_Smoothed_EICs", index = False)
+        with ExcelWriter(save_path+begin_time+'_curve_fitting_Plot_Data.xlsx') as writer:
+            for i_i, i in enumerate(curve_fitting_dataframes):
                 if len(curve_fitting_dataframes[i_i]) > 16384:
                     for j in range(int(len(curve_fitting_dataframes[i_i])/16384)+1):
                         if j == 0:
@@ -1270,8 +1307,10 @@ def output_filtered_data(curve_fit_score,
                                 curve_df.to_excel(writer, sheet_name="Sample_"+str(i_i)+"_Curve_Fits_"+str(j), index = False)
                 else:
                     curve_df = DataFrame(curve_fitting_dataframes[i_i])
-                    curve_df.to_excel(writer, sheet_name="Sample_"+str(i_i)+"_Curve_Fits", index = False)
+                    curve_df.to_excel(writer, sheet_name="Sample_"+str(i_i), index = False)
             df2.to_excel(writer, sheet_name="Index references", index = False)
+        del curve_fitting_dataframes
+        del curve_df
         print("Done!")
 
 def arrange_raw_data(analyzed_data,
@@ -1297,18 +1336,21 @@ def arrange_raw_data(analyzed_data,
     print('Arranging raw data...', end='', flush = True)
     df1 = []
     df2 = {"Sample_Number" : [], "File_name" : [], "Noise Level" : []}
+    raw_eic_dataframes = []
     eic_dataframes = []
     smoothed_eic_dataframes = []
     curve_fitting_dataframes = []
     if analyze_ms2:
         fragments_dataframes = []
     for i_i, i in enumerate(samples_names):
+        raw_eic_dataframes.append({})
         eic_dataframes.append({})
+        smoothed_eic_dataframes.append({})
         temp_eic_rt = []
         for j in analyzed_data[1][i_i]:
             temp_eic_rt.append(float("%.4f" % round(j, 4)))
+        raw_eic_dataframes[i_i]['RTs_'+str(i_i)] = temp_eic_rt
         eic_dataframes[i_i]['RTs_'+str(i_i)] = temp_eic_rt
-        smoothed_eic_dataframes.append({})
         smoothed_eic_dataframes[i_i]['RTs_'+str(i_i)] = temp_eic_rt
         curve_fitting_dataframes.append({})
         df2["Sample_Number"].append(i_i)
@@ -1322,6 +1364,10 @@ def arrange_raw_data(analyzed_data,
     for i_i, i in enumerate(analyzed_data[0]): #i = glycan (key)
         for j_j, j in enumerate(analyzed_data[0][i]['Adducts_mz_data']): #j = adduct (key)
             for k_k, k in enumerate(analyzed_data[0][i]['Adducts_mz_data'][j]):
+                temp_eic_int = []
+                for l in analyzed_data[0][i]['Adducts_mz_data'][j][k][3]:
+                    temp_eic_int.append(int(l))
+                raw_eic_dataframes[k_k][str(i)+'+'+str(j)+' - '+str(float("%.4f" % round(analyzed_data[0][i]['Adducts_mz'][j], 4)))] = temp_eic_int
                 temp_eic_int = []
                 for l in analyzed_data[0][i]['Adducts_mz_data'][j][k][0]:
                     temp_eic_int.append(int(l))
@@ -1436,17 +1482,22 @@ def arrange_raw_data(analyzed_data,
         with open(save_path+'results4_'+str(multithreaded_execution[1]), 'wb') as f:
             dill.dump(curve_fitting_dataframes, f)
             f.close()
+        with open(save_path+'results5_'+str(multithreaded_execution[1]), 'wb') as f:
+            dill.dump(raw_eic_dataframes, f)
+            f.close()
         p1 = pathlib.Path(save_path+'glycogenius_'+str(multithreaded_execution[1])+'.py')
         p1.unlink(missing_ok=True)
         results1_list = []
         results2_list = []
         results3_list = []
         results4_list = []
-        for i in range(multithreaded_execution[2]):
+        results5_list = []
+        for i in range(multithreaded_analysis[1]):
             results1_list.append(save_path+'results1_'+str(i))
             results2_list.append(save_path+'results2_'+str(i))
             results3_list.append(save_path+'results3_'+str(i))
             results4_list.append(save_path+'results4_'+str(i))
+            results5_list.append(save_path+'results5_'+str(i))
         try:
             for i_i, i in enumerate(results1_list):
                 with open(i, 'rb') as f:
@@ -1459,6 +1510,9 @@ def arrange_raw_data(analyzed_data,
                 with open(results2_list[i_i], 'rb') as f:
                     eic_dataframes_import = dill.load(f)
                     f.close()
+                with open(results5_list[i_i], 'rb') as f:
+                    raw_eic_dataframes_import = dill.load(f)
+                    f.close()
                 with open(results3_list[i_i], 'rb') as f:
                     smoothed_eic_dataframes_import = dill.load(f)
                     f.close()
@@ -1468,6 +1522,7 @@ def arrange_raw_data(analyzed_data,
                 if i_i == 0:
                     df1 = df1_import
                     df2 = df2_import
+                    raw_eic_dataframes = raw_eic_dataframes_import
                     eic_dataframes = eic_dataframes_import
                     smoothed_eic_dataframes = smoothed_eic_dataframes_import
                     curve_fitting_dataframes = curve_fitting_dataframes_import
@@ -1480,6 +1535,7 @@ def arrange_raw_data(analyzed_data,
                     for j_j, j in enumerate(eic_dataframes_import):
                         for k in j:
                             if k[:4] != 'RTs_':
+                                raw_eic_dataframes[j_j][k] = raw_eic_dataframes_import[j_j][k]
                                 eic_dataframes[j_j][k] = eic_dataframes_import[j_j][k]
                                 smoothed_eic_dataframes[j_j][k] = smoothed_eic_dataframes_import[j_j][k]
                     for j_j, j in enumerate(curve_fitting_dataframes_import):
@@ -1494,7 +1550,7 @@ def arrange_raw_data(analyzed_data,
                     dill.dump([df1, df2, fragments_dataframes], f)
                 else:
                     dill.dump([df1, df2], f)
-                    f.close()
+                f.close()
             with open(save_path+'raw_data_2', 'wb') as f:
                 dill.dump(eic_dataframes, f)
                 f.close()
@@ -1504,15 +1560,20 @@ def arrange_raw_data(analyzed_data,
             with open(save_path+'raw_data_4', 'wb') as f:
                 dill.dump(curve_fitting_dataframes, f)
                 f.close()
-            for i in range(multithreaded_execution[2]):
+            with open(save_path+'raw_data_5', 'wb') as f:
+                dill.dump(raw_eic_dataframes, f)
+                f.close()
+            for i in range(multithreaded_analysis[1]):
                 p3 = pathlib.Path(save_path+'results1_'+str(i))
                 p4 = pathlib.Path(save_path+'results2_'+str(i))
                 p5 = pathlib.Path(save_path+'results3_'+str(i))
                 p6 = pathlib.Path(save_path+'results4_'+str(i))
+                p7 = pathlib.Path(save_path+'results5_'+str(i))
                 p3.unlink(missing_ok=True)
                 p4.unlink(missing_ok=True)
                 p5.unlink(missing_ok=True)
                 p6.unlink(missing_ok=True)
+                p7.unlink(missing_ok=True)
         except Exception:
             pass
     else:
@@ -1521,7 +1582,7 @@ def arrange_raw_data(analyzed_data,
                 dill.dump([df1, df2, fragments_dataframes], f)
             else:
                 dill.dump([df1, df2], f)
-                f.close()
+            f.close()
         with open(save_path+'raw_data_2', 'wb') as f:
             dill.dump(eic_dataframes, f)
             f.close()
@@ -1531,12 +1592,15 @@ def arrange_raw_data(analyzed_data,
         with open(save_path+'raw_data_4', 'wb') as f:
             dill.dump(curve_fitting_dataframes, f)
             f.close()
+        with open(save_path+'raw_data_5', 'wb') as f:
+            dill.dump(raw_eic_dataframes, f)
+            f.close()
     print("Done!")
 
 def print_sep(): ##Complete
     '''Prints a separator consisting of multiple '-' character.
     '''
-    print('-------------------------------------------------')
+    print('------------------------------------------------')
     
 def analyze_files(library,
                   lib_size,
@@ -1651,6 +1715,7 @@ def analyze_files(library,
                 glycan_data['Adducts_mz_data'][j][k].append(temp_eic[0][j][k][1])
                 glycan_data['Adducts_mz_data'][j][k].append([])
                 glycan_data['Adducts_mz_data'][j][k].append(temp_eic_smoothed[1])
+                glycan_data['Adducts_mz_data'][j][k].append(temp_eic[4][j][k][1])
                 if verbose:
                     verbose_info.append('Smoothed EIC INT Array: '+str(temp_eic_smoothed[1]))
                     verbose_info.append('Raw PPM error: '+str(temp_eic[1][j][k])+'\nRaw Isotopic Fitting Score: '+str(temp_eic[2][j][k]))
@@ -1719,18 +1784,18 @@ def analyze_ms2(ms2_index,
                                   tag_mass)
     fragments_data = {}
     print('Scanning MS2 spectra...')
-    for i_i, i in enumerate(analyzed_data[0]):
+    for i_i, i in enumerate(analyzed_data[0]): #goes through each glycan found in analysis
         fragments_data[i] = {}
-        for j_j, j in enumerate(analyzed_data[0][i]['Adducts_mz_data']):
+        for j_j, j in enumerate(analyzed_data[0][i]['Adducts_mz_data']): #goes through each adduct
             fragments_data[i][j] = {}
-            for k_k, k in enumerate(data):
+            for k_k, k in enumerate(data): #goes through each file
                 fragments_data[i][j][k_k] = []
-                if len(analyzed_data[0][i]['Adducts_mz_data'][j][k_k][1]) == 0:
+                if len(analyzed_data[0][i]['Adducts_mz_data'][j][k_k][1]) == 0: #checks if found the adduct
                     continue
                 for l in ms2_index[k_k]:
-                    if k[l]['retentionTime'] < analyzed_data[0][i]['Adducts_mz_data'][j][k_k][1][0]['peak_interval'][0] or k[l]['retentionTime'] > analyzed_data[0][i]['Adducts_mz_data'][j][k_k][1][-1]['peak_interval'][1]:
+                    if k[l]['retentionTime'] < analyzed_data[0][i]['Adducts_mz_data'][j][k_k][1][0]['peak_interval'][0] or k[l]['retentionTime'] > analyzed_data[0][i]['Adducts_mz_data'][j][k_k][1][-1]['peak_interval'][1]: #skips spectra outside peak interval of peaks found
                         continue
-                    if abs((k[l]['precursorMz'][0]['precursorMz']) - analyzed_data[0][i]['Adducts_mz'][j]) <= (1.0074/General_Functions.form_to_charge(j))+tolerance:
+                    if abs((k[l]['precursorMz'][0]['precursorMz']) - analyzed_data[0][i]['Adducts_mz'][j]) <= (1.0074/General_Functions.form_to_charge(j))+tolerance: #checks if precursor matches adduct mz
                         for m_m, m in enumerate(k[l]['m/z array']):
                             found = False
                             for n_n, n in enumerate(fragments):
