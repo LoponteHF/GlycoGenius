@@ -36,7 +36,13 @@ import traceback
 ##Functions to be used for execution and organizing results data
 
 def print_header(complete = True):
-    '''
+    '''Prints a default header to be used in CLI.
+    
+    Parameters
+    ----------
+    complete : boolean
+        If set to True, produces more complete information used
+        when glycogenius is executed stand-alone from the terminal.
     '''
     print("\n    GlycoGenius: Glycomics Data Analysis Tool")
     print("   Copyright (C) 2023 by Hector Franco Loponte")
@@ -53,7 +59,15 @@ def print_header(complete = True):
     print_sep()
     
 def generate_cfg_file(path, comments):
-    '''
+    '''Generates a parameter file based on parameters set.
+    
+    Parameters
+    ----------
+    path : string
+        The path to where the file will be saved.
+        
+    comments : boolean
+        Whether the output file will contain comments or not.
     '''
     print("Creating settings file...")
     glycogenius_path = str(pathlib.Path(__file__).parent.parent.resolve())
@@ -75,7 +89,78 @@ def generate_cfg_file(path, comments):
     os._exit(1)
 
 def interactive_terminal():
-    '''
+    '''This function generates the CLI for user interaction.
+    
+    Uses
+    ----
+    pathlib.Path.resolve() : Path object
+        Make the path absolute, resolving any symlinks. A new path object is returned
+        
+    General_Functions.form_to_comp(string) : dict
+        Separates a molecular formula or monosaccharides composition of glycans into a
+        dictionary with each atom/monosaccharide as a key and its amount as value.
+        
+    Returns
+    -------
+    input_order : list
+        A list containing all the options chosen in the CLI.
+        
+    glycans_list : list
+        A list of custom glycans to be used by the library generating function.
+        
+    lib_settings : list
+        A list containing all the parameters needed to generate a glycans library.
+        
+    adducts : dict
+        A dictionary with maximum adducts information, to be used for library generation.
+        
+    max_charges : int
+        The maximum amount of charges, to be used for library generation.
+        
+    tag_mass : float
+        The added mass of the tag, to be used for library generation.
+        
+    fast_iso : boolean
+        Whether the isotopic distribution generation should be done quick or not, to be used for library generation.
+        
+    high_res : boolean
+        Whether the isotopic distribution should be of high resolution, to be used for library generation.
+        
+    ms2 : boolean
+        Whether ms2 data should be analyzed.
+        
+    accuracy_unit : string
+        The accuracy unit to be used in the script.
+        
+    accuracy_value : float, int
+        The accuracy value to be used in the script.
+    
+    rt_int : tuple
+        A tuple containing the beggining and end of retention times to analyze.
+        
+    min_isotop : int
+        The minimum amount of isotopologue peaks to consider in the EIC processing.
+        
+    max_ppm : int
+        The maximum amount of PPM difference to consider when outputting results.
+        
+    iso_fit : float
+        The minimum isotopic fitting score to consider when outputting results.
+        
+    curve_fit : float
+        The minimum curve fitting score to consider when outputting results.
+        
+    sn : int
+        The minimum signal-to-noise ration to consider when outputting results.
+        
+    files : list
+        A list of paths to sample files.
+        
+    path : string
+        The working directory of the script.
+        
+    commented : boolean
+        Whether the parameters template file should be commented or not.
     '''
     date = datetime.datetime.now()
     begin_time = str(date)[2:4]+str(date)[5:7]+str(date)[8:10]+"_"+str(date)[11:13]+str(date)[14:16]+str(date)[17:19]
@@ -100,8 +185,8 @@ def interactive_terminal():
             print("SERVICING, REPAIR OR CORRECTION.\n")
             continue
         if var == 'license':
-            license_path = str(pathlib.Path(__file__).parent.parent.resolve())
-            for i_i, i in enumerate(import_path):
+            license_path = str(pathlib.Path(__file__).parent.parent.parent.resolve())
+            for i_i, i in enumerate(license_path):
                 if i == "\\":
                     license_path = license_path[:i_i]+"/"+license_path[i_i+1:]
             with open(license_path+"/LICENSE", 'r') as f:
@@ -656,9 +741,10 @@ def list_of_data(samples_list): ##complete
         Indexes the mzXML file into a generator, allowing you to parse the file for
         analysis.
 
-    pyteomics.mzml.MzML() : generator
-        Indexes the mzML file into a generator, allowing you to parse the file for
-        analysis.
+    File_Accessing.make_mzxml : class
+        A wrapper that takes the output of pyteomics mzML parser and converts it to
+        the mzXML pyteomics parser standard to be used within the script. Allows for 
+        full support of mzML.
 
     Returns
     -------
@@ -685,9 +771,9 @@ def index_ms1_from_file(files):
 
     Parameters
     ----------
-    files : generator
+    files : list
         List with each index containing a generator created by the pyteomics function
-        pyteomics.mzxml.MzXML().
+        pyteomics.mzxml.MzXML() or File_Accessing.make_mzxml.
 
     Returns
     -------
@@ -714,9 +800,9 @@ def index_ms2_from_file(files):
 
     Parameters
     ----------
-    files : generator
+    files : list
         List with each index containing a generator created by the pyteomics function
-        pyteomics.mzxml.MzXML().
+        pyteomics.mzxml.MzXML() or File_Accessing.make_mzxml.
 
     Returns
     -------
@@ -739,9 +825,11 @@ def index_ms2_from_file(files):
 
 def sample_names(samples_list):
     '''Extracts the sample names from the file path.
+    
     Parameters
     ----------
-    No parameters needed, but must be executed after parameters section of script.
+    samples_list : list
+        A list of strings containing the path to each sample file.
 
     Returns
     -------
@@ -811,8 +899,90 @@ def imp_exp_gen_library(multithreaded_analysis,
 
     Parameters
     ----------
-    No parameters needed, but must be executed after parameters section of script.
+    multithreaded_analysis : tuple
+        A tuple with two indexes: the first one contains whether or not this execution
+        is to produce the tools required for multithreaded analysis and the second one 
+        containing the amount of desired threads to split the execution in.
+        
+    multithread_execution : tuple
+        A tuple with three indexes: the first one contains whether or not this execution
+        is part of a multithreaded run, the second one contains the current thread number and
+        the third one is the total amount of threads.
+        
+    samples_names : list
+        A list containing the extracted sample names from the file names.
+        
+    custom_glycans_list : tuple
+        A tuple with two indexes: The first one is whether or not the library should be built
+        off a custom glycans list and the second one is a list containing the glycans you wish
+        to analyze.
+        
+    min_max_monos : tuple
+        Minimum and maximum amount of monosaccharides for the hypotethical glycans in the
+        library. ie. (5, 20).
+        
+    min_max_hex : tuple
+        Minimum and maximum amount of hexoses for the hypotethical glycans in the library.
+        ie. (5, 20).
+        
+    min_max_hexnac : tuple
+        Minimum and maximum amount of N-Acetyl hexosamines for the hypotethical glycans
+        in the library. ie. (5, 20).
+        
+    min_max_sia : tuple
+        Minimum and maximum amount of sialic acids for the hypotethical glycans in the
+        library. ie. (5, 20).
+        
+    min_max_fuc : tuple
+        Minimum and maximum amount of deoxyhexoses for the hypotethical glycans in the
+        library. ie. (5, 20).
+        
+    min_max_ac : tuple
+        Minimum and maximum amount of N-Acetyl Neuraminic acids for the hypotethical
+        glycans in the library. ie. (5, 20).
+        
+    min_max_gc : tuple
+        Minimum and maximum amount of N-Glicolyl Neuraminic acids for the hypotethical
+        glycans in the library. ie. (5, 20).
+        
+    force_nglycan : boolean
+        Indicates whether the function should force strict conditions based on the
+        biological knowledge of glycans in order to avoid possible false positives when
+        analysing N-glycans.
+        
+    max_adducts : dict
+        A dictionary with keys containing each possible atomic adducts (ie. 'H', 'Na',
+        'K', etc.) and the maximum amount of such adducts as the values.
+        
+    max_charges : int
+        The maximum amount of charges to calculate per glycan.
 
+    tag_mass : float
+        The tag's added mass to the glycans, if the glycans are tagged.
+        Default = 0 (No Tag).
+
+    fast_iso : boolean
+        Makes the isotopic distribution calculation fast (less accurate) or not (more
+        accurate).
+        Default = True
+        
+    high_res : boolean
+        Decides whether to clump (if set to False) or not (if set to True) the neighbouring
+        isotopic envelope peaks. Only works if fast is set to False.
+        Default = False
+
+    imp_exp_library : tuple
+        A list with two indexes : The first one indicates whether or not the script should try
+        to import the library from a glycans_library.py file and the second one indicates
+        whether or not the script should export the library to a glycans_libbrary.py file and
+        an excel file for visualization.
+        
+    only_gen_lib : boolean
+        A boolean indicating whether or not this execution should stop after generating library.
+        
+    save_path : string
+        A string containing the path to the working directory of the script.
+        
     Uses
     ----
     Library_Tools.generate_glycans_library() : list
@@ -824,6 +994,9 @@ def imp_exp_gen_library(multithreaded_analysis,
         a dictionary with monosaccharides composition, atoms composition with tag,
         neutral mass, neutral mass with tag, isotopic distribution and the mzs of the
         glycans with the desired adducts combination.
+        
+    pathlib.Path.resolve() : Path object
+        Make the path absolute, resolving any symlinks. A new path object is returned
 
     Returns
     -------
@@ -1008,7 +1181,68 @@ def output_filtered_data(curve_fit_score,
                          multithreaded_analysis,
                          multithreaded_execution,
                          analyze_ms2):
-    '''
+    '''This function filters and converts raw results data into human readable
+    excel files.
+    
+    Parameters
+    ----------
+    curve_fit_score : float
+        The minimum curve fitting score to consider when outputting results.
+        
+    iso_fit_score : float
+        The minimum isotopic fitting score to consider when outputting results.
+        
+    sn : int
+        The minimum signal-to-noise ration to consider when outputting results.
+        
+    max_ppm : int
+        The maximum amount of PPM difference to consider when outputting results.
+        
+    reanalysis : tuple
+        Contains two indexes: The first one indicates whether this is only a reanalysis
+        execution and the second one indicates whether or not to produce plot data excel
+        files. The second one is there because the plot data is more heavy and doesn't 
+        change on reanalysis, so should only be set to True if you lost original plot data.
+        
+    save_path : string
+        A string containing the path to the working directory of the script.
+        
+    multithreaded_analysis : tuple
+        A tuple with two indexes: the first one contains whether or not this execution
+        is to produce the tools required for multithreaded analysis and the second one 
+        containing the amount of desired threads to split the execution in.
+        
+    multithread_execution : tuple
+        A tuple with three indexes: the first one contains whether or not this execution
+        is part of a multithreaded run, the second one contains the current thread number and
+        the third one is the total amount of threads.
+    
+    analyze_ms2 : tuple
+        A tuple with two indexes: The first one indicates whether to analyze ms2 data and the
+        second one indicates whether ms2 data should be forced to fit glycans composition.
+        
+    Uses
+    ----
+    datetime.datetime.now : Time object
+        Returns the current date and time.
+        
+    dill.dump : None
+        Pickle the current state of __main__ or another module to a file.
+    
+    dill.load : Module object
+        Update the selected module (default is __main__) with the state saved at filename.
+        
+    pathlib.Path : Path object
+        A subclass of PurePath, this class represents concrete paths of the system’s path flavour
+        
+    os.unlink : None
+        Remove (delete) the file path. 
+        
+    pandas.DataFrame : Dataframe object
+        Two-dimensional, size-mutable, potentially heterogeneous tabular data.
+        
+    pandas.ExcelWriter : ExcelWriter object
+        Class for writing DataFrame objects into excel sheets.
     '''
     date = datetime.datetime.now()
     begin_time = str(date)[2:4]+str(date)[5:7]+str(date)[8:10]+"_"+str(date)[11:13]+str(date)[14:16]+str(date)[17:19]
@@ -1319,18 +1553,41 @@ def arrange_raw_data(analyzed_data,
                      multithreaded_execution,
                      analyze_ms2,
                      save_path): ##Complete
-    '''Arrange the raw data to print. Information printed: Glycan formula, Adduct, sum of
-    the corresponding peak in all adducts, mz or neutral mass (for total adducts),
-    retention time of each peak and AUC of it.
+    '''Arrange the raw results data into pickled files to be processed by output_filtered_data.
 
     Parameters
     ----------
-    No parameters needed, but must be executed after parameters section of script.
-
-    Returns
-    -------
-    lines_to_print : list
-        A list containing each line that should be printed.
+    analyzed_data : tuple
+        Tuple containing multiple informations about the glycans analysis, as outputted by
+        analyze_files or analyze_ms2.
+        
+    samples_names : list
+        List of samples names extracted from file names.
+        
+    multithreaded_analysis : tuple
+        A tuple with two indexes: the first one contains whether or not this execution
+        is to produce the tools required for multithreaded analysis and the second one 
+        containing the amount of desired threads to split the execution in.
+        
+    multithread_execution : tuple
+        A tuple with three indexes: the first one contains whether or not this execution
+        is part of a multithreaded run, the second one contains the current thread number and
+        the third one is the total amount of threads.
+        
+    analyze_ms2 : tuple
+        A tuple with two indexes: The first one indicates whether to analyze ms2 data and the
+        second one indicates whether ms2 data should be forced to fit glycans composition.
+    
+    save_path : string
+        A string containing the path to the working directory of the script.
+        
+    Uses
+    ----
+    dill.dump : None
+        Pickle the current state of __main__ or another module to a file.
+    
+    dill.load : Module object
+        Update the selected module (default is __main__) with the state saved at filename.
     '''
     begin_time = datetime.datetime.now()
     print('Arranging raw data...', end='', flush = True)
@@ -1615,35 +1872,87 @@ def analyze_files(library,
                   close_peaks,
                   verbose = False): ##Complete
     '''Integrates all the file-accessing associated functions in this script to go
-    through the files data, draw eic of hypothetical glycans, check if it is not in
-    noise level, based on threshold, does peak-picking, check quality of spectra in
-    peaks, deconvolute if checks passed, and calculates AUC of the peaks.
+    through the files data, draw and process eic of hypothetical glycans, does 
+    peak-picking and calculates AUC of the peaks.
 
     Parameters
     ----------
-    No parameters needed, but must be executed after parameters section of script.
+    library : dict
+        A glycans library, as generated by Library_Tools.full_glycans_library.
+        
+    lib_size : int
+        The length of the library.
+        
+    data : list
+        A list with each index containing a generator object of the sample file
+        to be parsed.
+        
+    ms1_index : dict
+        A dictionary containing the ms1 indexes of each sample file.
+        
+    tolerance : float
+        The mz acceptable tolerance.
+        
+    ret_time_interval : tuple
+        A tuple where the first index contains the beggining time of the retention time
+        interval you wish to analyze and the second contains the end time.
+        
+    min_isotops : int
+        The minimum amount of isotopologues required to consider an RT mz peak valid.
+    
+    min_ppp : tuple
+        A tuple where the first index contains a boolean indicating whether or not to
+        consider this parameter and the second one containing the minimum amount of
+        data points per peak. If min_ppp[0] is set to False, calculates this automatically.
+        
+    max_charges : int
+        The maximum amount of charges the queried mz should have.
+        
+    custom_noise : tuple
+        A tuple containing two indexes: The first one indicates whether or not to use a custom
+        noise set by the user and the second one is a list of noise levels, with each index
+        indicating the noise level of each set file.
+        
+    close_peaks : tuple
+        A tuple where the first index contains a boolean indicating whether or not to
+        consider this parameter and the second one contains the amount of peaks to save.
+        If close_peaks[0] is set to True, selects only the most intense peak and its 
+        close_peaks[1] surrounding peaks.
+        
+    verbose : boolean
+        Allows to print to file debugging information of each EIC traced so that you
+        may find out why some specific pattern or behavior is ocurring.
 
     Uses
     ----
-    File_Accessing.eic_from_glycan() : dict
-        Generates an EIC of the mzs calculated for a glycan.
+    General_Functions.noise_level_calc_mzarray : float
+        Gathers the mz at the 95th percentile of the mz/int array (which is 
+        equivalent to the 3rd SD from the mean.
+    
+    numpy.percentile : scalar or ndarray
+        Compute the q-th percentile of the data along the specified axis.
+    
+    File_Accessing.eic_from_glycan : tuple
+        Generates a very processed EIC for each adduct of each glycan of each sample.
+        Removes non-monoisotopic peaks, check charges and calculates multiple quality 
+        scoring data.
+        
+    File_Accessing.eic_smoothing : list
+        Smoothes the EIC using the Savitsky Golay algorithm. Smoothed EIC may be
+        used for peak-picking and curve-fitting scoring afterwards.
 
-    File_Accessing.peaks_from_eic() : list, tuple
-        Does multi-peak-picking in an EIC, based on the most intense peaks in the EIC,
-        in the retention time interval of interest. This function works in-line.
+    File_Accessing.peaks_from_eic() : list
+        Does multi peak-picking in a given smoothed EIC.
 
-    check_monoisotopic_charge() : list, list
-        Checks if the peaks identified for a given mz corresponds to monoisotopic,
-        correctly charge-assigned peaks.
-
-    deconvoluted_glycan_eic() : list
-        Deconvolutes the data around the identified peaks retention time and creates a
-        deconvoluted EIC.
-
-    File_Accessing.peaks_auc_from_eic() : list
-        Calculates the area under curve of the picked peaks based on the EIC given.
-        Overlapped portions of peaks are calculated as fractional proportion, based on
-        peaks max intensity.
+    File_Accessing.average_ppm_calc : tuple
+        Calculates the arithmetic mean of the PPM differences of a given peak.
+        
+    File_Accessing.iso_fit_score_calc : float
+        Calculates the mean isotopic fitting score of a given peak.
+        
+    File_Accessing.peak_curve_fit : tuple
+        Calculates the fitting between the actual peak and an ideal peak based
+        on a calculated gaussian bell curve.
 
     Returns
     -------
@@ -1651,6 +1960,12 @@ def analyze_files(library,
         A dictionary similar to the one generated by the full glycans library generating
         function, with the added information of each adducts' peaks' retention time and
         AUC.
+        
+    rt_array_report : dict
+        A dictionary with lists containing the retention times for each sample.
+        
+    noise : dict
+        A dictionary containing the noise level for each sample.
     '''
     begin_time = datetime.datetime.now()
     analyzed_data = {}
@@ -1768,7 +2083,84 @@ def analyze_ms2(ms2_index,
                 max_charges,
                 tag_mass,
                 filter_output):
-    '''
+    '''Analyzes the MS2 data in the sample files, outputting the found matches.
+    
+    Parameters
+    ----------
+    ms2_index : dict
+        A dictionary containing the ms2 indexes of each sample file.
+        
+    data : list
+        A list with each index containing a generator object of the sample file
+        to be parsed.
+        
+    analyzed_data : tuple
+        Data outputted by the analyze_data function.
+        
+    ret_time_interval : tuple
+        A tuple where the first index contains the beggining time of the retention time
+        interval you wish to analyze and the second contains the end time.
+        
+    tolerance : float
+        The mz acceptable tolerance.
+        
+    min_max_mono : tuple
+        Minimum and maximum amount of monosaccharides for the hypotethical glycans in the
+        library. ie. (5, 20).
+
+    min_max_hex : tuple
+        Minimum and maximum amount of hexoses for the hypotethical glycans in the library.
+        ie. (5, 20).
+
+    min_max_hexnac : tuple
+        Minimum and maximum amount of N-Acetyl hexosamines for the hypotethical glycans
+        in the library. ie. (5, 20).
+
+    min_max_sia : tuple
+        Minimum and maximum amount of sialic acids for the hypotethical glycans in the
+        library. ie. (5, 20).
+
+    min_max_fuc : tuple
+        Minimum and maximum amount of deoxyhexoses for the hypotethical glycans in the
+        library. ie. (5, 20).
+
+    min_max_ac : tuple
+        Minimum and maximum amount of N-Acetyl Neuraminic acids for the hypotethical
+        glycans in the library. ie. (5, 20).
+
+    min_max_gc : tuple
+        Minimum and maximum amount of N-Glicolyl Neuraminic acids for the hypotethical
+        glycans in the library. ie. (5, 20).
+        
+    max_charges : int
+        The maximum amount of charges to calculate per glycan.
+        
+    tag_mass : float
+        The tag's added mass to the glycans, if the glycans are tagged.
+        Default = 0 (No Tag).
+        
+    filter_output : boolean
+        Whether or not to force the output to fit glycans compositions.
+        
+    Uses
+    ----
+    Library_Tools.fragments_library : list
+        Generates a list of combinatorial analysis of monosaccharides from the minimum
+        amount of monosaccharides to the maximum amount of monosaccharides set, then uses 
+        the generated library and increments it with calculations with a series of information,
+        clumps the duplicated mzs together as one query and then the script can use this
+        library as a fragments library for MS2 analysis.
+        
+    General_Functions.form_to_charge : int
+        Converts adducts formula into raw charge.
+        
+    Returns
+    -------
+    analyzed_data : tuple
+        Data outputted by the analyze_data function.
+        
+    fragments_data : dict
+        Dictionary containing the fragments data.
     '''
     begin_time = datetime.datetime.now()
     print('Analyzing MS2 data...')

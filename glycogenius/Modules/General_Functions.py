@@ -32,13 +32,42 @@ times during a run.
 ##pyteomics).
 
 def calculate_ppm_diff(mz, target):
-    '''
+    '''Calculates the PPM difference between a mz and a target mz.
+    
+    Parameters
+    ----------
+    mz : float
+        A float of the mz you want to check for the difference.
+        
+    target : float
+        A float of the target mz you're comparing your mz to.
+        
+    Returns
+    -------
+    float
+        A float of the PPM difference between the mz and target mz.
     '''
     return ((target-mz)/target)*(10**6)
     
 def noise_level_calc_mzarray(mz_int):
-    '''Verifies what is noise by adjusting a slope and the percentile between 1.5 
-    standard deviations to 2 standard deviations.
+    '''Gathers the int at the 95th percentile of the mz/int array (which is 
+    equivalent to the 3rd SD from the mean.
+    
+    Parameters
+    ----------
+    mz_int : list
+        A list containing two synchronized lists: the first one contains the
+        mzs and the second one the intensity.
+        
+    Uses
+    ----
+    numpy.percentile : scalar or ndarray
+        Compute the q-th percentile of the data along the specified axis.
+        
+    Returns
+    -------
+    scalar
+        The intensity of the 95th percentile of the intensity array.
     '''
     int_list = []
     for i in mz_int:
@@ -46,7 +75,35 @@ def noise_level_calc_mzarray(mz_int):
     return percentile(int_list, 95)
     
 def normpdf(x, mean, sd):
-    '''
+    '''Calculates the intensity of a gaussian bell curve at the x-axis point x
+    with the set parameters.
+    
+    Parameters
+    ----------
+    x : float
+        Given point in the x axis of the gaussian bell curve.
+        
+    mean : float
+        Determines the maximum intensity of the mean point of the gaussian
+        bell curve.
+        
+    sd : float
+        Determines the standard deviation of the gaussian.
+        
+    Uses
+    ----
+    math.pi : float
+        The mathematical constant pi = 3.141592…, to available precision.
+        
+    math.exp : float
+        Return e raised to the power x, where e = 2.718281… is the base of 
+        natural logarithms.
+        
+    Returns
+    -------
+    float
+        A float containing the intensity of the gaussian bell curve at the 
+        given x point.
     '''
     var = float(sd)**2
     denom = (2*pi*var)**.5
@@ -186,7 +243,8 @@ def sum_atoms(*compositions):
     return summed_comp
 
 def sum_monos(*compositions):
-    '''Sums the monosaccharides of two glycan compositions.
+    '''Sums the monosaccharides of two glycan compositions. 'T' stands for TAG, used
+    in fragments library calculation.
 
     Parameters
     ----------
