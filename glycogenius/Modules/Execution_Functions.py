@@ -407,7 +407,6 @@ def interactive_terminal():
             else:
                 print("Wrong Input")
                 continue
-            break
         if var == 'y':
             while True:
                 var2 = input("Insert the tag added mass\n(ie. 133.0644 for GirP or 219.1735 for ProA): ")
