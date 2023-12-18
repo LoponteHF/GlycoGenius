@@ -1,4 +1,4 @@
-![GlycoGenius logo](./logo.svg "GlycoGenius")
+![GlycoGenius logo](./logo.png "GlycoGenius")
 
 # GlycoGenius - Glycomics Data Analysis Tool
 
