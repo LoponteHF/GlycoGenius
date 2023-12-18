@@ -13,7 +13,7 @@ setup(
         'Operating System :: OS Independent',
     ],
     python_requires='>=3.6',
-    install_requres=["pandas", "scipy", "pyteomics",
+    install_requires=["pandas", "scipy", "pyteomics",
                      "dill", "numpy"],
     entry_points={
         'console_scripts': [
