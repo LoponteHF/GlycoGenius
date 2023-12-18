@@ -25,7 +25,33 @@ import datetime
 ##some way. They make vast use of general functions and require a library to work).
 
 class make_mzxml(object):
-    '''
+    '''A wrapper that takes the output of pyteomics mzML parser and converts it to
+    the mzXML pyteomics parser standard to be used within the script. Allows for full
+    support of mzML.
+    
+    Parameters
+    ----------
+    object : string
+        A string containing the path to the mzML file.
+        
+    Uses
+    ----
+    pyteomics.mzml.MzML : generator
+        Indexes the mzML file into a generator, allowing you to parse the file for
+        analysis.
+        
+    Returns
+    -------
+    standard mzML output
+        If class is iterated, returns regular mzml.MzML output.
+    
+    dict
+        If class is queried for a single index, returns the dictionary of the
+        converted output (mzML -> mzXML)
+        
+    data : list
+        If class is queried for slices, returns a list of dictionaries containing
+        the converted output (mzML -> mzXML)
     '''
     def __init__(self,it):
         self.it = mzml.MzML(it)
@@ -34,7 +60,16 @@ class make_mzxml(object):
     def __getitem__(self,index):
         if type(index) == int:
             pre_data = self.it[index]
-            return {'num': pre_data['id'].split('=')[-1], 'retentionTime': float(pre_data['scanList']['scan'][0]['scan start time']), 'msLevel': pre_data['ms level'], 'm/z array': pre_data['m/z array'], 'intensity array': pre_data['intensity array']}
+            if pre_data['ms level'] == 2:
+                if float(self.it[-1]['scanList']['scan'][0]['scan start time']) > 210: #210 scan time should allow for the correct evaluation of scan time being in seconds or minutes for every run that lasts between 3.5 minutes and 3.5 hours
+                    return {'num': pre_data['id'].split('=')[-1], 'retentionTime': float(pre_data['scanList']['scan'][0]['scan start time'])/60, 'msLevel': pre_data['ms level'], 'm/z array': pre_data['m/z array'], 'intensity array': pre_data['intensity array'], 'precursorMz': [{'precursorMz': pre_data['precursorList']['precursor'][0]['isolationWindow']['isolation window target m/z']}]}
+                else:
+                    return {'num': pre_data['id'].split('=')[-1], 'retentionTime': float(pre_data['scanList']['scan'][0]['scan start time']), 'msLevel': pre_data['ms level'], 'm/z array': pre_data['m/z array'], 'intensity array': pre_data['intensity array'], 'precursorMz': [{'precursorMz': pre_data['precursorList']['precursor'][0]['isolationWindow']['isolation window target m/z']}]}
+            else:
+                if float(self.it[-1]['scanList']['scan'][0]['scan start time']) > 210:
+                    return {'num': pre_data['id'].split('=')[-1], 'retentionTime': float(pre_data['scanList']['scan'][0]['scan start time'])/60, 'msLevel': pre_data['ms level'], 'm/z array': pre_data['m/z array'], 'intensity array': pre_data['intensity array']}
+                else:
+                    return {'num': pre_data['id'].split('=')[-1], 'retentionTime': float(pre_data['scanList']['scan'][0]['scan start time']), 'msLevel': pre_data['ms level'], 'm/z array': pre_data['m/z array'], 'intensity array': pre_data['intensity array']}
         else:
             first_index = str(index).split('(')[1].split(', ')[0]
             if first_index != 'None':
@@ -48,7 +83,16 @@ class make_mzxml(object):
                 last_index = len(self.it)
             data = []
             for index in range(first_index, last_index):
-                data.append({'num': self.it[index]['id'].split('=')[-1], 'retentionTime': float(self.it[index]['scanList']['scan'][0]['scan start time']), 'msLevel': self.it[index]['ms level'], 'm/z array': self.it[index]['m/z array'], 'intensity array': self.it[index]['intensity array']})
+                if self.it[index]['ms level'] == 2:
+                    if float(self.it[-1]['scanList']['scan'][0]['scan start time']) > 210:
+                        data.append({'num': self.it[index]['id'].split('=')[-1], 'retentionTime': float(self.it[index]['scanList']['scan'][0]['scan start time'])/60, 'msLevel': self.it[index]['ms level'], 'm/z array': self.it[index]['m/z array'], 'intensity array': self.it[index]['intensity array'], 'precursorMz': [{'precursorMz': self.it[index]['precursorList']['precursor'][0]['isolationWindow']['isolation window target m/z']}]})
+                    else:
+                        data.append({'num': self.it[index]['id'].split('=')[-1], 'retentionTime': float(self.it[index]['scanList']['scan'][0]['scan start time']), 'msLevel': self.it[index]['ms level'], 'm/z array': self.it[index]['m/z array'], 'intensity array': self.it[index]['intensity array'], 'precursorMz': [{'precursorMz': self.it[index]['precursorList']['precursor'][0]['isolationWindow']['isolation window target m/z']}]})
+                else:
+                    if float(self.it[-1]['scanList']['scan'][0]['scan start time']) > 210:
+                        data.append({'num': self.it[index]['id'].split('=')[-1], 'retentionTime': float(self.it[index]['scanList']['scan'][0]['scan start time'])/60, 'msLevel': self.it[index]['ms level'], 'm/z array': self.it[index]['m/z array'], 'intensity array': self.it[index]['intensity array']})
+                    else:
+                        data.append({'num': self.it[index]['id'].split('=')[-1], 'retentionTime': float(self.it[index]['scanList']['scan'][0]['scan start time']), 'msLevel': self.it[index]['ms level'], 'm/z array': self.it[index]['m/z array'], 'intensity array': self.it[index]['intensity array']})
             return data
         
 def eic_from_glycan(files,
@@ -60,7 +104,9 @@ def eic_from_glycan(files,
                     noise,
                     max_charges,
                     verbose = False):
-    '''Generates an EIC of the mzs calculated for a glycan.
+    '''Generates a very processed EIC for each adduct of each glycan of each sample.
+    Removes non-monoisotopic peaks, check charges and calculates multiple quality scoring
+    data.
 
     Parameters
     ----------
@@ -74,27 +120,80 @@ def eic_from_glycan(files,
     ms1_indexes : dict
         A dictionary where each key is the ID of a file and each value is a list
         containing the indexes of all MS1 scans in the file.
+        
+    rt_interval : tuple
+        A tuple where the first index contains the beggining time of the retention time
+        interval you wish to analyze and the second contains the end time.
 
     tolerance : float
         The mz acceptable tolerance.
+        
+    min_isotops : int
+        The minimum amount of isotopologues required to consider an RT mz peak valid.
+        
+    noise : list
+        A list containing the calculated noise level of each sample.
+        
+    max_charges : int
+        The maximum amount of charges the queried mz should have.
+        
+    verbose : boolean
+        Allows to print to file debugging information of each EIC traced so that you
+        may find out why some specific pattern or behavior is ocurring.
 
     Uses
     ----
-    mz_int() : float
-        Extracts the intensity of the target mz within the given tolerance from a mz/int
-        array dictionary.
+    General_Functions.form_to_charge : int
+        Converts adducts formula into raw charge.
+        
+    pyteomics.mass.calculate_mass(*args, **kwargs) : float
+        Calculates the monoisotopic mass of a polypeptide defined by a sequence string,
+        parsed sequence, chemical formula or Composition object.
+        
+    General_Functions.form_to_comp(string) : dict
+        Separates a molecular formula or monosaccharides composition of glycans into a
+        dictionary with each atom/monosaccharide as a key and its amount as value.
+        
+    General_Functions.h_mass : float
+        The mass of Hydrogen-1.
+        
+    General_Functions.calculate_ppm_diff : float
+        Calculates the PPM difference between a mz and a target mz.
+        
+    numpy.corrcoef : matrix
+        Return Pearson product-moment correlation coefficients.
 
     Returns
     -------
     data : dict
         A dictionary with keys for each adduct combo of a given glycan, which value is a
         dict with keys for each file id, at which value is a list of lists, with the
-        first one being the rt array and the second one the int array.
+        first one being the rt array and the second one the processed int array.
+        
+    ppm_info : dict
+        A dictionary with keys for each adduct combo of a given glycan, which value is a
+        dict with keys for each file id, at which each value corresponds to a given 
+        calculated ppm difference for the retention time at the same index.
+        
+    iso_fitting_quality : dict
+        A dictionary with keys for each adduct combo of a given glycan, which value is a
+        dict with keys for each file id, at which each value corresponds to a given 
+        calculated isotopic fitting score for the retention time at the same index.
+        
+    verbose_info : list
+        A list containing the conclusion of the processing for each retention time of each
+        chromatogram processed, for each file.
+        
+    raw_data : dict
+        A dictionary with keys for each adduct combo of a given glycan, which value is a
+        dict with keys for each file id, at which value is a list of lists, with the
+        first one being the rt array and the second one the raw int array.
     '''
     data = {}
     ppm_info = {}
     iso_fitting_quality = {}
     verbose_info = []
+    raw_data = {}
     for i in glycan_info['Adducts_mz']:
         if verbose:
             print('Adduct: '+str(i)+" mz: "+str(glycan_info['Adducts_mz'][i]))
@@ -104,6 +203,7 @@ def eic_from_glycan(files,
         ppm_info[i] = {}
         iso_fitting_quality[i] = {}
         data[i] = {}
+        raw_data[i] = {}
         for j_j, j in enumerate(files):
             if verbose:
                 print("--Drawing EIC for Sample: "+str(j_j))
@@ -111,6 +211,7 @@ def eic_from_glycan(files,
             ppm_info[i][j_j] = []
             iso_fitting_quality[i][j_j] = []
             data[i][j_j] = [[], []]
+            raw_data[i][j_j] = [[], []]
             for k_k, k in enumerate(ms1_indexes[j_j]):
                 iso_fitting_quality[i][j_j].append(0.0)
                 ppm_info[i][j_j].append(inf)
@@ -118,8 +219,10 @@ def eic_from_glycan(files,
                 found = False
                 rt = j[k]['retentionTime']
                 data[i][j_j][0].append(rt)
+                raw_data[i][j_j][0].append(rt)
                 if (j[k]['retentionTime'] < rt_interval[0] or j[k]['retentionTime'] > rt_interval[1]):
                     data[i][j_j][1].append(0.0)
+                    raw_data[i][j_j][1].append(0.0)
                     continue
                 else:   
                     if verbose:
@@ -142,6 +245,7 @@ def eic_from_glycan(files,
                     iso_actual = []
                     iso_target = []
                     bad_peaks_before_target = []
+                    nearby_id = 0
                     for l_l, l in enumerate(sliced_mz):
                         if not_good: #Here are checks for quick skips
                             break
@@ -193,6 +297,7 @@ def eic_from_glycan(files,
                                     not_good = True
                                     break
                         if l > target_mz - General_Functions.h_mass - tolerance and l < target_mz - tolerance:
+                            nearby_id = l_l
                             for m in m_range:
                                 if abs(l-(target_mz-(General_Functions.h_mass/m))) <= tolerance:
                                     if verbose:
@@ -200,16 +305,6 @@ def eic_from_glycan(files,
                                         verbose_info.append("--------Not monoisotopic.")
                                     bad_peaks_before_target.append(sliced_int[l_l])
                                     break
-                        if l >= target_mz - tolerance and abs(l-target_mz) <= tolerance:
-                            mono_ppm.append(General_Functions.calculate_ppm_diff(l, target_mz))
-                            intensity += sliced_int[l_l]
-                            mono_int += sliced_int[l_l]
-                            for m in bad_peaks_before_target:
-                                if m > mono_int*(1/sec_peak_rel_int*0.8):
-                                    not_good = True
-                                    break
-                            found = True
-                            continue
                         if l > target_mz + tolerance and abs(l-((glycan_info['Isotopic_Distribution_Masses'][iso_distro]+adduct_mass)/adduct_charge)) <= tolerance:
                             if sliced_int[l_l] > mono_int*glycan_info['Isotopic_Distribution'][iso_distro]:
                                 intensity += mono_int*glycan_info['Isotopic_Distribution'][iso_distro]
@@ -220,6 +315,25 @@ def eic_from_glycan(files,
                                 iso_target.append(mono_int*glycan_info['Isotopic_Distribution'][iso_distro])
                             iso_distro += 1
                             continue
+                        if sliced_int[l_l] < noise[j_j]: #Everything from here is dependent on noise level
+                            continue
+                        if l >= target_mz - tolerance and abs(l-target_mz) <= tolerance:
+                            mono_ppm.append(General_Functions.calculate_ppm_diff(l, target_mz))
+                            intensity += sliced_int[l_l]
+                            mono_int += sliced_int[l_l]
+                            for m in bad_peaks_before_target:
+                                if m > mono_int*(1/sec_peak_rel_int*0.8):
+                                    not_good = True
+                                    break
+                            found = True
+                            continue
+                    for l_l in range(nearby_id, len(sliced_mz)):
+                        if sliced_mz[l_l] > target_mz+tolerance or l_l == len(sliced_mz)-1:
+                            raw_data[i][j_j][1].append(0.0)
+                            break
+                        if abs(sliced_mz[l_l] - target_mz) <= tolerance:
+                            raw_data[i][j_j][1].append(sliced_int[l_l])
+                            break
                 if not_good:
                     ppm_info[i][j_j][-1] = inf
                     iso_fitting_quality[i][j_j][-1] = 0.0
@@ -243,13 +357,37 @@ def eic_from_glycan(files,
                         R_sq = corr**2
                     iso_fitting_quality[i][j_j][-1] = R_sq
                     data[i][j_j][1].append(intensity)
-    return data, ppm_info, iso_fitting_quality, verbose_info
+    return data, ppm_info, iso_fitting_quality, verbose_info, raw_data
     
 def eic_smoothing(rt_int):
+    '''Smoothes the EIC using the Savitsky Golay algorithm. Smoothed EIC may be
+    used for peak-picking and curve-fitting scoring afterwards.
+    
+    Parameters
+    ----------
+    rt_int : list
+        A list containing two lists: the first one has all the retention times, the
+        second one has all the intensities.
+        
+    Uses
+    ----
+    scipy.savgol_filter : array
+        Apply a Savitzky-Golay filter to an array.
+        
+    Returns
+    -------
+    rt_int[0] : list
+        A list of each retention time.
+        
+    filtered_ints : list
+        A list containing the processed intensities.
     '''
-    '''
-    points = int(0.333/(rt_int[0][1]-rt_int[0][0]))
-    filtered_ints = list(savgol_filter(rt_int[1], points, 2))
+    points = int(0.333/(rt_int[0][-1]-rt_int[0][-2]))
+    polynomial_degree = 3
+    while polynomial_degree >= points:
+        points = points*polynomial_degree
+        polynomial_degree+= 1
+    filtered_ints = list(savgol_filter(rt_int[1], points, polynomial_degree))
     for i_i, i in enumerate(filtered_ints):
         if i < 0:
             filtered_ints[i_i] = 0.0
@@ -257,7 +395,32 @@ def eic_smoothing(rt_int):
     
 def peak_curve_fit(rt_int, 
                    peak):
-    '''
+    '''Calculates the fitting between the actual peak and an ideal peak based
+    on a calculated gaussian bell curve.
+    
+    Parameters
+    ----------
+    rt_int : list
+        A list containing two lists: the first one has all the retention times, the
+        second one has all the intensities.
+        
+    peak : dict
+        A dictionary containing all sorts of identified peaks information.
+        
+    Uses
+    ----
+    General_Functions.normpdf : float
+        Calculates the intensity of a gaussian bell curve at the x-axis point x
+        with the set parameters.
+        
+    numpy.corrcoef : matrix
+        Return Pearson product-moment correlation coefficients.
+        
+    Returns
+    -------
+    fits_list : tuple
+        A tuple containing the R_sq of the curve fitting and plotting information
+        of the actual and ideal peak curves.
     '''
     x = rt_int[0][peak['peak_interval_id'][0]:peak['peak_interval_id'][1]+1]
     y = rt_int[1][peak['peak_interval_id'][0]:peak['peak_interval_id'][1]+1]
@@ -305,14 +468,55 @@ def peak_curve_fit(rt_int,
     
 def iso_fit_score_calc(iso_fits,
                        peak):
-    '''
+    '''Calculates the mean isotopic fitting score of a given peak.
+    
+    Parameters
+    ----------
+    iso_fits : list
+        A list of isotopic fitting scores calculated from eic_from_glycan.
+        
+    peak : dict
+        A dictionary containing all sorts of identified peaks information.
+        
+    Uses
+    ----
+    statistics.mean : float
+        Return the sample arithmetic mean of data which can be a sequence or iterable.
+        
+    Returns
+    -------
+    float
+       The arithmetic mean of the isotopic fitting scores for the given peak.
     '''
     return mean(iso_fits[peak['peak_interval_id'][0]:peak['peak_interval_id'][1]+1])
     
 def average_ppm_calc(ppm_array,
                      tolerance,
                      peak):
-    '''
+    '''Calculates the arithmetic mean of the PPM differences of a given peak.
+    
+    Parameters
+    ----------
+    ppm_array : list
+        A list containing ppm differences.
+        
+    tolerance : float
+        The mz tolerance.
+        
+    peak : dict
+        A dictionary containing all sorts of identified peaks information.
+
+    Uses
+    ----
+    General_Functions.calculate_ppm_diff : float
+        Calculates the PPM difference between a mz and a target mz.
+        
+    Returns
+    -------
+    tuple
+        A tuple containing the mean ppm differences and the number of missing points.
+        The number of missing points in the peak has their ppm difference set to the
+        tolerance of the analysis.
     '''
     ppms = []
     missing_points = 0
@@ -329,7 +533,37 @@ def peaks_from_eic(rt_int,
                    rt_interval,
                    min_ppp,
                    close_peaks):
-    '''
+    '''Does multi peak-picking in a given smoothed EIC.
+    
+    Parameters
+    ----------
+    rt_int : list
+        A list containing two lists: the first one has all the retention times, the
+        second one has all the intensities.
+        
+    rt_int_smoothed : list
+        A list containing two lists: the first one has all the retention times, the
+        second one has all the SMOOTHED intensities.
+        
+    rt_interval : tuple
+        A tuple where the first index contains the beggining time of the retention time
+        interval you wish to analyze and the second contains the end time.
+        
+    min_ppp : tuple
+        A tuple where the first index contains a boolean indicating whether or not to
+        consider this parameter and the second one containing the minimum amount of
+        data points per peak. If min_ppp[0] is set to False, calculates this automatically.
+        
+    close_peaks : tuple
+        A tuple where the first index contains a boolean indicating whether or not to
+        consider this parameter and the second one contains the amount of peaks to save.
+        If close_peaks[0] is set to True, selects only the most intense peak and its 
+        close_peaks[1] surrounding peaks.
+        
+    Returns
+    -------
+    peaks : list
+        A list of dictionaries with each one containing numerous peaks information.
     '''
     peaks = []
     temp_start = 0
@@ -391,14 +625,13 @@ def peaks_auc_from_eic(rt_int,
     rt_int : list
         A list containing two synchronized lists, the first one containing retention
         times and the second one containing intensity.
+        
+    ms1_indexes : dict
+        A dictionary where each key is the ID of a file and each value is a list
+        containing the indexes of all MS1 scans in the file.
 
     peaks : list
-        A list of dictionaries, each containing the peak id, rt and intensity as keys,
-        with their respective values as values.
-
-    peak_width : float
-        The estimated peak width of interest peaks in your chromatographic run, in
-        minutes.
+        A list of dictionaries with each one containing numerous peaks information.
 
     Returns
     -------

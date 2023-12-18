@@ -174,6 +174,7 @@ def main():
                                                  reanalysis,
                                                  save_path,
                                                  multithreaded_analysis,
+                                                 multithreaded_execution,
                                                  analyze_ms2[0])
 
     else:
@@ -260,6 +261,7 @@ def main():
                                                  reanalysis,
                                                  save_path,
                                                  multithreaded_analysis,
+                                                 multithreaded_execution,
                                                  analyze_ms2[0])
                                                  
     if not os.isatty(0):

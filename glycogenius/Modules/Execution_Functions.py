@@ -36,14 +36,20 @@ import traceback
 ##Functions to be used for execution and organizing results data
 
 def print_header(complete = True):
-    '''
+    '''Prints a default header to be used in CLI.
+    
+    Parameters
+    ----------
+    complete : boolean
+        If set to True, produces more complete information used
+        when glycogenius is executed stand-alone from the terminal.
     '''
     print("\n    GlycoGenius: Glycomics Data Analysis Tool")
     print("   Copyright (C) 2023 by Hector Franco Loponte")
     if not complete:
         print("\n   For more details about the license, run the")
         print("   package stand-alone by typing 'glycogenius'")
-        print("      in terminal and then typing 'license'.")
+        print("     in terminal and then typing 'license'.")
     if complete:
         print("\n This program comes with ABSOLUTELY NO WARRANTY;")
         print("          for details type 'warranty'.")
@@ -53,7 +59,15 @@ def print_header(complete = True):
     print_sep()
     
 def generate_cfg_file(path, comments):
-    '''
+    '''Generates a parameter file based on parameters set.
+    
+    Parameters
+    ----------
+    path : string
+        The path to where the file will be saved.
+        
+    comments : boolean
+        Whether the output file will contain comments or not.
     '''
     print("Creating settings file...")
     glycogenius_path = str(pathlib.Path(__file__).parent.parent.resolve())
@@ -75,29 +89,104 @@ def generate_cfg_file(path, comments):
     os._exit(1)
 
 def interactive_terminal():
-    '''
+    '''This function generates the CLI for user interaction.
+    
+    Uses
+    ----
+    pathlib.Path.resolve() : Path object
+        Make the path absolute, resolving any symlinks. A new path object is returned
+        
+    General_Functions.form_to_comp(string) : dict
+        Separates a molecular formula or monosaccharides composition of glycans into a
+        dictionary with each atom/monosaccharide as a key and its amount as value.
+        
+    Returns
+    -------
+    input_order : list
+        A list containing all the options chosen in the CLI.
+        
+    glycans_list : list
+        A list of custom glycans to be used by the library generating function.
+        
+    lib_settings : list
+        A list containing all the parameters needed to generate a glycans library.
+        
+    adducts : dict
+        A dictionary with maximum adducts information, to be used for library generation.
+        
+    max_charges : int
+        The maximum amount of charges, to be used for library generation.
+        
+    tag_mass : float
+        The added mass of the tag, to be used for library generation.
+        
+    fast_iso : boolean
+        Whether the isotopic distribution generation should be done quick or not, to be used for library generation.
+        
+    high_res : boolean
+        Whether the isotopic distribution should be of high resolution, to be used for library generation.
+        
+    ms2 : boolean
+        Whether ms2 data should be analyzed.
+        
+    accuracy_unit : string
+        The accuracy unit to be used in the script.
+        
+    accuracy_value : float, int
+        The accuracy value to be used in the script.
+    
+    rt_int : tuple
+        A tuple containing the beggining and end of retention times to analyze.
+        
+    min_isotop : int
+        The minimum amount of isotopologue peaks to consider in the EIC processing.
+        
+    max_ppm : int
+        The maximum amount of PPM difference to consider when outputting results.
+        
+    iso_fit : float
+        The minimum isotopic fitting score to consider when outputting results.
+        
+    curve_fit : float
+        The minimum curve fitting score to consider when outputting results.
+        
+    sn : int
+        The minimum signal-to-noise ration to consider when outputting results.
+        
+    files : list
+        A list of paths to sample files.
+        
+    path : string
+        The working directory of the script.
+        
+    commented : boolean
+        Whether the parameters template file should be commented or not.
     '''
     date = datetime.datetime.now()
     begin_time = str(date)[2:4]+str(date)[5:7]+str(date)[8:10]+"_"+str(date)[11:13]+str(date)[14:16]+str(date)[17:19]
     input_order = [None]
     while input_order[0] == None:
         print_header()
-        print("1 - Build and output glycans library.\n2 - Analyze sample files in single-threaded mode\n3 - Reanalyze raw results files with new \n    parameters\n4 - Create template parameters file for command-\n    line execution\n")
+        print("1 - Build and output glycans library.\n2 - Analyze sample files in single-threaded mode\n3 - Reanalyze raw results files with new\n    parameters\n4 - Create template parameters file for command-\n    line execution\n")
         var = input("Select your option: ")
         if var == 'warranty':
             print("\nDisclaimer of Warranty.\n")
-            print("THERE IS NO WARRANTY FOR THE PROGRAM, TO THE EXTENT PERMITTED BY")
-            print("APPLICABLE LAW.  EXCEPT WHEN OTHERWISE STATED IN WRITING THE COPYRIGHT")
-            print("HOLDERS AND/OR OTHER PARTIES PROVIDE THE PROGRAM \"AS IS\" WITHOUT WARRANTY")
-            print("OF ANY KIND, EITHER EXPRESSED OR IMPLIED, INCLUDING, BUT NOT LIMITED TO,")
-            print("THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR")
-            print("PURPOSE.  THE ENTIRE RISK AS TO THE QUALITY AND PERFORMANCE OF THE PROGRAM")
-            print("IS WITH YOU.  SHOULD THE PROGRAM PROVE DEFECTIVE, YOU ASSUME THE COST OF")
-            print("ALL NECESSARY SERVICING, REPAIR OR CORRECTION.\n")
+            print("THERE IS NO WARRANTY FOR THE PROGRAM, TO THE")
+            print("EXTENT PERMITTED BY APPLICABLE LAW. EXCEPT WHEN")
+            print("OTHERWISE STATED IN WRITING THE COPYRIGHT")
+            print("HOLDERS AND/OR OTHER PARTIES PROVIDE THE PROGRAM")
+            print("\"AS IS\" WITHOUT WARRANTY OF ANY KIND, EITHER")
+            print("EXPRESSED OR IMPLIED, INCLUDING, BUT NOT LIMITED")
+            print("TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY")
+            print("AND FITNESS FOR A PARTICULAR PURPOSE. THE ENTIRE")
+            print("RISK AS TO THE QUALITY AND PERFORMANCE OF THE")
+            print("PROGRAM IS WITH YOU. SHOULD THE PROGRAM PROVE")
+            print("DEFECTIVE, YOU ASSUME THE COST OF ALL NECESSARY")
+            print("SERVICING, REPAIR OR CORRECTION.\n")
             continue
         if var == 'license':
-            license_path = str(pathlib.Path(__file__).parent.parent.resolve())
-            for i_i, i in enumerate(import_path):
+            license_path = str(pathlib.Path(__file__).parent.parent.parent.resolve())
+            for i_i, i in enumerate(license_path):
                 if i == "\\":
                     license_path = license_path[:i_i]+"/"+license_path[i_i+1:]
             with open(license_path+"/LICENSE", 'r') as f:
@@ -118,7 +207,7 @@ def interactive_terminal():
     if input_order[0] == 1 or input_order[0] == 2:
         input_order.append(None)
         while input_order[1] == None:
-            print("1 - Use a custom glycans list\n2 - Generate a library based on possible monosaccharides numbers")
+            print("1 - Use a custom glycans list\n2 - Generate a library based on possible\n    monosaccharides numbers")
             var = input("Select your option: ")
             try:
                 var = int(var)
@@ -131,7 +220,7 @@ def interactive_terminal():
         print_sep()
         if input_order[1] == 1:
             glycans_list = []
-            print("Warning: Glycans must be inputted in the format of 'H5N4S1F1G1' where 'H' = Hexose, 'N' = N-Acetylhexosamine, 'S' = N-Acetyl-Neuraminic Acid, 'F' = Deoxyhexose, 'G' = N-Glycolyl-Neuraminic Acid and each number next to it corresponds to the amount of said monosaccharide")
+            print("Warning: Glycans must be inputted in the format\nof 'H5N4S1F1G1' where 'H' = Hexose,'N' =\nN-Acetylhexosamine, 'S' = N-Acetyl-Neuraminic\nAcid, 'F' = Deoxyhexose, 'G' =\nN-Glycolyl-Neuraminic Acid and each number next\nto it corresponds to the amount of said\nmonosaccharide")
             while True:
                 var = input("Insert a glycan, leave blank to end list: ")
                 if var == "":
@@ -159,7 +248,7 @@ def interactive_terminal():
             for i in range(len(lib_settings)):
                 if i == 0:
                     while lib_settings[0] == None:
-                        var = input("Type the minimum amount of total monosaccharides: ")
+                        var = input("Type the minimum amount of monosaccharides: ")
                         try:
                             var = int(var)
                         except:
@@ -167,7 +256,7 @@ def interactive_terminal():
                         lib_settings[0] = var
                 if i == 1:
                     while lib_settings[1] == None:
-                        var = input("Type the maximum amount of total monosaccharides: ")
+                        var = input("Type the maximum amount of monosaccharides: ")
                         try:
                             var = int(var)
                         except:
@@ -175,7 +264,7 @@ def interactive_terminal():
                         lib_settings[1] = var
                 if i == 2:
                     while lib_settings[2] == None:
-                        var = input("Type the minimum amount of hexoses: ")
+                        var = input("Type the minimum amount of Hex: ")
                         try:
                             var = int(var)
                         except:
@@ -183,7 +272,7 @@ def interactive_terminal():
                         lib_settings[2] = var
                 if i == 3:
                     while lib_settings[3] == None:
-                        var = input("Type the maximum amount of hexoses: ")
+                        var = input("Type the maximum amount of Hex: ")
                         try:
                             var = int(var)
                         except:
@@ -191,7 +280,7 @@ def interactive_terminal():
                         lib_settings[3] = var
                 if i == 4:
                     while lib_settings[4] == None:
-                        var = input("Type the minimum amount of N-acetylhexosamines: ")
+                        var = input("Type the minimum amount of HexNAc: ")
                         try:
                             var = int(var)
                         except:
@@ -199,7 +288,7 @@ def interactive_terminal():
                         lib_settings[4] = var
                 if i == 5:
                     while lib_settings[5] == None:
-                        var = input("Type the maximum amount of N-acetylhexosamines: ")
+                        var = input("Type the maximum amount of HexNAc: ")
                         try:
                             var = int(var)
                         except:
@@ -207,7 +296,7 @@ def interactive_terminal():
                         lib_settings[5] = var
                 if i == 6:
                     while lib_settings[6] == None:
-                        var = input("Type the minimum amount of deoxyhexoses (fucoses): ")
+                        var = input("Type the minimum amount of dHex: ")
                         try:
                             var = int(var)
                         except:
@@ -215,7 +304,7 @@ def interactive_terminal():
                         lib_settings[6] = var
                 if i == 7:
                     while lib_settings[7] == None:
-                        var = input("Type the maximum amount of deoxyhexoses (fucoses): ")
+                        var = input("Type the maximum amount of dHex: ")
                         try:
                             var = int(var)
                         except:
@@ -223,7 +312,7 @@ def interactive_terminal():
                         lib_settings[7] = var
                 if i == 8:
                     while lib_settings[8] == None:
-                        var = input("Type the minimum amount of N-acetyl neuraminic acids: ")
+                        var = input("Type the minimum amount of Neu5Ac: ")
                         try:
                             var = int(var)
                         except:
@@ -231,7 +320,7 @@ def interactive_terminal():
                         lib_settings[8] = var
                 if i == 9:
                     while lib_settings[9] == None:
-                        var = input("Type the maximum amount of N-acetyl neuraminic acids: ")
+                        var = input("Type the maximum amount of Neu5Ac: ")
                         try:
                             var = int(var)
                         except:
@@ -239,7 +328,7 @@ def interactive_terminal():
                         lib_settings[9] = var
                 if i == 10:
                     while lib_settings[10] == None:
-                        var = input("Type the minimum amount of N-glycolyl neuraminic acids: ")
+                        var = input("Type the minimum amount of Neu5Gc: ")
                         try:
                             var = int(var)
                         except:
@@ -247,7 +336,7 @@ def interactive_terminal():
                         lib_settings[10] = var
                 if i == 11:
                     while lib_settings[11] == None:
-                        var = input("Type the maximum amount of N-glycolyl neuraminic acids: ")
+                        var = input("Type the maximum amount of Neu5Gc: ")
                         try:
                             var = int(var)
                         except:
@@ -271,7 +360,7 @@ def interactive_terminal():
                         lib_settings[13] = var
                 if i == 14:
                     while lib_settings[14] == None:
-                        var = input("Force compositions to be closer to N-glycans structure (y/n): ")
+                        var = input("Force compositions to N-glycans structure (y/n): ")
                         if var == 'y':
                             lib_settings[14] = True
                         if var == 'n':
@@ -281,7 +370,7 @@ def interactive_terminal():
         print_sep()
         adducts = {}
         while True:
-            var = input("Type the first element to calculate as adduct (ie. Na or H). Leave blank to finish: ")
+            var = input("Type the first element to calculate as adduct\n(ie. Na or H). Leave blank to finish: ")
             if var == '':
                 print(adducts)
                 var2 = input("Proceed with these adducts? (y/n): ")
@@ -301,7 +390,7 @@ def interactive_terminal():
         print_sep()
         max_charges = 0
         while True:
-            var = input("Type the maximum amount of charges for the glycans: ")
+            var = input("Type the maximum amount of charges: ")
             try:
                 var = int(var)
             except:
@@ -312,7 +401,7 @@ def interactive_terminal():
         print_sep()
         tag_mass = 0
         while True:
-            var = input("Do you have a reducing end tag attached to your glycans? (y/n): ")
+            var = input("Do the glycans have a reducing end tag? (y/n): ")
             if var == 'y' or var == 'n':
                 break
             else:
@@ -321,7 +410,7 @@ def interactive_terminal():
             break
         if var == 'y':
             while True:
-                var2 = input("Insert the tag added mass (ie. 133.0644 for GirP or 219.1735 for ProA): ")
+                var2 = input("Insert the tag added mass\n(ie. 133.0644 for GirP or 219.1735 for ProA): ")
                 try:
                     var2 = float(var2)
                 except:
@@ -332,7 +421,7 @@ def interactive_terminal():
         print_sep()
         fast_iso = True
         while True:
-            var = input("Do you want to do a quick isotopic distribution calculation? If 'n', then isotopic distribution calculation may take several hours, depending on library size (y/n): ")
+            var = input("Do you want to do a quick isotopic distribution\ncalculation? If 'n', then isotopic distribution\ncalculation may take several hours, depending on\nlibrary size (y/n): ")
             if var == 'y':
                 break
             if var == 'n':
@@ -344,7 +433,7 @@ def interactive_terminal():
         high_res = False
         if not fast_iso:
             while True:
-                var = input("Do you need a high resolution isotopic distribution? It may be important for very high accuracy mass spectrometers, such as FT-ICR (y/n): ")
+                var = input("Do you need a high resolution isotopic\ndistribution? It may be important for very high\naccuracy mass spectrometers, such as\nFT-ICR (y/n): ")
                 if var == 'y':
                     high_res = True
                     break
@@ -356,7 +445,7 @@ def interactive_terminal():
         if input_order[0] == 1: #Outputs of input_order == 1
             path = 'C:\\GlycoGenius_'+begin_time+'\\'
             while True:
-                var = input("Insert the path to save the files produced by the script (leave blank for default: C:\\GlycoGenius_[current_date_and_time]): ")
+                var = input("Insert the path to save the files produced by\nthe script (leave blank for\ndefault: C:\\GlycoGenius_[current_date_and_time]): ")
                 if var == '':
                     var = path
                 print(var)
@@ -390,7 +479,7 @@ def interactive_terminal():
                     continue
             if ms2[0]:
                 while True:
-                    var = input("Do you want to only output fragments compatible with identified precursor glycan? (y/n): ")
+                    var = input("Do you want to only output fragments compatible\nwith identified precursor glycan? (y/n): ")
                     if var == 'y':
                         ms2[1] = True
                         break
@@ -401,7 +490,7 @@ def interactive_terminal():
                         continue
             accuracy_unit = "pw"
             while True:
-                var = input("What is the accuracy unit you want to input for mz tolerance? (ppm/pw): ")
+                var = input("What is the accuracy unit you want to input for\nmz tolerance? (ppm/pw): ")
                 if var == 'ppm':
                     accuracy_unit = var
                     break
@@ -412,7 +501,7 @@ def interactive_terminal():
                     continue
             accuracy_value = 0.0
             while True:
-                var = input("Insert the accuracy value for the unit you've chosen (ie. '0.01' or '10'): ")
+                var = input("Insert the accuracy value for the unit you've\nchosen (ie. '0.01' or '10'): ")
                 try:
                     var = float(var)
                 except:
@@ -422,7 +511,7 @@ def interactive_terminal():
                 break
             rt_int = [0.0, 999]
             while True:
-                var = input("Insert the beggining of the retention time interval at which you want to analyze, in minutes: ")
+                var = input("Insert the start of the retention time interval\nat which you want to analyze, in minutes: ")
                 try:
                     var = float(var)
                 except:
@@ -431,7 +520,7 @@ def interactive_terminal():
                 rt_int[0] = var
                 break
             while True:
-                var = input("Insert the end of the retention time interval at which you want to analyze, in minutes: ")
+                var = input("Insert the end of the retention time interval at\nwhich you want to analyze, in minutes: ")
                 try:
                     var = float(var)
                 except:
@@ -441,7 +530,7 @@ def interactive_terminal():
                 break
             min_isotop = 2
             while True:
-                var = input("Insert the minimum amount of detected isotopologue peaks for a mz in a spectrum to be included in the processed EIC: ")
+                var = input("Insert the minimum amount of detected\nisotopologue peaks for a mz in a spectrum to be\nincluded in the processed EIC: ")
                 try:
                     var = int(var)
                 except:
@@ -451,7 +540,7 @@ def interactive_terminal():
                 break
             max_ppm = 10
             while True:
-                var = input("Insert the maximum amount of PPM difference that a detected glycan must have in order to show up in results' table: ")
+                var = input("Insert the maximum amount of PPM difference that\na detected glycan must have in order to show up\nin results' table: ")
                 try:
                     var = int(var)
                 except:
@@ -461,7 +550,7 @@ def interactive_terminal():
                 break
             iso_fit = 0.5
             while True:
-                var = input("Insert the minimum isotopic fitting score for a glycan in order for it to show up in the results' table (values between 0.0 and 1.0): ")
+                var = input("Insert the minimum isotopic fitting score for a\nglycan in order for it to show up in the\nresults' table (values between 0.0 and 1.0): ")
                 try:
                     var = float(var)
                 except:
@@ -474,7 +563,7 @@ def interactive_terminal():
                 break
             curve_fit = 0.5
             while True:
-                var = input("Insert the minimum curve fitting score for a glycan in order for it to show up in the results' table (values between 0.0 and 1.0): ")
+                var = input("Insert the minimum curve fitting score for a\nglycan in order for it to show up in the\nresults' table (values between 0.0 and 1.0): ")
                 try:
                     var = float(var)
                 except:
@@ -487,7 +576,7 @@ def interactive_terminal():
                 break
             sn = 3
             while True:
-                var = input("Insert the minimum signal-to-noise ratio that a detected glycan must have in order to show up in results' table: ")
+                var = input("Insert the minimum signal-to-noise ratio that a\ndetected glycan must have in order to show up in\nresults' table: ")
                 try:
                     var = int(var)
                 except:
@@ -497,7 +586,7 @@ def interactive_terminal():
                 break
             files = []
             while True:
-                var = input("Insert the path to the file to be analyzed (ie. C:\\GlycoGenius\\file.mzxml). Leave blank to finalize: ")
+                var = input("Insert the path to the file to be analyzed\n(ie. C:\\GlycoGenius\\file.mzxml). Leave blank\nto finalize: ")
                 if var == '':
                     print(files)
                     var2 = input("Proceed with these files? (y/n): ")
@@ -523,7 +612,7 @@ def interactive_terminal():
                     continue
             path = 'C:\\GlycoGenius_'+begin_time+'\\'
             while True:
-                var = input("Insert the path to save the files produced by the script (leave blank for default: C:\\GlycoGenius_[current_date_and_time]): ")
+                var = input("Insert the path to save the files produced by\nthe script (leave blank for default:\nC:\\GlycoGenius_[current_date_and_time]): ")
                 if var == '':
                     var = path
                 print(var)
@@ -545,7 +634,9 @@ def interactive_terminal():
     if input_order[0] == 3:
         path = 'C:\\Glycogenius\\'
         while True:
-            var = input("Insert the working directory (where the 'raw_data' files are, default: C:/Glycogenius/): ")
+            var = input("Insert the working directory (where the\n'raw_data' files are, default: C:/Glycogenius/): ")
+            if var == "":
+                var = path
             print(var)
             var2 = input("Is this path correct? (y/n): ")
             if var2 == 'n':
@@ -560,7 +651,7 @@ def interactive_terminal():
                 break
         max_ppm = 10
         while True:
-            var = input("Insert the maximum amount of PPM difference that a detected glycan must have in order to show up in results' table: ")
+            var = input("Insert the maximum amount of PPM difference that\na detected glycan must have in order to show up\nin results' table: ")
             try:
                 var = int(var)
             except:
@@ -570,7 +661,7 @@ def interactive_terminal():
             break
         iso_fit = 0.5
         while True:
-            var = input("Insert the minimum isotopic fitting score for a glycan in order for it to show up in the results' table (values between 0.0 and 1.0): ")
+            var = input("Insert the minimum isotopic fitting score for a\nglycan in order for it to show up in the\nresults' table (values between 0.0 and 1.0): ")
             try:
                 var = float(var)
             except:
@@ -583,7 +674,7 @@ def interactive_terminal():
             break
         curve_fit = 0.5
         while True:
-            var = input("Insert the minimum curve fitting score for a glycan in order for it to show up in the results' table (values between 0.0 and 1.0): ")
+            var = input("Insert the minimum curve fitting score for a\nglycan in order for it to show up in the\nresults' table (values between 0.0 and 1.0): ")
             try:
                 var = float(var)
             except:
@@ -596,7 +687,7 @@ def interactive_terminal():
             break
         sn = 3
         while True:
-            var = input("Insert the minimum signal-to-noise ratio that a detected glycan must have in order to show up in results' table: ")
+            var = input("Insert the minimum signal-to-noise ratio that\na detected glycan must have in order to show up\nin results' table: ")
             try:
                 var = int(var)
             except:
@@ -608,7 +699,7 @@ def interactive_terminal():
     if input_order[0] == 4:
         commented = False
         while True:
-            var = input("Do you want the template file to contain commented information on each parameter? (y/n): ")
+            var = input("Do you want the template file to contain\ncommented information on each parameter? (y/n): ")
             if var == 'y':
                 commented = True
                 break
@@ -619,7 +710,7 @@ def interactive_terminal():
                 continue
         path = 'C:\\GlycoGenius\\'
         while True:
-            var = input("Insert the path to the folder to save the template file (Default: C:\\GlycoGenius\\): ")
+            var = input("Insert the path to the folder to save the\ntemplate file (Default: C:\\GlycoGenius\\): ")
             if var == "":
                 var = path
             print(var)
@@ -650,9 +741,10 @@ def list_of_data(samples_list): ##complete
         Indexes the mzXML file into a generator, allowing you to parse the file for
         analysis.
 
-    pyteomics.mzml.MzML() : generator
-        Indexes the mzML file into a generator, allowing you to parse the file for
-        analysis.
+    File_Accessing.make_mzxml : class
+        A wrapper that takes the output of pyteomics mzML parser and converts it to
+        the mzXML pyteomics parser standard to be used within the script. Allows for 
+        full support of mzML.
 
     Returns
     -------
@@ -679,9 +771,9 @@ def index_ms1_from_file(files):
 
     Parameters
     ----------
-    files : generator
+    files : list
         List with each index containing a generator created by the pyteomics function
-        pyteomics.mzxml.MzXML().
+        pyteomics.mzxml.MzXML() or File_Accessing.make_mzxml.
 
     Returns
     -------
@@ -708,9 +800,9 @@ def index_ms2_from_file(files):
 
     Parameters
     ----------
-    files : generator
+    files : list
         List with each index containing a generator created by the pyteomics function
-        pyteomics.mzxml.MzXML().
+        pyteomics.mzxml.MzXML() or File_Accessing.make_mzxml.
 
     Returns
     -------
@@ -733,9 +825,11 @@ def index_ms2_from_file(files):
 
 def sample_names(samples_list):
     '''Extracts the sample names from the file path.
+    
     Parameters
     ----------
-    No parameters needed, but must be executed after parameters section of script.
+    samples_list : list
+        A list of strings containing the path to each sample file.
 
     Returns
     -------
@@ -805,8 +899,90 @@ def imp_exp_gen_library(multithreaded_analysis,
 
     Parameters
     ----------
-    No parameters needed, but must be executed after parameters section of script.
+    multithreaded_analysis : tuple
+        A tuple with two indexes: the first one contains whether or not this execution
+        is to produce the tools required for multithreaded analysis and the second one 
+        containing the amount of desired threads to split the execution in.
+        
+    multithread_execution : tuple
+        A tuple with three indexes: the first one contains whether or not this execution
+        is part of a multithreaded run, the second one contains the current thread number and
+        the third one is the total amount of threads.
+        
+    samples_names : list
+        A list containing the extracted sample names from the file names.
+        
+    custom_glycans_list : tuple
+        A tuple with two indexes: The first one is whether or not the library should be built
+        off a custom glycans list and the second one is a list containing the glycans you wish
+        to analyze.
+        
+    min_max_monos : tuple
+        Minimum and maximum amount of monosaccharides for the hypotethical glycans in the
+        library. ie. (5, 20).
+        
+    min_max_hex : tuple
+        Minimum and maximum amount of hexoses for the hypotethical glycans in the library.
+        ie. (5, 20).
+        
+    min_max_hexnac : tuple
+        Minimum and maximum amount of N-Acetyl hexosamines for the hypotethical glycans
+        in the library. ie. (5, 20).
+        
+    min_max_sia : tuple
+        Minimum and maximum amount of sialic acids for the hypotethical glycans in the
+        library. ie. (5, 20).
+        
+    min_max_fuc : tuple
+        Minimum and maximum amount of deoxyhexoses for the hypotethical glycans in the
+        library. ie. (5, 20).
+        
+    min_max_ac : tuple
+        Minimum and maximum amount of N-Acetyl Neuraminic acids for the hypotethical
+        glycans in the library. ie. (5, 20).
+        
+    min_max_gc : tuple
+        Minimum and maximum amount of N-Glicolyl Neuraminic acids for the hypotethical
+        glycans in the library. ie. (5, 20).
+        
+    force_nglycan : boolean
+        Indicates whether the function should force strict conditions based on the
+        biological knowledge of glycans in order to avoid possible false positives when
+        analysing N-glycans.
+        
+    max_adducts : dict
+        A dictionary with keys containing each possible atomic adducts (ie. 'H', 'Na',
+        'K', etc.) and the maximum amount of such adducts as the values.
+        
+    max_charges : int
+        The maximum amount of charges to calculate per glycan.
 
+    tag_mass : float
+        The tag's added mass to the glycans, if the glycans are tagged.
+        Default = 0 (No Tag).
+
+    fast_iso : boolean
+        Makes the isotopic distribution calculation fast (less accurate) or not (more
+        accurate).
+        Default = True
+        
+    high_res : boolean
+        Decides whether to clump (if set to False) or not (if set to True) the neighbouring
+        isotopic envelope peaks. Only works if fast is set to False.
+        Default = False
+
+    imp_exp_library : tuple
+        A list with two indexes : The first one indicates whether or not the script should try
+        to import the library from a glycans_library.py file and the second one indicates
+        whether or not the script should export the library to a glycans_libbrary.py file and
+        an excel file for visualization.
+        
+    only_gen_lib : boolean
+        A boolean indicating whether or not this execution should stop after generating library.
+        
+    save_path : string
+        A string containing the path to the working directory of the script.
+        
     Uses
     ----
     Library_Tools.generate_glycans_library() : list
@@ -818,6 +994,9 @@ def imp_exp_gen_library(multithreaded_analysis,
         a dictionary with monosaccharides composition, atoms composition with tag,
         neutral mass, neutral mass with tag, isotopic distribution and the mzs of the
         glycans with the desired adducts combination.
+        
+    pathlib.Path.resolve() : Path object
+        Make the path absolute, resolving any symlinks. A new path object is returned
 
     Returns
     -------
@@ -884,14 +1063,14 @@ def imp_exp_gen_library(multithreaded_analysis,
             if start >= len(full_library):
                 multithreaded_analysis = (True, i)
                 break
-            temp_library = []
+            temp_library = ""
             for j in range(start, start+split_s):
                 if j == start+split_s-1 or j == len(full_library)-1:
-                    temp_library.append("'"+full_library_keys_list[j]+"'"+": "+str(full_library[full_library_keys_list[j]]))
+                    temp_library+= "'"+full_library_keys_list[j]+"'"+": "+str(full_library[full_library_keys_list[j]])
                     start+=split_s
                     break
                 if j < start+split_s-1:
-                    temp_library.append("'"+full_library_keys_list[j]+"'"+": "+str(full_library[full_library_keys_list[j]])+", ")
+                    temp_library+= "'"+full_library_keys_list[j]+"'"+": "+str(full_library[full_library_keys_list[j]])+", "
             libraries.append(temp_library)
         mt_path = str(pathlib.Path(__file__).parent.resolve())
         for i_i, i in enumerate(mt_path):
@@ -923,7 +1102,7 @@ def imp_exp_gen_library(multithreaded_analysis,
                             g.write("                configs+=line\n")
                             continue
                         if i == "#line to add multithreaded library\n":
-                            g.write("        full_library = {"+str(libraries[j])[2:-2]+"}\n")
+                            g.write("        full_library = {"+str(libraries[j])+"}\n")
                             continue
                         if i == "#here multithreaded prints execution of main()":
                             g.write("main()")
@@ -1000,8 +1179,70 @@ def output_filtered_data(curve_fit_score,
                          reanalysis,
                          save_path,
                          multithreaded_analysis,
+                         multithreaded_execution,
                          analyze_ms2):
-    '''
+    '''This function filters and converts raw results data into human readable
+    excel files.
+    
+    Parameters
+    ----------
+    curve_fit_score : float
+        The minimum curve fitting score to consider when outputting results.
+        
+    iso_fit_score : float
+        The minimum isotopic fitting score to consider when outputting results.
+        
+    sn : int
+        The minimum signal-to-noise ration to consider when outputting results.
+        
+    max_ppm : int
+        The maximum amount of PPM difference to consider when outputting results.
+        
+    reanalysis : tuple
+        Contains two indexes: The first one indicates whether this is only a reanalysis
+        execution and the second one indicates whether or not to produce plot data excel
+        files. The second one is there because the plot data is more heavy and doesn't 
+        change on reanalysis, so should only be set to True if you lost original plot data.
+        
+    save_path : string
+        A string containing the path to the working directory of the script.
+        
+    multithreaded_analysis : tuple
+        A tuple with two indexes: the first one contains whether or not this execution
+        is to produce the tools required for multithreaded analysis and the second one 
+        containing the amount of desired threads to split the execution in.
+        
+    multithread_execution : tuple
+        A tuple with three indexes: the first one contains whether or not this execution
+        is part of a multithreaded run, the second one contains the current thread number and
+        the third one is the total amount of threads.
+    
+    analyze_ms2 : tuple
+        A tuple with two indexes: The first one indicates whether to analyze ms2 data and the
+        second one indicates whether ms2 data should be forced to fit glycans composition.
+        
+    Uses
+    ----
+    datetime.datetime.now : Time object
+        Returns the current date and time.
+        
+    dill.dump : None
+        Pickle the current state of __main__ or another module to a file.
+    
+    dill.load : Module object
+        Update the selected module (default is __main__) with the state saved at filename.
+        
+    pathlib.Path : Path object
+        A subclass of PurePath, this class represents concrete paths of the system’s path flavour
+        
+    os.unlink : None
+        Remove (delete) the file path. 
+        
+    pandas.DataFrame : Dataframe object
+        Two-dimensional, size-mutable, potentially heterogeneous tabular data.
+        
+    pandas.ExcelWriter : ExcelWriter object
+        Class for writing DataFrame objects into excel sheets.
     '''
     date = datetime.datetime.now()
     begin_time = str(date)[2:4]+str(date)[5:7]+str(date)[8:10]+"_"+str(date)[11:13]+str(date)[14:16]+str(date)[17:19]
@@ -1011,11 +1252,13 @@ def output_filtered_data(curve_fit_score,
         results2_list = []
         results3_list = []
         results4_list = []
+        results5_list = []
         for i in range(multithreaded_analysis[1]):
             results1_list.append(save_path+'results1_'+str(i))
             results2_list.append(save_path+'results2_'+str(i))
             results3_list.append(save_path+'results3_'+str(i))
             results4_list.append(save_path+'results4_'+str(i))
+            results5_list.append(save_path+'results5_'+str(i))
         try:
             for i_i, i in enumerate(results1_list):
                 with open(i, 'rb') as f:
@@ -1028,6 +1271,9 @@ def output_filtered_data(curve_fit_score,
                 with open(results2_list[i_i], 'rb') as f:
                     eic_dataframes_import = dill.load(f)
                     f.close()
+                with open(results5_list[i_i], 'rb') as f:
+                    raw_eic_dataframes_import = dill.load(f)
+                    f.close()
                 with open(results3_list[i_i], 'rb') as f:
                     smoothed_eic_dataframes_import = dill.load(f)
                     f.close()
@@ -1037,6 +1283,7 @@ def output_filtered_data(curve_fit_score,
                 if i_i == 0:
                     df1 = df1_import
                     df2 = df2_import
+                    raw_eic_dataframes = raw_eic_dataframes_import
                     eic_dataframes = eic_dataframes_import
                     smoothed_eic_dataframes = smoothed_eic_dataframes_import
                     curve_fitting_dataframes = curve_fitting_dataframes_import
@@ -1049,6 +1296,7 @@ def output_filtered_data(curve_fit_score,
                     for j_j, j in enumerate(eic_dataframes_import):
                         for k in j:
                             if k[:4] != 'RTs_':
+                                raw_eic_dataframes[j_j][k] = raw_eic_dataframes_import[j_j][k]
                                 eic_dataframes[j_j][k] = eic_dataframes_import[j_j][k]
                                 smoothed_eic_dataframes[j_j][k] = smoothed_eic_dataframes_import[j_j][k]
                     for j_j, j in enumerate(curve_fitting_dataframes_import):
@@ -1063,7 +1311,7 @@ def output_filtered_data(curve_fit_score,
                     dill.dump([df1, df2, fragments_dataframes], f)
                 else:
                     dill.dump([df1, df2], f)
-                    f.close()
+                f.close()
             with open(save_path+'raw_data_2', 'wb') as f:
                 dill.dump(eic_dataframes, f)
                 f.close()
@@ -1073,23 +1321,22 @@ def output_filtered_data(curve_fit_score,
             with open(save_path+'raw_data_4', 'wb') as f:
                 dill.dump(curve_fitting_dataframes, f)
                 f.close()
+            with open(save_path+'raw_data_5', 'wb') as f:
+                dill.dump(raw_eic_dataframes, f)
+                f.close()
             for i in range(multithreaded_analysis[1]):
-                p1 = pathlib.Path(save_path+'Multithreaded_'+str(i)+'.py')
-                p2 = pathlib.Path(save_path+'glycans_library_'+str(i)+'.py')
                 p3 = pathlib.Path(save_path+'results1_'+str(i))
                 p4 = pathlib.Path(save_path+'results2_'+str(i))
                 p5 = pathlib.Path(save_path+'results3_'+str(i))
                 p6 = pathlib.Path(save_path+'results4_'+str(i))
-                p1.unlink(missing_ok=True)
-                p2.unlink(missing_ok=True)
+                p7 = pathlib.Path(save_path+'results5_'+str(i))
                 p3.unlink(missing_ok=True)
                 p4.unlink(missing_ok=True)
                 p5.unlink(missing_ok=True)
                 p6.unlink(missing_ok=True)
+                p7.unlink(missing_ok=True)
         except Exception:
             pass
-    else:
-        print("Analyzing raw data...")
     try:
         with open(save_path+'raw_data_1', 'rb') as f:
             file = dill.load(f)
@@ -1100,6 +1347,8 @@ def output_filtered_data(curve_fit_score,
             f.close()
     except:
         return
+    if not reanalysis[0]:
+        print("Analyzing raw data...")
     for i_i, i in enumerate(df2["Sample_Number"]): #QCs cutoff
         for j_j, j in enumerate(df1[i_i]["Adduct"]): 
             temp_rt = df1[i_i]["RT"][j_j]
@@ -1238,24 +1487,46 @@ def output_filtered_data(curve_fit_score,
                 fragments_df = DataFrame(fragments_dataframes[i_i])
                 fragments_df.to_excel(writer, sheet_name="Sample_"+str(i_i)+"_Fragments", index = False)
         df2.to_excel(writer, sheet_name="Index references", index = False)
+    del df1
+    del result_df
     print("Done!")
     if (reanalysis[1] and reanalysis[0]) or not reanalysis[0]:
+        print("Creating data plotting files...", end= "", flush=True)
         with open(save_path+'raw_data_2', 'rb') as f:
             eic_dataframes = dill.load(f)
             f.close()
+        with ExcelWriter(save_path+begin_time+'_processed_EIC_Plot_Data.xlsx') as writer:
+            for i_i, i in enumerate(eic_dataframes):
+                eic_df = DataFrame(i)
+                eic_df.to_excel(writer, sheet_name="Sample_"+str(i_i), index = False)
+            df2.to_excel(writer, sheet_name="Index references", index = False)
+        del eic_dataframes
+        del eic_df
         with open(save_path+'raw_data_3', 'rb') as f:
             smoothed_eic_dataframes = dill.load(f)
             f.close()
+        with ExcelWriter(save_path+begin_time+'_smoothed_EIC_Plot_Data.xlsx') as writer:
+            for i_i, i in enumerate(smoothed_eic_dataframes):
+                smoothed_eic_df = DataFrame(i)
+                smoothed_eic_df.to_excel(writer, sheet_name="Sample_"+str(i_i), index = False)
+            df2.to_excel(writer, sheet_name="Index references", index = False)
+        del smoothed_eic_dataframes
+        del smoothed_eic_df
+        with open(save_path+'raw_data_5', 'rb') as f:
+            raw_eic_dataframes = dill.load(f)
+            f.close()
+        with ExcelWriter(save_path+begin_time+'_raw_EIC_Plot_Data.xlsx') as writer:
+            for i_i, i in enumerate(raw_eic_dataframes):
+                raw_eic_df = DataFrame(i)
+                raw_eic_df.to_excel(writer, sheet_name="Sample_"+str(i_i), index = False)
+            df2.to_excel(writer, sheet_name="Index references", index = False)
+        del raw_eic_dataframes
+        del raw_eic_df
         with open(save_path+'raw_data_4', 'rb') as f:
             curve_fitting_dataframes = dill.load(f)
             f.close()
-        with ExcelWriter(save_path+begin_time+'_Plot_Data.xlsx') as writer:
-            print("Creating data plotting files...", end= "", flush=True)
-            for i_i, i in enumerate(eic_dataframes):
-                eic_df = DataFrame(i)
-                eic_df.to_excel(writer, sheet_name="Sample_"+str(i_i)+"_EICs", index = False)
-                smoothed_eic_df = DataFrame(smoothed_eic_dataframes[i_i])
-                smoothed_eic_df.to_excel(writer, sheet_name="Sample_"+str(i_i)+"_Smoothed_EICs", index = False)
+        with ExcelWriter(save_path+begin_time+'_curve_fitting_Plot_Data.xlsx') as writer:
+            for i_i, i in enumerate(curve_fitting_dataframes):
                 if len(curve_fitting_dataframes[i_i]) > 16384:
                     for j in range(int(len(curve_fitting_dataframes[i_i])/16384)+1):
                         if j == 0:
@@ -1270,8 +1541,10 @@ def output_filtered_data(curve_fit_score,
                                 curve_df.to_excel(writer, sheet_name="Sample_"+str(i_i)+"_Curve_Fits_"+str(j), index = False)
                 else:
                     curve_df = DataFrame(curve_fitting_dataframes[i_i])
-                    curve_df.to_excel(writer, sheet_name="Sample_"+str(i_i)+"_Curve_Fits", index = False)
+                    curve_df.to_excel(writer, sheet_name="Sample_"+str(i_i), index = False)
             df2.to_excel(writer, sheet_name="Index references", index = False)
+        del curve_fitting_dataframes
+        del curve_df
         print("Done!")
 
 def arrange_raw_data(analyzed_data,
@@ -1280,35 +1553,61 @@ def arrange_raw_data(analyzed_data,
                      multithreaded_execution,
                      analyze_ms2,
                      save_path): ##Complete
-    '''Arrange the raw data to print. Information printed: Glycan formula, Adduct, sum of
-    the corresponding peak in all adducts, mz or neutral mass (for total adducts),
-    retention time of each peak and AUC of it.
+    '''Arrange the raw results data into pickled files to be processed by output_filtered_data.
 
     Parameters
     ----------
-    No parameters needed, but must be executed after parameters section of script.
-
-    Returns
-    -------
-    lines_to_print : list
-        A list containing each line that should be printed.
+    analyzed_data : tuple
+        Tuple containing multiple informations about the glycans analysis, as outputted by
+        analyze_files or analyze_ms2.
+        
+    samples_names : list
+        List of samples names extracted from file names.
+        
+    multithreaded_analysis : tuple
+        A tuple with two indexes: the first one contains whether or not this execution
+        is to produce the tools required for multithreaded analysis and the second one 
+        containing the amount of desired threads to split the execution in.
+        
+    multithread_execution : tuple
+        A tuple with three indexes: the first one contains whether or not this execution
+        is part of a multithreaded run, the second one contains the current thread number and
+        the third one is the total amount of threads.
+        
+    analyze_ms2 : tuple
+        A tuple with two indexes: The first one indicates whether to analyze ms2 data and the
+        second one indicates whether ms2 data should be forced to fit glycans composition.
+    
+    save_path : string
+        A string containing the path to the working directory of the script.
+        
+    Uses
+    ----
+    dill.dump : None
+        Pickle the current state of __main__ or another module to a file.
+    
+    dill.load : Module object
+        Update the selected module (default is __main__) with the state saved at filename.
     '''
     begin_time = datetime.datetime.now()
     print('Arranging raw data...', end='', flush = True)
     df1 = []
     df2 = {"Sample_Number" : [], "File_name" : [], "Noise Level" : []}
+    raw_eic_dataframes = []
     eic_dataframes = []
     smoothed_eic_dataframes = []
     curve_fitting_dataframes = []
     if analyze_ms2:
         fragments_dataframes = []
     for i_i, i in enumerate(samples_names):
+        raw_eic_dataframes.append({})
         eic_dataframes.append({})
+        smoothed_eic_dataframes.append({})
         temp_eic_rt = []
         for j in analyzed_data[1][i_i]:
             temp_eic_rt.append(float("%.4f" % round(j, 4)))
+        raw_eic_dataframes[i_i]['RTs_'+str(i_i)] = temp_eic_rt
         eic_dataframes[i_i]['RTs_'+str(i_i)] = temp_eic_rt
-        smoothed_eic_dataframes.append({})
         smoothed_eic_dataframes[i_i]['RTs_'+str(i_i)] = temp_eic_rt
         curve_fitting_dataframes.append({})
         df2["Sample_Number"].append(i_i)
@@ -1322,6 +1621,10 @@ def arrange_raw_data(analyzed_data,
     for i_i, i in enumerate(analyzed_data[0]): #i = glycan (key)
         for j_j, j in enumerate(analyzed_data[0][i]['Adducts_mz_data']): #j = adduct (key)
             for k_k, k in enumerate(analyzed_data[0][i]['Adducts_mz_data'][j]):
+                temp_eic_int = []
+                for l in analyzed_data[0][i]['Adducts_mz_data'][j][k][3]:
+                    temp_eic_int.append(int(l))
+                raw_eic_dataframes[k_k][str(i)+'+'+str(j)+' - '+str(float("%.4f" % round(analyzed_data[0][i]['Adducts_mz'][j], 4)))] = temp_eic_int
                 temp_eic_int = []
                 for l in analyzed_data[0][i]['Adducts_mz_data'][j][k][0]:
                     temp_eic_int.append(int(l))
@@ -1436,17 +1739,22 @@ def arrange_raw_data(analyzed_data,
         with open(save_path+'results4_'+str(multithreaded_execution[1]), 'wb') as f:
             dill.dump(curve_fitting_dataframes, f)
             f.close()
+        with open(save_path+'results5_'+str(multithreaded_execution[1]), 'wb') as f:
+            dill.dump(raw_eic_dataframes, f)
+            f.close()
         p1 = pathlib.Path(save_path+'glycogenius_'+str(multithreaded_execution[1])+'.py')
         p1.unlink(missing_ok=True)
         results1_list = []
         results2_list = []
         results3_list = []
         results4_list = []
-        for i in range(multithreaded_execution[2]):
+        results5_list = []
+        for i in range(multithreaded_analysis[1]):
             results1_list.append(save_path+'results1_'+str(i))
             results2_list.append(save_path+'results2_'+str(i))
             results3_list.append(save_path+'results3_'+str(i))
             results4_list.append(save_path+'results4_'+str(i))
+            results5_list.append(save_path+'results5_'+str(i))
         try:
             for i_i, i in enumerate(results1_list):
                 with open(i, 'rb') as f:
@@ -1459,6 +1767,9 @@ def arrange_raw_data(analyzed_data,
                 with open(results2_list[i_i], 'rb') as f:
                     eic_dataframes_import = dill.load(f)
                     f.close()
+                with open(results5_list[i_i], 'rb') as f:
+                    raw_eic_dataframes_import = dill.load(f)
+                    f.close()
                 with open(results3_list[i_i], 'rb') as f:
                     smoothed_eic_dataframes_import = dill.load(f)
                     f.close()
@@ -1468,6 +1779,7 @@ def arrange_raw_data(analyzed_data,
                 if i_i == 0:
                     df1 = df1_import
                     df2 = df2_import
+                    raw_eic_dataframes = raw_eic_dataframes_import
                     eic_dataframes = eic_dataframes_import
                     smoothed_eic_dataframes = smoothed_eic_dataframes_import
                     curve_fitting_dataframes = curve_fitting_dataframes_import
@@ -1480,6 +1792,7 @@ def arrange_raw_data(analyzed_data,
                     for j_j, j in enumerate(eic_dataframes_import):
                         for k in j:
                             if k[:4] != 'RTs_':
+                                raw_eic_dataframes[j_j][k] = raw_eic_dataframes_import[j_j][k]
                                 eic_dataframes[j_j][k] = eic_dataframes_import[j_j][k]
                                 smoothed_eic_dataframes[j_j][k] = smoothed_eic_dataframes_import[j_j][k]
                     for j_j, j in enumerate(curve_fitting_dataframes_import):
@@ -1494,7 +1807,7 @@ def arrange_raw_data(analyzed_data,
                     dill.dump([df1, df2, fragments_dataframes], f)
                 else:
                     dill.dump([df1, df2], f)
-                    f.close()
+                f.close()
             with open(save_path+'raw_data_2', 'wb') as f:
                 dill.dump(eic_dataframes, f)
                 f.close()
@@ -1504,15 +1817,20 @@ def arrange_raw_data(analyzed_data,
             with open(save_path+'raw_data_4', 'wb') as f:
                 dill.dump(curve_fitting_dataframes, f)
                 f.close()
-            for i in range(multithreaded_execution[2]):
+            with open(save_path+'raw_data_5', 'wb') as f:
+                dill.dump(raw_eic_dataframes, f)
+                f.close()
+            for i in range(multithreaded_analysis[1]):
                 p3 = pathlib.Path(save_path+'results1_'+str(i))
                 p4 = pathlib.Path(save_path+'results2_'+str(i))
                 p5 = pathlib.Path(save_path+'results3_'+str(i))
                 p6 = pathlib.Path(save_path+'results4_'+str(i))
+                p7 = pathlib.Path(save_path+'results5_'+str(i))
                 p3.unlink(missing_ok=True)
                 p4.unlink(missing_ok=True)
                 p5.unlink(missing_ok=True)
                 p6.unlink(missing_ok=True)
+                p7.unlink(missing_ok=True)
         except Exception:
             pass
     else:
@@ -1521,7 +1839,7 @@ def arrange_raw_data(analyzed_data,
                 dill.dump([df1, df2, fragments_dataframes], f)
             else:
                 dill.dump([df1, df2], f)
-                f.close()
+            f.close()
         with open(save_path+'raw_data_2', 'wb') as f:
             dill.dump(eic_dataframes, f)
             f.close()
@@ -1531,12 +1849,15 @@ def arrange_raw_data(analyzed_data,
         with open(save_path+'raw_data_4', 'wb') as f:
             dill.dump(curve_fitting_dataframes, f)
             f.close()
+        with open(save_path+'raw_data_5', 'wb') as f:
+            dill.dump(raw_eic_dataframes, f)
+            f.close()
     print("Done!")
 
 def print_sep(): ##Complete
     '''Prints a separator consisting of multiple '-' character.
     '''
-    print('-------------------------------------------------')
+    print('------------------------------------------------')
     
 def analyze_files(library,
                   lib_size,
@@ -1551,35 +1872,87 @@ def analyze_files(library,
                   close_peaks,
                   verbose = False): ##Complete
     '''Integrates all the file-accessing associated functions in this script to go
-    through the files data, draw eic of hypothetical glycans, check if it is not in
-    noise level, based on threshold, does peak-picking, check quality of spectra in
-    peaks, deconvolute if checks passed, and calculates AUC of the peaks.
+    through the files data, draw and process eic of hypothetical glycans, does 
+    peak-picking and calculates AUC of the peaks.
 
     Parameters
     ----------
-    No parameters needed, but must be executed after parameters section of script.
+    library : dict
+        A glycans library, as generated by Library_Tools.full_glycans_library.
+        
+    lib_size : int
+        The length of the library.
+        
+    data : list
+        A list with each index containing a generator object of the sample file
+        to be parsed.
+        
+    ms1_index : dict
+        A dictionary containing the ms1 indexes of each sample file.
+        
+    tolerance : float
+        The mz acceptable tolerance.
+        
+    ret_time_interval : tuple
+        A tuple where the first index contains the beggining time of the retention time
+        interval you wish to analyze and the second contains the end time.
+        
+    min_isotops : int
+        The minimum amount of isotopologues required to consider an RT mz peak valid.
+    
+    min_ppp : tuple
+        A tuple where the first index contains a boolean indicating whether or not to
+        consider this parameter and the second one containing the minimum amount of
+        data points per peak. If min_ppp[0] is set to False, calculates this automatically.
+        
+    max_charges : int
+        The maximum amount of charges the queried mz should have.
+        
+    custom_noise : tuple
+        A tuple containing two indexes: The first one indicates whether or not to use a custom
+        noise set by the user and the second one is a list of noise levels, with each index
+        indicating the noise level of each set file.
+        
+    close_peaks : tuple
+        A tuple where the first index contains a boolean indicating whether or not to
+        consider this parameter and the second one contains the amount of peaks to save.
+        If close_peaks[0] is set to True, selects only the most intense peak and its 
+        close_peaks[1] surrounding peaks.
+        
+    verbose : boolean
+        Allows to print to file debugging information of each EIC traced so that you
+        may find out why some specific pattern or behavior is ocurring.
 
     Uses
     ----
-    File_Accessing.eic_from_glycan() : dict
-        Generates an EIC of the mzs calculated for a glycan.
+    General_Functions.noise_level_calc_mzarray : float
+        Gathers the mz at the 95th percentile of the mz/int array (which is 
+        equivalent to the 3rd SD from the mean.
+    
+    numpy.percentile : scalar or ndarray
+        Compute the q-th percentile of the data along the specified axis.
+    
+    File_Accessing.eic_from_glycan : tuple
+        Generates a very processed EIC for each adduct of each glycan of each sample.
+        Removes non-monoisotopic peaks, check charges and calculates multiple quality 
+        scoring data.
+        
+    File_Accessing.eic_smoothing : list
+        Smoothes the EIC using the Savitsky Golay algorithm. Smoothed EIC may be
+        used for peak-picking and curve-fitting scoring afterwards.
 
-    File_Accessing.peaks_from_eic() : list, tuple
-        Does multi-peak-picking in an EIC, based on the most intense peaks in the EIC,
-        in the retention time interval of interest. This function works in-line.
+    File_Accessing.peaks_from_eic() : list
+        Does multi peak-picking in a given smoothed EIC.
 
-    check_monoisotopic_charge() : list, list
-        Checks if the peaks identified for a given mz corresponds to monoisotopic,
-        correctly charge-assigned peaks.
-
-    deconvoluted_glycan_eic() : list
-        Deconvolutes the data around the identified peaks retention time and creates a
-        deconvoluted EIC.
-
-    File_Accessing.peaks_auc_from_eic() : list
-        Calculates the area under curve of the picked peaks based on the EIC given.
-        Overlapped portions of peaks are calculated as fractional proportion, based on
-        peaks max intensity.
+    File_Accessing.average_ppm_calc : tuple
+        Calculates the arithmetic mean of the PPM differences of a given peak.
+        
+    File_Accessing.iso_fit_score_calc : float
+        Calculates the mean isotopic fitting score of a given peak.
+        
+    File_Accessing.peak_curve_fit : tuple
+        Calculates the fitting between the actual peak and an ideal peak based
+        on a calculated gaussian bell curve.
 
     Returns
     -------
@@ -1587,6 +1960,12 @@ def analyze_files(library,
         A dictionary similar to the one generated by the full glycans library generating
         function, with the added information of each adducts' peaks' retention time and
         AUC.
+        
+    rt_array_report : dict
+        A dictionary with lists containing the retention times for each sample.
+        
+    noise : dict
+        A dictionary containing the noise level for each sample.
     '''
     begin_time = datetime.datetime.now()
     analyzed_data = {}
@@ -1651,6 +2030,7 @@ def analyze_files(library,
                 glycan_data['Adducts_mz_data'][j][k].append(temp_eic[0][j][k][1])
                 glycan_data['Adducts_mz_data'][j][k].append([])
                 glycan_data['Adducts_mz_data'][j][k].append(temp_eic_smoothed[1])
+                glycan_data['Adducts_mz_data'][j][k].append(temp_eic[4][j][k][1])
                 if verbose:
                     verbose_info.append('Smoothed EIC INT Array: '+str(temp_eic_smoothed[1]))
                     verbose_info.append('Raw PPM error: '+str(temp_eic[1][j][k])+'\nRaw Isotopic Fitting Score: '+str(temp_eic[2][j][k]))
@@ -1703,7 +2083,84 @@ def analyze_ms2(ms2_index,
                 max_charges,
                 tag_mass,
                 filter_output):
-    '''
+    '''Analyzes the MS2 data in the sample files, outputting the found matches.
+    
+    Parameters
+    ----------
+    ms2_index : dict
+        A dictionary containing the ms2 indexes of each sample file.
+        
+    data : list
+        A list with each index containing a generator object of the sample file
+        to be parsed.
+        
+    analyzed_data : tuple
+        Data outputted by the analyze_data function.
+        
+    ret_time_interval : tuple
+        A tuple where the first index contains the beggining time of the retention time
+        interval you wish to analyze and the second contains the end time.
+        
+    tolerance : float
+        The mz acceptable tolerance.
+        
+    min_max_mono : tuple
+        Minimum and maximum amount of monosaccharides for the hypotethical glycans in the
+        library. ie. (5, 20).
+
+    min_max_hex : tuple
+        Minimum and maximum amount of hexoses for the hypotethical glycans in the library.
+        ie. (5, 20).
+
+    min_max_hexnac : tuple
+        Minimum and maximum amount of N-Acetyl hexosamines for the hypotethical glycans
+        in the library. ie. (5, 20).
+
+    min_max_sia : tuple
+        Minimum and maximum amount of sialic acids for the hypotethical glycans in the
+        library. ie. (5, 20).
+
+    min_max_fuc : tuple
+        Minimum and maximum amount of deoxyhexoses for the hypotethical glycans in the
+        library. ie. (5, 20).
+
+    min_max_ac : tuple
+        Minimum and maximum amount of N-Acetyl Neuraminic acids for the hypotethical
+        glycans in the library. ie. (5, 20).
+
+    min_max_gc : tuple
+        Minimum and maximum amount of N-Glicolyl Neuraminic acids for the hypotethical
+        glycans in the library. ie. (5, 20).
+        
+    max_charges : int
+        The maximum amount of charges to calculate per glycan.
+        
+    tag_mass : float
+        The tag's added mass to the glycans, if the glycans are tagged.
+        Default = 0 (No Tag).
+        
+    filter_output : boolean
+        Whether or not to force the output to fit glycans compositions.
+        
+    Uses
+    ----
+    Library_Tools.fragments_library : list
+        Generates a list of combinatorial analysis of monosaccharides from the minimum
+        amount of monosaccharides to the maximum amount of monosaccharides set, then uses 
+        the generated library and increments it with calculations with a series of information,
+        clumps the duplicated mzs together as one query and then the script can use this
+        library as a fragments library for MS2 analysis.
+        
+    General_Functions.form_to_charge : int
+        Converts adducts formula into raw charge.
+        
+    Returns
+    -------
+    analyzed_data : tuple
+        Data outputted by the analyze_data function.
+        
+    fragments_data : dict
+        Dictionary containing the fragments data.
     '''
     begin_time = datetime.datetime.now()
     print('Analyzing MS2 data...')
@@ -1719,18 +2176,18 @@ def analyze_ms2(ms2_index,
                                   tag_mass)
     fragments_data = {}
     print('Scanning MS2 spectra...')
-    for i_i, i in enumerate(analyzed_data[0]):
+    for i_i, i in enumerate(analyzed_data[0]): #goes through each glycan found in analysis
         fragments_data[i] = {}
-        for j_j, j in enumerate(analyzed_data[0][i]['Adducts_mz_data']):
+        for j_j, j in enumerate(analyzed_data[0][i]['Adducts_mz_data']): #goes through each adduct
             fragments_data[i][j] = {}
-            for k_k, k in enumerate(data):
+            for k_k, k in enumerate(data): #goes through each file
                 fragments_data[i][j][k_k] = []
-                if len(analyzed_data[0][i]['Adducts_mz_data'][j][k_k][1]) == 0:
+                if len(analyzed_data[0][i]['Adducts_mz_data'][j][k_k][1]) == 0: #checks if found the adduct
                     continue
                 for l in ms2_index[k_k]:
-                    if k[l]['retentionTime'] < analyzed_data[0][i]['Adducts_mz_data'][j][k_k][1][0]['peak_interval'][0] or k[l]['retentionTime'] > analyzed_data[0][i]['Adducts_mz_data'][j][k_k][1][-1]['peak_interval'][1]:
+                    if k[l]['retentionTime'] < analyzed_data[0][i]['Adducts_mz_data'][j][k_k][1][0]['peak_interval'][0] or k[l]['retentionTime'] > analyzed_data[0][i]['Adducts_mz_data'][j][k_k][1][-1]['peak_interval'][1]: #skips spectra outside peak interval of peaks found
                         continue
-                    if abs((k[l]['precursorMz'][0]['precursorMz']) - analyzed_data[0][i]['Adducts_mz'][j]) <= (1.0074/General_Functions.form_to_charge(j))+tolerance:
+                    if abs((k[l]['precursorMz'][0]['precursorMz']) - analyzed_data[0][i]['Adducts_mz'][j]) <= (1.0074/General_Functions.form_to_charge(j))+tolerance: #checks if precursor matches adduct mz
                         for m_m, m in enumerate(k[l]['m/z array']):
                             found = False
                             for n_n, n in enumerate(fragments):

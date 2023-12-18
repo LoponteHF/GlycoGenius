@@ -59,7 +59,7 @@ def generate_glycans_library(min_max_mono,
         Minimum and maximum amount of N-Acetyl Neuraminic acids for the hypotethical
         glycans in the library. ie. (5, 20).
 
-    min_max_ac : tuple
+    min_max_gc : tuple
         Minimum and maximum amount of N-Glicolyl Neuraminic acids for the hypotethical
         glycans in the library. ie. (5, 20).
 
@@ -148,6 +148,11 @@ def full_glycans_library(library,
         Makes the isotopic distribution calculation fast (less accurate) or not (more
         accurate).
         Default = True
+        
+    high_res : boolean
+        Decides whether to clump (if set to False) or not (if set to True) the neighbouring
+        isotopic envelope peaks. Only works if fast is set to False.
+        Default = False
 
     Uses
     ----
@@ -194,7 +199,7 @@ def full_glycans_library(library,
     if tag_mass != 0:
         tag = General_Functions.calculate_comp_from_mass(tag_mass)
     else:
-        tag = {"C": 0, "O": 0, "N": 0, "H": 0}
+        tag = ({"C": 0, "O": 0, "N": 0, "H": 0}, 0.0)
     adducts_combo = General_Functions.gen_adducts_combo(max_adducts, max_charges)
     for i in library:
         i_formula = General_Functions.comp_to_formula(i)
@@ -230,7 +235,91 @@ def fragments_library(min_max_mono,
                       max_charges,
                       tolerance,
                       tag_mass):
-    '''
+    '''Generates a list of combinatorial analysis of monosaccharides from the minimum
+    amount of monosaccharides to the maximum amount of monosaccharides set, then uses 
+    the generated library and increments it with calculations with a series of information,
+    clumps the duplicated mzs together as one query and then the script can use this
+    library as a fragments library for MS2 analysis.
+
+    Parameters
+    ----------
+    min_max_mono : tuple
+        Minimum and maximum amount of monosaccharides for the hypotethical glycans in the
+        library. ie. (5, 20).
+
+    min_max_hex : tuple
+        Minimum and maximum amount of hexoses for the hypotethical glycans in the library.
+        ie. (5, 20).
+
+    min_max_hexnac : tuple
+        Minimum and maximum amount of N-Acetyl hexosamines for the hypotethical glycans
+        in the library. ie. (5, 20).
+
+    min_max_sialics : tuple
+        Minimum and maximum amount of sialic acids for the hypotethical glycans in the
+        library. ie. (5, 20).
+
+    min_max_fuc : tuple
+        Minimum and maximum amount of deoxyhexoses for the hypotethical glycans in the
+        library. ie. (5, 20).
+
+    min_max_ac : tuple
+        Minimum and maximum amount of N-Acetyl Neuraminic acids for the hypotethical
+        glycans in the library. ie. (5, 20).
+
+    min_max_gc : tuple
+        Minimum and maximum amount of N-Glicolyl Neuraminic acids for the hypotethical
+        glycans in the library. ie. (5, 20).
+
+    max_charges : int
+        The maximum amount of charges to calculate per glycan.
+
+    tolerance : float
+        The mz acceptable tolerance. Used to calculate the intensoids, at this point.
+
+    tag_mass : float
+        The tag's added mass to the glycans, if the glycans are tagged.
+        Default = 0 (No Tag).
+
+    Uses
+    ----
+    General_Functions.count_seq_letters(string) : string
+        If you make anything with itertools for combinatorial analysis, it will produce a
+        string that's not very human readable. This converts it into a human readable
+        form.
+
+    itertools.combinations_with_replacement : generator
+        Return r length subsequences of elements from the input iterable allowing
+        individual elements to be repeated more than once.
+
+    General_Functions.sum_monos(*compositions) : dict
+        Sums the monosaccharides of two glycan compositions.
+        
+    General_Functions.calculate_comp_from_mass(tag_mass) : dict
+        Calculates the composition of a molecule based on its mass. Intended to use with
+        small tags added to the glycans.
+        
+    General_Functions.gen_adducts_combo(adducts, max_charge) : list
+        Generates a list of dictionaries with compositions of adducts combinations,
+        based on parameters set.
+
+    General_Functions.comp_to_formula(composition) : string
+        Transforms a composition dictionary into string formula.
+
+    General_Functions.sum_atoms(*compositions) : dict
+        Sums the atoms of two compositions.
+
+    General_Functions.glycan_to_atoms(glycan_composition) : dict
+        Calculates the amounts of atoms based on glycan monosaccharides.
+
+    pyteomics.mass.calculate_mass(*args, **kwargs) : float
+        Calculates the monoisotopic mass of a polypeptide defined by a sequence string,
+        parsed sequence, chemical formula or Composition object.
+
+    Returns
+    -------
+    glycans : list
+        A list containing dictionaries with informations about each fragment generated.
     '''
     print("Building fragments library...", end = "", flush = True)
     glycans = []
