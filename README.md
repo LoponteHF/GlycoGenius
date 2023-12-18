@@ -1,3 +1,5 @@
+![GlycoGenius logo](./logo.svg "GlycoGenius")
+
 # GlycoGenius - Glycomics Data Analysis Tool
 
 GlycoGenius is a python script that aims to be an all-in-one solution for data analysis of glycomics data.
