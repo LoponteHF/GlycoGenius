@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='glycogenius',
-    version='0.1.0',
+    version='0.2.0',
     author='Hector Franco Loponte',
     author_email='hectorfloponte@gmail.com',
     description='GlycoGenius is an all-in-one solution for data analysis of glycomics data.',
