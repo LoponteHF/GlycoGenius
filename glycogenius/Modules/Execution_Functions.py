@@ -161,6 +161,9 @@ def interactive_terminal():
         
     commented : boolean
         Whether the parameters template file should be commented or not.
+        
+    number : int
+        Number of the execution files to analyze.
     '''
     date = datetime.datetime.now()
     begin_time = str(date)[2:4]+str(date)[5:7]+str(date)[8:10]+"_"+str(date)[11:13]+str(date)[14:16]+str(date)[17:19]
@@ -193,6 +196,34 @@ def interactive_terminal():
                 for line in f:
                     print(line, end = "")
             continue
+        if var == 'sneakpeek':
+            path = 'C:\\Glycogenius\\'
+            while True:
+                var = input("Insert the working directory (where the\n'resultsn_' files are, default: C:/Glycogenius/): ")
+                if var == "":
+                    var = path
+                print(var)
+                var2 = input("Is this path correct? (y/n): ")
+                if var2 == 'n':
+                    continue
+                if var2 == 'y':
+                    for i_i, i in enumerate(var):
+                        if i == "\\":
+                            var = var[:i_i]+"/"+var[i_i+1:]
+                    if var[-1] != "/":
+                        var = var+"/"
+                    path = var
+                    break
+            number = 0
+            while True:
+                var = input("Type execution number: ")
+                try:
+                    var = int(var)
+                except:
+                    print("Wrong Input")
+                    continue
+                break
+            return [69], path, number
         try:
             var = int(var)
         except:
@@ -220,7 +251,7 @@ def interactive_terminal():
         print_sep()
         if input_order[1] == 1:
             glycans_list = []
-            print("Warning: Glycans must be inputted in the format\nof 'H5N4S1F1G1' where 'H' = Hexose,'N' =\nN-Acetylhexosamine, 'S' = N-Acetyl-Neuraminic\nAcid, 'F' = Deoxyhexose, 'G' =\nN-Glycolyl-Neuraminic Acid and each number next\nto it corresponds to the amount of said\nmonosaccharide")
+            print("Warning: Glycans must be inputted in the format\nof 'H5N4S1F1G1' where 'H' = Hexose,'N' =\nN-Acetylhexosamine, 'S' = N-Acetyl-Neuraminic\nAcid, 'F' = Deoxyhexose, 'G' =\nN-Glycolyl-Neuraminic Acid and each number next\nto it corresponds to the amount of said\nmonosaccharide\n")
             while True:
                 var = input("Insert a glycan, leave blank to end list: ")
                 if var == "":
@@ -417,6 +448,29 @@ def interactive_terminal():
                     continue
                 tag_mass = var2
                 break
+        permethylated = False
+        reduced = False
+        if tag_mass == 0:
+            while True:
+                var = input("Are the glycans permethylated (y/n): ")
+                if var == 'y':
+                    permethylated = True
+                    break
+                if var == 'n':
+                    break
+                else:
+                    print('Wrong input')
+                    continue
+            while True:
+                var = input("Are the glycans reduced (y/n): ")
+                if var == 'y':
+                    reduced = True
+                    break
+                if var == 'n':
+                    break
+                else:
+                    print('Wrong input')
+                    continue
         print_sep()
         fast_iso = True
         while True:
@@ -442,9 +496,9 @@ def interactive_terminal():
                     print('Wrong input')
                     continue
         if input_order[0] == 1: #Outputs of input_order == 1
-            path = 'C:\\GlycoGenius_'+begin_time+'\\'
+            path = 'C:\\GlycoGenius\\'
             while True:
-                var = input("Insert the path to save the files produced by\nthe script (leave blank for\ndefault: C:\\GlycoGenius_[current_date_and_time]): ")
+                var = input("Insert the path to save the files produced by\nthe script (leave blank for default:\nC:\\GlycoGenius\\): ")
                 if var == '':
                     var = path
                 print(var)
@@ -460,9 +514,9 @@ def interactive_terminal():
                     path = var
                     break
             if input_order[1] == 1:
-                return input_order, glycans_list, adducts, max_charges, tag_mass, fast_iso, high_res, path
+                return input_order, glycans_list, adducts, max_charges, tag_mass, fast_iso, high_res, path, permethylated, reduced
             if input_order[1] == 2:
-                return input_order, lib_settings, adducts, max_charges, tag_mass, fast_iso, high_res, path
+                return input_order, lib_settings, adducts, max_charges, tag_mass, fast_iso, high_res, path, permethylated, reduced
         else:
             print_sep()
             ms2 = [False, False]
@@ -609,9 +663,9 @@ def interactive_terminal():
                         var = var+"/"
                     files.append(var)
                     continue
-            path = 'C:\\GlycoGenius_'+begin_time+'\\'
+            path = 'C:\\GlycoGenius\\'
             while True:
-                var = input("Insert the path to save the files produced by\nthe script (leave blank for default:\nC:\\GlycoGenius_[current_date_and_time]): ")
+                var = input("Insert the path to save the files produced by\nthe script (leave blank for default:\nC:\\GlycoGenius\\): ")
                 if var == '':
                     var = path
                 print(var)
@@ -627,9 +681,9 @@ def interactive_terminal():
                     path = var
                     break
             if input_order[1] == 1:
-                return input_order, glycans_list, adducts, max_charges, tag_mass, fast_iso, high_res, ms2, accuracy_unit, accuracy_value, rt_int, min_isotop, max_ppm, iso_fit, curve_fit, sn, files, path
+                return input_order, glycans_list, adducts, max_charges, tag_mass, fast_iso, high_res, ms2, accuracy_unit, accuracy_value, rt_int, min_isotop, max_ppm, iso_fit, curve_fit, sn, files, path, permethylated, reduced
             if input_order[1] == 2:
-                return input_order, lib_settings, adducts, max_charges, tag_mass, fast_iso, high_res, ms2, accuracy_unit, accuracy_value, rt_int, min_isotop, max_ppm, iso_fit, curve_fit, sn, files, path
+                return input_order, lib_settings, adducts, max_charges, tag_mass, fast_iso, high_res, ms2, accuracy_unit, accuracy_value, rt_int, min_isotop, max_ppm, iso_fit, curve_fit, sn, files, path, permethylated, reduced
     if input_order[0] == 3:
         path = 'C:\\Glycogenius\\'
         while True:
@@ -893,7 +947,10 @@ def imp_exp_gen_library(multithreaded_analysis,
                         high_res,
                         imp_exp_library,
                         only_gen_lib,
-                        save_path):
+                        save_path,
+                        internal_standard,
+                        permethylated,
+                        reduced):
     '''Imports, generates and/or exports a glycans library.
 
     Parameters
@@ -1018,7 +1075,10 @@ def imp_exp_gen_library(multithreaded_analysis,
                                             max_charges,
                                             tag_mass,
                                             fast_iso,
-                                            high_res)
+                                            high_res,
+                                            internal_standard,
+                                            permethylated,
+                                            reduced)
         if imp_exp_library[1]:
             print('Exporting glycans library...')
             with open(save_path+'glycans_library.py', 'w') as f:
@@ -1041,7 +1101,10 @@ def imp_exp_gen_library(multithreaded_analysis,
                                                 max_charges,
                                                 tag_mass,
                                                 fast_iso,
-                                                high_res)
+                                                high_res,
+                                                internal_standard,
+                                                permethylated,
+                                                reduced)
             if imp_exp_library[1]:
                 print('Exporting glycans library...')
                 with open(save_path+'glycans_library.py', 'w') as f:
@@ -1134,7 +1197,10 @@ def imp_exp_gen_library(multithreaded_analysis,
                                             max_charges,
                                             tag_mass,
                                             fast_iso,
-                                            high_res)
+                                            high_res,
+                                            internal_standard,
+                                            permethylated,
+                                            reduced)
         print('Done!')
     if imp_exp_library[1] or only_gen_lib:
         print('Exporting glycans library...')
@@ -1179,7 +1245,9 @@ def output_filtered_data(curve_fit_score,
                          save_path,
                          multithreaded_analysis,
                          multithreaded_execution,
-                         analyze_ms2):
+                         analyze_ms2,
+                         unrestricted_fragments,
+                         sneakpeek):
     '''This function filters and converts raw results data into human readable
     excel files.
     
@@ -1220,6 +1288,9 @@ def output_filtered_data(curve_fit_score,
         A tuple with two indexes: The first one indicates whether to analyze ms2 data and the
         second one indicates whether ms2 data should be forced to fit glycans composition.
         
+    sneakpeek : boolean
+        Allows to peek into incomplete multithreaded execution
+        
     Uses
     ----
     datetime.datetime.now : Time object
@@ -1245,7 +1316,7 @@ def output_filtered_data(curve_fit_score,
     '''
     date = datetime.datetime.now()
     begin_time = str(date)[2:4]+str(date)[5:7]+str(date)[8:10]+"_"+str(date)[11:13]+str(date)[14:16]+str(date)[17:19]
-    if reanalysis[0]:
+    if reanalysis[0] and not sneakpeek[0]:
         print("Reanalyzing raw data with new parameters...")
         results1_list = []
         results2_list = []
@@ -1337,13 +1408,22 @@ def output_filtered_data(curve_fit_score,
         except Exception:
             pass
     try:
-        with open(save_path+'raw_data_1', 'rb') as f:
-            file = dill.load(f)
-            df1 = file[0]
-            df2 = file[1]
-            if analyze_ms2:
-                fragments_dataframes = file[2]
-            f.close()
+        if sneakpeek[0]:
+            with open(save_path+'results1_'+str(sneakpeek[1]), 'rb') as f:
+                file = dill.load(f)
+                df1 = file[0]
+                df2 = file[1]
+                if analyze_ms2:
+                    fragments_dataframes = file[2]
+                f.close()
+        else:
+            with open(save_path+'raw_data_1', 'rb') as f:
+                file = dill.load(f)
+                df1 = file[0]
+                df2 = file[1]
+                if analyze_ms2:
+                    fragments_dataframes = file[2]
+                f.close()
     except:
         return
     if not reanalysis[0]:
@@ -1360,26 +1440,27 @@ def output_filtered_data(curve_fit_score,
             to_remove_glycan = []
             to_remove_adduct = []
             for k_k, k in enumerate(temp_sn):
-                if float(k) < sn:
-                    to_remove.append(k_k)
-                    to_remove_glycan.append(df1[i_i]["Glycan"][j_j])
-                    to_remove_adduct.append(j)
-                    continue
-                if float(temp_fit[k_k]) < iso_fit_score:
-                    to_remove.append(k_k)
-                    to_remove_glycan.append(df1[i_i]["Glycan"][j_j])
-                    to_remove_adduct.append(j)
-                    continue
-                if float(temp_curve[k_k]) < curve_fit_score:
-                    to_remove.append(k_k)
-                    to_remove_glycan.append(df1[i_i]["Glycan"][j_j])
-                    to_remove_adduct.append(j)
-                    continue
-                if abs(float(temp_ppm[k_k])) > max_ppm:
-                    to_remove.append(k_k)
-                    to_remove_glycan.append(df1[i_i]["Glycan"][j_j])
-                    to_remove_adduct.append(j)
-                    continue
+                if df1[i_i]["Glycan"][j_j] != "Internal Standard":
+                    if float(k) < sn:
+                        to_remove.append(k_k)
+                        to_remove_glycan.append(df1[i_i]["Glycan"][j_j])
+                        to_remove_adduct.append(j)
+                        continue
+                    if float(temp_fit[k_k]) < iso_fit_score:
+                        to_remove.append(k_k)
+                        to_remove_glycan.append(df1[i_i]["Glycan"][j_j])
+                        to_remove_adduct.append(j)
+                        continue
+                    if float(temp_curve[k_k]) < curve_fit_score:
+                        to_remove.append(k_k)
+                        to_remove_glycan.append(df1[i_i]["Glycan"][j_j])
+                        to_remove_adduct.append(j)
+                        continue
+                    if abs(float(temp_ppm[k_k])) > max_ppm:
+                        to_remove.append(k_k)
+                        to_remove_glycan.append(df1[i_i]["Glycan"][j_j])
+                        to_remove_adduct.append(j)
+                        continue
             if len(to_remove) != 0:
                 to_remove.reverse()
                 to_remove_glycan.reverse()
@@ -1396,7 +1477,8 @@ def output_filtered_data(curve_fit_score,
                             df1[i_i]["Detected_Fragments"][j_j] = ""
                             for k in range(len(fragments_dataframes[i_i]["Glycan"])-1, -1, -1):
                                 if (fragments_dataframes[i_i]["Glycan"][k] == to_remove_glycan[k_k] 
-                                    and fragments_dataframes[i_i]["Adduct"][k] == to_remove_adduct[k_k]):
+                                    and fragments_dataframes[i_i]["Adduct"][k] == to_remove_adduct[k_k]
+                                    and not unrestricted_fragments):
                                     del fragments_dataframes[i_i]["Glycan"][k]
                                     del fragments_dataframes[i_i]["Adduct"][k]
                                     del fragments_dataframes[i_i]["Fragment"][k]
@@ -1443,7 +1525,8 @@ def output_filtered_data(curve_fit_score,
                     del df1[j_j]["Detected_Fragments"][i_i]
                     for k in range(len(fragments_dataframes[j_j]["Glycan"])-1, -1, -1):
                         if (fragments_dataframes[j_j]["Glycan"][k] == to_remove_glycan[i_index] 
-                            and fragments_dataframes[j_j]["Adduct"][k] == to_remove_adduct[i_index]):
+                            and fragments_dataframes[j_j]["Adduct"][k] == to_remove_adduct[i_index]
+                            and not unrestricted_fragments):
                             del fragments_dataframes[j_j]["Glycan"][k]
                             del fragments_dataframes[j_j]["Adduct"][k]
                             del fragments_dataframes[j_j]["Fragment"][k]
@@ -1463,7 +1546,9 @@ def output_filtered_data(curve_fit_score,
                     count = 0
                     for m in temp_rts:
                         for l in range(len(fragments_dataframes[j_j]["Glycan"])-1, -1, -1):
-                            if fragments_dataframes[j_j]["Glycan"][l] == df1[j_j]["Glycan"][k_k] and fragments_dataframes[j_j]["Adduct"][l] == df1[j_j]["Adduct"][k_k]:
+                            if (fragments_dataframes[j_j]["Glycan"][l] == df1[j_j]["Glycan"][k_k] 
+                                and fragments_dataframes[j_j]["Adduct"][l] == df1[j_j]["Adduct"][k_k]
+                                and not unrestricted_fragments):
                                 count += 1 
                                 if abs(fragments_dataframes[j_j]["RT"][l] - m) > 0.1:
                                     count -= 1
@@ -1476,6 +1561,37 @@ def output_filtered_data(curve_fit_score,
                                     del fragments_dataframes[j_j]["Precursor_mz"][l]
                     if count == 0:
                         df1[j_j]["Detected_Fragments"][k_k] = "No" #QCs cutoff end
+    glycans_count = []
+    last_glycan = ""
+    found = False
+    for i_i, i in enumerate(df1):
+        glycans_count.append(0)
+        for j_j, j in enumerate(i["Glycan"]):
+            if j_j == 0:
+                last_glycan = j
+            if j != last_glycan or j_j == len(i["Glycan"])-1:
+                if found:
+                    glycans_count[i_i]+= 1
+                found = False
+                last_glycan = j
+            splitted = i["RT"][j_j].split(", ")
+            for k in splitted:
+                if len(k) > 0:
+                    found = True
+                    break
+    df2["Glycans_Found"] = glycans_count
+    if analyze_ms2:
+        glycans_count = []
+        last_glycan = ""
+        for i_i, i in enumerate(fragments_dataframes):
+            glycans_count.append(0)
+            for j_j, j in enumerate(i["Glycan"]):
+                if j_j == 0:
+                    last_glycan = j
+                if j != last_glycan or j_j == len(i["Glycan"])-1:
+                    glycans_count[i_i]+= 1
+                    last_glycan = j
+    df2["Glycans_with_Fragments"] = glycans_count
     df2 = DataFrame(df2)
     with ExcelWriter(save_path+begin_time+'_Results_'+str(max_ppm)+'_'+str(iso_fit_score)+'_'+str(curve_fit_score)+'_'+str(sn)+'.xlsx') as writer:
         print("Creating results file...", end="", flush=True)
@@ -1491,9 +1607,14 @@ def output_filtered_data(curve_fit_score,
     print("Done!")
     if (reanalysis[1] and reanalysis[0]) or not reanalysis[0]:
         print("Creating data plotting files...", end= "", flush=True)
-        with open(save_path+'raw_data_2', 'rb') as f:
-            eic_dataframes = dill.load(f)
-            f.close()
+        if sneakpeek[0]:
+            with open(save_path+'results2_'+str(sneakpeek[1]), 'rb') as f:
+                eic_dataframes = dill.load(f)
+                f.close()
+        else:
+            with open(save_path+'raw_data_2', 'rb') as f:
+                eic_dataframes = dill.load(f)
+                f.close()
         with ExcelWriter(save_path+begin_time+'_processed_EIC_Plot_Data.xlsx') as writer:
             for i_i, i in enumerate(eic_dataframes):
                 eic_df = DataFrame(i)
@@ -1501,9 +1622,14 @@ def output_filtered_data(curve_fit_score,
             df2.to_excel(writer, sheet_name="Index references", index = False)
         del eic_dataframes
         del eic_df
-        with open(save_path+'raw_data_3', 'rb') as f:
-            smoothed_eic_dataframes = dill.load(f)
-            f.close()
+        if sneakpeek[0]:
+            with open(save_path+'results3_'+str(sneakpeek[1]), 'rb') as f:
+                smoothed_eic_dataframes = dill.load(f)
+                f.close()
+        else:
+            with open(save_path+'raw_data_3', 'rb') as f:
+                smoothed_eic_dataframes = dill.load(f)
+                f.close()
         with ExcelWriter(save_path+begin_time+'_smoothed_EIC_Plot_Data.xlsx') as writer:
             for i_i, i in enumerate(smoothed_eic_dataframes):
                 smoothed_eic_df = DataFrame(i)
@@ -1511,9 +1637,14 @@ def output_filtered_data(curve_fit_score,
             df2.to_excel(writer, sheet_name="Index references", index = False)
         del smoothed_eic_dataframes
         del smoothed_eic_df
-        with open(save_path+'raw_data_5', 'rb') as f:
-            raw_eic_dataframes = dill.load(f)
-            f.close()
+        if sneakpeek[0]:
+            with open(save_path+'results5_'+str(sneakpeek[1]), 'rb') as f:
+                raw_eic_dataframes = dill.load(f)
+                f.close()
+        else:
+            with open(save_path+'raw_data_5', 'rb') as f:
+                raw_eic_dataframes = dill.load(f)
+                f.close()
         with ExcelWriter(save_path+begin_time+'_raw_EIC_Plot_Data.xlsx') as writer:
             for i_i, i in enumerate(raw_eic_dataframes):
                 raw_eic_df = DataFrame(i)
@@ -1521,9 +1652,14 @@ def output_filtered_data(curve_fit_score,
             df2.to_excel(writer, sheet_name="Index references", index = False)
         del raw_eic_dataframes
         del raw_eic_df
-        with open(save_path+'raw_data_4', 'rb') as f:
-            curve_fitting_dataframes = dill.load(f)
-            f.close()
+        if sneakpeek[0]:
+            with open(save_path+'results4_'+str(sneakpeek[1]), 'rb') as f:
+                curve_fitting_dataframes = dill.load(f)
+                f.close()
+        else:
+            with open(save_path+'raw_data_4', 'rb') as f:
+                curve_fitting_dataframes = dill.load(f)
+                f.close()
         with ExcelWriter(save_path+begin_time+'_curve_fitting_Plot_Data.xlsx') as writer:
             for i_i, i in enumerate(curve_fitting_dataframes):
                 if len(curve_fitting_dataframes[i_i]) > 16384:
@@ -1591,7 +1727,7 @@ def arrange_raw_data(analyzed_data,
     begin_time = datetime.datetime.now()
     print('Arranging raw data...', end='', flush = True)
     df1 = []
-    df2 = {"Sample_Number" : [], "File_name" : [], "Noise Level" : []}
+    df2 = {"Sample_Number" : [], "File_Name" : [], "Noise_Level" : []}
     raw_eic_dataframes = []
     eic_dataframes = []
     smoothed_eic_dataframes = []
@@ -1610,8 +1746,8 @@ def arrange_raw_data(analyzed_data,
         smoothed_eic_dataframes[i_i]['RTs_'+str(i_i)] = temp_eic_rt
         curve_fitting_dataframes.append({})
         df2["Sample_Number"].append(i_i)
-        df2["File_name"].append(i)
-        df2["Noise Level"].append(float("%.1f" % round(analyzed_data[2][i_i],1)))
+        df2["File_Name"].append(i)
+        df2["Noise_Level"].append(float("%.1f" % round(analyzed_data[2][i_i],1)))
         if analyze_ms2:
             df1.append({"Glycan" : [], "Adduct" : [], "mz" : [], "RT" : [], "AUC" : [], "PPM" : [], "S/N" : [], "Iso_Fitting_Score" : [], "Curve_Fitting_Score" : [], "Detected_Fragments" : []})
             fragments_dataframes.append({"Glycan" : [], "Adduct" : [], "Fragment" : [], "Fragment_mz" : [], "Fragment_Intensity" : [], "RT" : [], "Precursor_mz" : []})
@@ -1804,20 +1940,38 @@ def arrange_raw_data(analyzed_data,
             with open(save_path+'raw_data_1', 'wb') as f:
                 if analyze_ms2:
                     dill.dump([df1, df2, fragments_dataframes], f)
+                    del df1
+                    del df1_import
+                    del df2
+                    del df2_import
+                    del fragments_dataframes
+                    del fragments_dataframes_import
                 else:
                     dill.dump([df1, df2], f)
+                    del df1
+                    del df1_import
+                    del df2
+                    del df2_import
                 f.close()
             with open(save_path+'raw_data_2', 'wb') as f:
                 dill.dump(eic_dataframes, f)
+                del eic_dataframes
+                del eic_dataframes_import
                 f.close()
             with open(save_path+'raw_data_3', 'wb') as f:
                 dill.dump(smoothed_eic_dataframes, f)
+                del smoothed_eic_dataframes
+                del smoothed_eic_dataframes_import
                 f.close()
             with open(save_path+'raw_data_4', 'wb') as f:
                 dill.dump(curve_fitting_dataframes, f)
+                del curve_fitting_dataframes
+                del curve_fitting_dataframes_import
                 f.close()
             with open(save_path+'raw_data_5', 'wb') as f:
                 dill.dump(raw_eic_dataframes, f)
+                del raw_eic_dataframes
+                del raw_eic_dataframes_import
                 f.close()
             for i in range(multithreaded_analysis[1]):
                 p3 = pathlib.Path(save_path+'results1_'+str(i))
@@ -1836,20 +1990,29 @@ def arrange_raw_data(analyzed_data,
         with open(save_path+'raw_data_1', 'wb') as f:
             if analyze_ms2:
                 dill.dump([df1, df2, fragments_dataframes], f)
+                del df1
+                del df2
+                del fragments_dataframes
             else:
                 dill.dump([df1, df2], f)
+                del df1
+                del df2
             f.close()
         with open(save_path+'raw_data_2', 'wb') as f:
             dill.dump(eic_dataframes, f)
+            del eic_dataframes
             f.close()
         with open(save_path+'raw_data_3', 'wb') as f:
             dill.dump(smoothed_eic_dataframes, f)
+            del smoothed_eic_dataframes
             f.close()
         with open(save_path+'raw_data_4', 'wb') as f:
             dill.dump(curve_fitting_dataframes, f)
+            del curve_fitting_dataframes
             f.close()
         with open(save_path+'raw_data_5', 'wb') as f:
             dill.dump(raw_eic_dataframes, f)
+            del raw_eic_dataframes
             f.close()
     print("Done!")
 
@@ -2081,7 +2244,10 @@ def analyze_ms2(ms2_index,
                 min_max_gc,
                 max_charges,
                 tag_mass,
-                filter_output):
+                permethylated,
+                reduced,
+                filter_output,
+                unrestricted_fragments):
     '''Analyzes the MS2 data in the sample files, outputting the found matches.
     
     Parameters
@@ -2141,6 +2307,9 @@ def analyze_ms2(ms2_index,
     filter_output : boolean
         Whether or not to force the output to fit glycans compositions.
         
+    unrestricted_fragments : boolean
+        Whether or not should take any fragment found
+        
     Uses
     ----
     Library_Tools.fragments_library : list
@@ -2172,7 +2341,9 @@ def analyze_ms2(ms2_index,
                                   min_max_gc,
                                   max_charges,
                                   tolerance,
-                                  tag_mass)
+                                  tag_mass,
+                                  permethylated,
+                                  reduced)
     fragments_data = {}
     print('Scanning MS2 spectra...')
     for i_i, i in enumerate(analyzed_data[0]): #goes through each glycan found in analysis
@@ -2181,31 +2352,85 @@ def analyze_ms2(ms2_index,
             fragments_data[i][j] = {}
             for k_k, k in enumerate(data): #goes through each file
                 fragments_data[i][j][k_k] = []
-                if len(analyzed_data[0][i]['Adducts_mz_data'][j][k_k][1]) == 0: #checks if found the adduct
+                if len(analyzed_data[0][i]['Adducts_mz_data'][j][k_k][1]) == 0 and not unrestricted_fragments: #checks if found the adduct
                     continue
                 for l in ms2_index[k_k]:
-                    if k[l]['retentionTime'] < analyzed_data[0][i]['Adducts_mz_data'][j][k_k][1][0]['peak_interval'][0] or k[l]['retentionTime'] > analyzed_data[0][i]['Adducts_mz_data'][j][k_k][1][-1]['peak_interval'][1]: #skips spectra outside peak interval of peaks found
-                        continue
+                    if unrestricted_fragments:
+                        if k[l]['retentionTime'] < rt_interval[0] or k[l]['retentionTime'] > rt_interval[1]:
+                            continue
+                    else:
+                        if k[l]['retentionTime'] < analyzed_data[0][i]['Adducts_mz_data'][j][k_k][1][0]['peak_interval'][0] or k[l]['retentionTime'] > analyzed_data[0][i]['Adducts_mz_data'][j][k_k][1][-1]['peak_interval'][1]: #skips spectra outside peak interval of peaks found
+                            continue
                     if abs((k[l]['precursorMz'][0]['precursorMz']) - analyzed_data[0][i]['Adducts_mz'][j]) <= (1.0074/General_Functions.form_to_charge(j))+tolerance: #checks if precursor matches adduct mz
+                        found_count = 0
+                        total = len(k[l]['m/z array'])
                         for m_m, m in enumerate(k[l]['m/z array']):
                             found = False
                             for n_n, n in enumerate(fragments):
-                                if filter_output and ("/" not in n['Formula'] 
-                                    and (n['Monos_Composition']['H'] > analyzed_data[0][i]['Monos_Composition']['H']
-                                    or n['Monos_Composition']['N'] > analyzed_data[0][i]['Monos_Composition']['N']
-                                    or n['Monos_Composition']['S'] > analyzed_data[0][i]['Monos_Composition']['S']
-                                    or n['Monos_Composition']['F'] > analyzed_data[0][i]['Monos_Composition']['F']
-                                    or n['Monos_Composition']['G'] > analyzed_data[0][i]['Monos_Composition']['G'])):
-                                    continue
                                 if found:
                                     break
+                                combo = False
+                                if filter_output:
+                                    if "/" in n['Formula']:
+                                        combo = True
+                                        fragments_comp = []
+                                        formula_splitted = n['Formula'].split("/")
+                                        for o in formula_splitted:
+                                            for p_p, p in enumerate(o):
+                                                if p == "-" or p == "+" or p == "_":
+                                                    fragments_comp.append(o[:p_p])
+                                                    break
+                                        for o_o, o in enumerate(fragments_comp):
+                                            fragments_comp[o_o] = General_Functions.form_to_comp(o)
+                                        viable = []
+                                        for o in fragments_comp:
+                                            if 'H' not in o.keys():
+                                                o['H'] = 0
+                                            if 'N' not in o.keys():
+                                                o['N'] = 0
+                                            if 'S' not in o.keys():
+                                                o['S'] = 0
+                                            if 'F' not in o.keys():
+                                                o['F'] = 0
+                                            if 'G' not in o.keys():
+                                                o['G'] = 0
+                                            if (o['H'] > analyzed_data[0][i]['Monos_Composition']['H']
+                                                or o['N'] > analyzed_data[0][i]['Monos_Composition']['N']
+                                                or o['S'] > analyzed_data[0][i]['Monos_Composition']['S']
+                                                or o['F'] > analyzed_data[0][i]['Monos_Composition']['F']
+                                                or o['G'] > analyzed_data[0][i]['Monos_Composition']['G']):
+                                                viable.append(False)
+                                                break
+                                            else:
+                                                viable.append(True)
+                                        if True not in viable:
+                                            continue
+                                        else:
+                                            count = 0
+                                            new_formula = ""
+                                            for o_o, o in enumerate(viable):
+                                                if count == 0:
+                                                    if o:
+                                                        new_formula = formula_splitted[o_o]
+                                                        count+= 1
+                                                else:
+                                                    if o:
+                                                        new_formula+= "/"+formula_splitted[o_o]
+                                                        count+= 1
+                                    elif "/" not in n['Formula'] and not combo:
+                                        if (n['Monos_Composition']['H'] > analyzed_data[0][i]['Monos_Composition']['H'] or n['Monos_Composition']['N'] > analyzed_data[0][i]['Monos_Composition']['N'] or n['Monos_Composition']['S'] > analyzed_data[0][i]['Monos_Composition']['S'] or n['Monos_Composition']['F'] > analyzed_data[0][i]['Monos_Composition']['F'] or n['Monos_Composition']['G'] > analyzed_data[0][i]['Monos_Composition']['G']):
+                                            continue
                                 for o in n['Adducts_mz']:
                                     if abs(n['Adducts_mz'][o]-m) <= tolerance: #fragments data outputted in the form of (Glycan, Adduct, Fragment, Fragment mz, intensity, retention time, precursor)
                                         if len(n['Formula']) > 3 and n['Formula'][-3] != "_":
                                             fragments_data[i][j][k_k].append((i, j, n['Formula']+'_'+o, n['Adducts_mz'][o], k[l]['intensity array'][m_m], k[l]['retentionTime'], k[l]['precursorMz'][0]['precursorMz']))
+                                        elif len(n['Formula']) > 3 and n['Formula'][-3] == "_" and combo:
+                                            fragments_data[i][j][k_k].append((i, j, new_formula, n['Adducts_mz'][o], k[l]['intensity array'][m_m], k[l]['retentionTime'], k[l]['precursorMz'][0]['precursorMz']))
                                         else:
                                             fragments_data[i][j][k_k].append((i, j, n['Formula'], n['Adducts_mz'][o], k[l]['intensity array'][m_m], k[l]['retentionTime'], k[l]['precursorMz'][0]['precursorMz']))
                                         found = True
                                         break
+                            if found:
+                                found_count += 1
     print('Sample MS2 analysis done in '+str(datetime.datetime.now() - begin_time)+'!')
     return analyzed_data[0], analyzed_data[1], analyzed_data[2], fragments_data

@@ -21,13 +21,16 @@ def main():
     max_adducts = {}
     max_charges = 0
     tag_mass = 0.0
+    permethylated = False
+    reduced = False
     fast_iso = True
     high_res = False
+    internal_standard = 0.0
     imp_exp_library = (False, False)
     only_gen_lib = False
 
     multithreaded_analysis = (False, 1)
-    analyze_ms2 = (False, False)
+    analyze_ms2 = (False, False, False)
     accuracy_unit = 'pw'
     accuracy_value = 0.0
     ret_time_interval = (0, 99999)
@@ -44,6 +47,7 @@ def main():
     reanalysis = (False, False)
 
     multithreaded_execution = (False, 0, 0) #editted by multithreaded 1
+    sneakpeek = (False, 0)
     verbose = False
 
     if not os.isatty(0) or multithreaded_execution[0]:
@@ -68,12 +72,15 @@ def main():
         max_adducts = General_Functions.form_to_comp(config['library_building']['max_adducts'])
         max_charges = int(config['library_building']['max_charges'])
         tag_mass = float(config['library_building']['tag_mass'])
+        permethylated = config['library_building'].getboolean('permethylated')
+        reduced = config['library_building'].getboolean('reduced')
         fast_iso = config['library_building'].getboolean('fast_iso')
         high_res = config['library_building'].getboolean('high_resolution_isotopic_dist')
+        internal_standard = float(config['library_building']['internal_standard_mass'])
         imp_exp_library = (config['library_building'].getboolean('imp_library'), config['library_building'].getboolean('exp_library'))
         only_gen_lib = config['library_building'].getboolean('only_gen_lib')
         multithreaded_analysis = (config['analysis_parameters'].getboolean('multithreaded_analysis'), int(config['analysis_parameters']['threads_number']))
-        analyze_ms2 = (config['analysis_parameters'].getboolean('analyze_ms2'), config['analysis_parameters'].getboolean('force_fragments_to_glycans'))
+        analyze_ms2 = (config['analysis_parameters'].getboolean('analyze_ms2'), config['analysis_parameters'].getboolean('force_fragments_to_glycans'), config['analysis_parameters'].getboolean('unrestricted_fragments'))
         accuracy_unit = config['analysis_parameters']['accuracy_unit']
         accuracy_value = float(config['analysis_parameters']['accuracy_value'])
         ret_time_interval = (float(config['analysis_parameters']['ret_time_begin']), float(config['analysis_parameters']['ret_time_end']))
@@ -106,6 +113,21 @@ def main():
     else:
         parameters = Execution_Functions.interactive_terminal()
         Execution_Functions.print_sep()
+        if parameters[0][0] == 69:
+            sneakpeek = (True, parameters[2])
+            config = configparser.ConfigParser()
+            configs = ""
+            with open(parameters[1]+'glycogenius_parameters.ini', 'r') as f:
+                for line in f:
+                    configs+=line
+            config.read_string(configs)
+            max_ppm = int(config['analysis_parameters']['max_ppm'])
+            iso_fit_score = float(config['analysis_parameters']['isotopic_fitting_score'])
+            curve_fit_score = float(config['analysis_parameters']['curve_fitting_score'])
+            s_to_n = int(config['analysis_parameters']['signal_to_noise'])
+            analyze_ms2 = (config['analysis_parameters'].getboolean('analyze_ms2'), config['analysis_parameters'].getboolean('force_fragments_to_glycans'), config['analysis_parameters'].getboolean('unrestricted_fragments'))
+            save_path = parameters[1]
+            reanalysis = (True, True)
         if parameters[0][0] == 1 or parameters[0][0] == 2:
             if parameters[0][1] == 1:
                 custom_glycans_list = (True, parameters[1])
@@ -114,6 +136,8 @@ def main():
                 tag_mass = parameters[4]
                 fast_iso = parameters[5]
                 high_res = parameters[6]
+                permethylated = parameters[8]
+                reduced = parameters[9]
             if parameters[0][1] == 2:
                 min_max_monos = (parameters[1][0], parameters[1][1])
                 min_max_hex = (parameters[1][2], parameters[1][3])
@@ -128,8 +152,13 @@ def main():
                 tag_mass = parameters[4]
                 fast_iso = parameters[5]
                 high_res = parameters[6]
+                permethylated = parameters[8]
+                reduced = parameters[9]
             if parameters[0][0] == 1:
                 save_path = parameters[7]
+                if save_path[-1] != "/":
+                    save_path+= "/"
+                Path(save_path).mkdir(exist_ok = True, parents = True)
                 only_gen_lib = True
             if parameters[0][0] == 2:
                 analyze_ms2 = parameters[7]
@@ -143,8 +172,12 @@ def main():
                 s_to_n = parameters[15]
                 samples_list = parameters[16]
                 save_path = parameters[17]
+                permethylated = parameters[18]
+                reduced = parameters[19]
+                Path(save_path).mkdir(exist_ok = True, parents = True)
         if parameters[0][0] == 3:
             save_path = parameters[1]
+            Path(save_path).mkdir(exist_ok = True, parents = True)
             max_ppm = parameters[2]
             iso_fit_score = parameters[3]
             curve_fit_score = parameters[4]
@@ -153,14 +186,8 @@ def main():
         if parameters[0][0] == 4:
             comments = parameters[1]
             save_path = parameters[2]
-            if save_path[-1] != "/":
-                save_path+= "/"
             Path(save_path).mkdir(exist_ok = True, parents = True)
             Execution_Functions.generate_cfg_file(save_path, comments)
-
-    if save_path[-1] != "/":
-        save_path+= "/"
-    Path(save_path).mkdir(exist_ok = True, parents = True)
 
 #-----------------------------------------------------------------------------
 
@@ -175,7 +202,9 @@ def main():
                                                  save_path,
                                                  multithreaded_analysis,
                                                  multithreaded_execution,
-                                                 analyze_ms2[0])
+                                                 analyze_ms2[0],
+                                                 analyze_ms2[2],
+                                                 sneakpeek)
 
     else:
         if multithreaded_execution[0]:
@@ -200,7 +229,10 @@ def main():
                                                           high_res,
                                                           imp_exp_library,
                                                           only_gen_lib,
-                                                          save_path)
+                                                          save_path,
+                                                          internal_standard,
+                                                          permethylated,
+                                                          reduced)
 #line to add multithreaded library
         if multithreaded_execution[0]:
             library = full_library
@@ -245,7 +277,10 @@ def main():
                                                             min_max_gc,
                                                             max_charges,
                                                             tag_mass,
-                                                            analyze_ms2[1])
+                                                            permethylated,
+                                                            reduced,
+                                                            analyze_ms2[1],
+                                                            analyze_ms2[2])
         Execution_Functions.print_sep()
         Execution_Functions.arrange_raw_data(analyzed_data,
                                              samples_names,
@@ -262,7 +297,9 @@ def main():
                                                  save_path,
                                                  multithreaded_analysis,
                                                  multithreaded_execution,
-                                                 analyze_ms2[0])
+                                                 analyze_ms2[0],
+                                                 analyze_ms2[2],
+                                                 sneakpeek)
                                                  
     if not os.isatty(0):
         print('Execution complete. Time elapsed: '+str(datetime.datetime.now() - begin_time))

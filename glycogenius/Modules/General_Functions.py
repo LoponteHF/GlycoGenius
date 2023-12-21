@@ -169,7 +169,7 @@ def form_to_charge(string):
             charge+=comp[i]
     return charge
 
-def glycan_to_atoms(glycan_composition):
+def glycan_to_atoms(glycan_composition, permethylated):
     '''Calculates the amounts of atoms based on glycan monosaccharides.
 
     Parameters
@@ -177,6 +177,9 @@ def glycan_to_atoms(glycan_composition):
     glycan_composition : dict
         Accepts as input the glycan monosaccharides formula in the format of {"H": 5,
         "N": 4, "S": 1, "F": 1, "G": 1}.
+        
+    permethylated : boolean
+        Whether the glycans are permethylated or not.
 
     Uses
     ----
@@ -192,6 +195,20 @@ def glycan_to_atoms(glycan_composition):
         "O": 6, "N": 0, "H": 12}.
     '''
     atoms = {"C": 0, "O": 0, "N": 0, "H": 0}
+    if permethylated:
+        for i in monosaccharides:
+            if i == 'H':
+                monosaccharides[i][2]['C'] += 3
+                monosaccharides[i][2]['H'] += 6
+            if i == 'N':
+                monosaccharides[i][2]['C'] += 3
+                monosaccharides[i][2]['H'] += 6
+            if i == 'F':
+                monosaccharides[i][2]['C'] += 2
+                monosaccharides[i][2]['H'] += 4
+            if i == 'S' or i == 'G':
+                monosaccharides[i][2]['C'] += 5
+                monosaccharides[i][2]['H'] += 10
     for i in glycan_composition:
         if i == "T":
             continue

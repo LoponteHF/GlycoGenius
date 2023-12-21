@@ -119,7 +119,10 @@ def full_glycans_library(library,
                          max_charges,
                          tag_mass = 0,
                          fast = True,
-                         high_res = False):
+                         high_res = False,
+                         internal_standard = 0.0,
+                         permethylated = False,
+                         reduced = False):
     '''Uses the generated glycans library and increments it with calculations of its
     mass, neutral mass with tag mass, its isotopic distribution pattern (intensoids) and
     the mz of the chosen adducts combinations.
@@ -153,6 +156,12 @@ def full_glycans_library(library,
         Decides whether to clump (if set to False) or not (if set to True) the neighbouring
         isotopic envelope peaks. Only works if fast is set to False.
         Default = False
+        
+    permethylated : boolean
+        Whether or not the sample was permethylated.
+        
+    reduced : boolean
+        Whether or not the sample was reduced.
 
     Uses
     ----
@@ -203,7 +212,14 @@ def full_glycans_library(library,
     adducts_combo = General_Functions.gen_adducts_combo(max_adducts, max_charges)
     for i in library:
         i_formula = General_Functions.comp_to_formula(i)
-        i_atoms = General_Functions.sum_atoms(General_Functions.glycan_to_atoms(i), General_Functions.form_to_comp('H2O'))
+        i_atoms = General_Functions.sum_atoms(General_Functions.glycan_to_atoms(i, permethylated), General_Functions.form_to_comp('H2O'))
+        if tag[1] == 0.0:
+            if permethylated:
+                i_atoms = General_Functions.sum_atoms(i_atoms, {'C': 2, 'H': 4})
+                if reduced:
+                    i_atoms = General_Functions.sum_atoms(i_atoms, {'O': 1})
+            if not permethylated and reduced:
+                i_atoms = General_Functions.sum_atoms(i_atoms, {'H': 2})
         i_atoms_tag = General_Functions.sum_atoms(i_atoms, tag[0])
         i_neutral_mass = mass.calculate_mass(composition=i_atoms)
         i_neutral_tag = i_neutral_mass+tag[1]
@@ -222,7 +238,28 @@ def full_glycans_library(library,
                                      charge = charges,
                                      charge_carrier = j,
                                      carrier_charge = charges)
-            full_library[i_formula]['Adducts_mz'][General_Functions.comp_to_formula(j)] = mz        
+            full_library[i_formula]['Adducts_mz'][General_Functions.comp_to_formula(j)] = mz
+    if internal_standard != 0.0:
+        is_comp = General_Functions.calculate_comp_from_mass(internal_standard)[0]
+        i_formula = 'Internal Standard'
+        i_atoms = is_comp
+        i_neutral_mass = internal_standard
+        i_iso_dist = General_Functions.calculate_isotopic_pattern(i_atoms, fast, high_res)
+        full_library[i_formula] = {}
+        full_library[i_formula]['Monos_Composition'] = {"C": 0, "O": 0, "N": 0, "H": 0}
+        full_library[i_formula]['Atoms_Glycan+Tag'] = is_comp
+        full_library[i_formula]['Neutral_Mass'] = i_neutral_mass
+        full_library[i_formula]['Neutral_Mass+Tag'] = i_neutral_mass
+        full_library[i_formula]['Isotopic_Distribution'] = i_iso_dist[0]
+        full_library[i_formula]['Isotopic_Distribution_Masses'] = i_iso_dist[1]
+        full_library[i_formula]['Adducts_mz'] = {}
+        for j in adducts_combo:
+            charges = sum(j.values())
+            mz = mass.calculate_mass(i_atoms,
+                                     charge = charges,
+                                     charge_carrier = j,
+                                     carrier_charge = charges)
+            full_library[i_formula]['Adducts_mz'][General_Functions.comp_to_formula(j)] = mz
     return full_library
 
 def fragments_library(min_max_mono,
@@ -234,7 +271,9 @@ def fragments_library(min_max_mono,
                       min_max_gc,
                       max_charges,
                       tolerance,
-                      tag_mass):
+                      tag_mass,
+                      permethylated,
+                      reduced):
     '''Generates a list of combinatorial analysis of monosaccharides from the minimum
     amount of monosaccharides to the maximum amount of monosaccharides set, then uses 
     the generated library and increments it with calculations with a series of information,
@@ -280,6 +319,12 @@ def fragments_library(min_max_mono,
     tag_mass : float
         The tag's added mass to the glycans, if the glycans are tagged.
         Default = 0 (No Tag).
+        
+    permethylated : boolean
+        Whether the glycan is permethylated or not.
+        
+    reduced : boolean
+        Whether the glycan is reduced or not.
 
     Uses
     ----
@@ -335,16 +380,15 @@ def fragments_library(min_max_mono,
             or (i['S']+i['G'] > min_max_sialics[1])
             or (i['F'] > min_max_fuc[1])
             or (i['S'] > min_max_ac[1])
-            or (i['G'] > min_max_gc[1])
-            or (i['T'] >= 1 and sum(i.values()) < 8)):
+            or (i['G'] > min_max_gc[1])):
             to_be_removed.append(i_i)
     for i in sorted(to_be_removed, reverse = True):
         del glycans[i]
     if tag_mass != 0:
         tag = General_Functions.calculate_comp_from_mass(tag_mass)
     else:
-        tag = {"C": 0, "O": 0, "N": 0, "H": 0}
-    adducts_combo = General_Functions.gen_adducts_combo({'H' : 2}, max_charges)
+        tag = ({"C": 0, "O": 0, "N": 0, "H": 0}, 0.0)
+    adducts_combo = General_Functions.gen_adducts_combo({'H' : 3}, max_charges)
     frag_library = []
     combo_frags_lib = []
     adducts_mz = [[], [], []]
@@ -357,14 +401,28 @@ def fragments_library(min_max_mono,
                 i_formula = General_Functions.comp_to_formula(i)+'+'+str(j)+'H2O'
             else:
                 i_formula = General_Functions.comp_to_formula(i)
-            glycan_atoms = General_Functions.glycan_to_atoms(i)
+            glycan_atoms = General_Functions.glycan_to_atoms(i, permethylated)
             glycan_atoms['H'] += j*2
             glycan_atoms['O'] += j*1
             i_atoms = glycan_atoms
+            if tag[1] == 0.0: #have to fix this part for permethylatted glycans
+                if permethylated:
+                    i_atoms = General_Functions.sum_atoms(i_atoms, {'C': 2, 'H': 4})
+                    if reduced:
+                        i_atoms = General_Functions.sum_atoms(i_atoms, {'O': 1})
+                if not permethylated and reduced:
+                    i_atoms = General_Functions.sum_atoms(i_atoms, {'H': 2})
             i_neutral_mass = mass.calculate_mass(composition=i_atoms)
             if i['T'] == 1:
                 i_atoms_tag = General_Functions.sum_atoms(i_atoms, tag[0])
                 i_neutral_tag = i_neutral_mass+tag[1]
+                if tag[1] == 0.0:
+                    if permethylated:
+                        i_atoms = General_Functions.sum_atoms(i_atoms, {'C': 1, 'H': 2})
+                        if reduced:
+                            i_atoms = General_Functions.sum_atoms(i_atoms, {'O': 1})
+                    if not permethylated and reduced:
+                        i_atoms = General_Functions.sum_atoms(i_atoms, {'H': 2})
             else:
                 i_atoms_tag = i_atoms
                 i_neutral_tag = i_neutral_mass
@@ -373,6 +431,9 @@ def fragments_library(min_max_mono,
             frag_library[index]['Formula'] = i_formula
             frag_library[index]['Monos_Composition'] = i
             frag_library[index]['Adducts_mz'] = {}
+            if tag[1] == 0.0: #this skips and marks for removal the reducing end without water
+                if j < 0:
+                    continue
             for j in adducts_combo:
                 charges = sum(j.values())
                 mz = mass.calculate_mass(i_atoms_tag,
@@ -381,9 +442,9 @@ def fragments_library(min_max_mono,
                                          carrier_charge = charges)
                 found = False
                 for k_k, k in enumerate(adducts_mz[0]):
-                    if abs(mz - k) <= tolerance*2:
+                    if abs(mz - k) <= tolerance:
                         combo_frags_lib.append({})
-                        combo_frags_lib[-1]['Formula'] = frag_library[adducts_mz[2][k_k]]['Formula']+'_'+adducts_mz[1][k_k]+'/'+frag_library[index]['Formula']+'_'+General_Functions.comp_to_formula(j)
+                        combo_frags_lib[-1]['Formula'] = str(frag_library[adducts_mz[2][k_k]]['Formula']+'_'+adducts_mz[1][k_k]+'/'+frag_library[index]['Formula']+'_'+General_Functions.comp_to_formula(j))
                         combo_frags_lib[-1]['Adducts_mz'] = {}
                         combo_frags_lib[-1]['Adducts_mz'][General_Functions.comp_to_formula(j)] = mz
                         combo_frags_lib[-1]['Adducts_mz'][adducts_mz[1][k_k]] = mz
@@ -401,7 +462,12 @@ def fragments_library(min_max_mono,
                     adducts_mz[1].append(General_Functions.comp_to_formula(j))
                     adducts_mz[2].append(index)
                     frag_library[index]['Adducts_mz'][General_Functions.comp_to_formula(j)] = mz
-                    
+    to_remove = []
+    for i_i, i in enumerate(frag_library):
+        if len(i) == 0 or len(i['Adducts_mz']) == 0:
+            to_remove.append(i_i)
+    for i_i in sorted(to_remove, reverse = True):
+        del frag_library[i_i]
     frag_library = frag_library+combo_frags_lib
     print("Done!")
     return frag_library

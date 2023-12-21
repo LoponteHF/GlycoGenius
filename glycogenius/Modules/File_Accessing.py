@@ -382,11 +382,10 @@ def eic_smoothing(rt_int):
     filtered_ints : list
         A list containing the processed intensities.
     '''
-    points = int(0.333/(rt_int[0][-1]-rt_int[0][-2]))
-    polynomial_degree = 3
+    points = 21
+    polynomial_degree = 6
     while polynomial_degree >= points:
-        points = points*polynomial_degree
-        polynomial_degree+= 1
+        points+=1
     filtered_ints = list(savgol_filter(rt_int[1], points, polynomial_degree))
     for i_i, i in enumerate(filtered_ints):
         if i < 0:
