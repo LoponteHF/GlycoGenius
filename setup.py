@@ -1,15 +1,19 @@
 from setuptools import setup, find_packages
 
+long_description_from_file = ""
 with open("README.md", "r", encoding="utf-8") as f:
-    long_description = f.read()
+    for lines in f:
+        if lines[0] != "!":
+            long_description_from_file+= lines
+    f.close()
 
 setup(
     name='glycogenius',
-    version='0.2.2',
+    version='0.2.3',
     author='Hector Franco Loponte',
     author_email='hectorfloponte@gmail.com',
     description='GlycoGenius is an all-in-one solution for data analysis of glycomics data.',
-    long_description=long_description,
+    long_description=long_description_from_file,
     long_description_content_type="text/markdown",
     packages=find_packages(),
     classifiers=[
