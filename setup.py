@@ -1,11 +1,17 @@
 from setuptools import setup, find_packages
 
+with open("README.md", "r", encoding="utf-8") as f:
+    long_description = f.read()
+
 setup(
     name='glycogenius',
-    version='0.2.1',
+    version='0.2.2',
     author='Hector Franco Loponte',
     author_email='hectorfloponte@gmail.com',
     description='GlycoGenius is an all-in-one solution for data analysis of glycomics data.',
+    long_description=long_description,
+    long_description_content_type="text/markdown",
+    url="currently unavailable",
     packages=find_packages(),
     classifiers=[
         'Programming Language :: Python :: 3',
