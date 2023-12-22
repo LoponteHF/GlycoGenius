@@ -1,3 +1,21 @@
+# GlycoGenius: Glycomics Data Analysis Tool
+# Copyright (C) 2023 by Hector Franco Loponte
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or 
+# any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program. It is accessible within the program files
+# or by typing 'license' after running it stand-alone in the terminal
+# by typing 'glycogenius'. If not, see <https://www.gnu.org/licenses/>.
+
 import pathlib
 import importlib
 import_path = str(pathlib.Path(__file__).parent.resolve())
@@ -273,7 +291,8 @@ def fragments_library(min_max_mono,
                       tolerance,
                       tag_mass,
                       permethylated,
-                      reduced):
+                      reduced,
+                      nglycan):
     '''Generates a list of combinatorial analysis of monosaccharides from the minimum
     amount of monosaccharides to the maximum amount of monosaccharides set, then uses 
     the generated library and increments it with calculations with a series of information,
@@ -375,6 +394,9 @@ def fragments_library(min_max_mono,
     to_be_removed = []
     for i_i, i in enumerate(glycans):
         if ((i['T'] > 1) 
+            or (i['T'] == 1 and i['N'] < 1) 
+            or (i['T'] == 1 and sum(i.values()) < 8 and i['S']+i['G'] > 0 and nglycan) 
+            or (sum(i.values()) < 6 and nglycan and i['S'] >= 1 and i['N'] > 1)
             or (i['H'] > min_max_hex[1])
             or (i['N'] > min_max_hexnac[1])
             or (i['S']+i['G'] > min_max_sialics[1])
@@ -388,7 +410,7 @@ def fragments_library(min_max_mono,
         tag = General_Functions.calculate_comp_from_mass(tag_mass)
     else:
         tag = ({"C": 0, "O": 0, "N": 0, "H": 0}, 0.0)
-    adducts_combo = General_Functions.gen_adducts_combo({'H' : 3}, max_charges)
+    adducts_combo = General_Functions.gen_adducts_combo({'H' : 2}, max_charges)
     frag_library = []
     combo_frags_lib = []
     adducts_mz = [[], [], []]

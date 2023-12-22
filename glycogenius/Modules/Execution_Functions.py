@@ -1,3 +1,21 @@
+# GlycoGenius: Glycomics Data Analysis Tool
+# Copyright (C) 2023 by Hector Franco Loponte
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or 
+# any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program. It is accessible within the program files
+# or by typing 'license' after running it stand-alone in the terminal
+# by typing 'glycogenius'. If not, see <https://www.gnu.org/licenses/>.
+
 import pathlib
 import importlib
 import_path = str(pathlib.Path(__file__).parent.resolve())
@@ -170,7 +188,7 @@ def interactive_terminal():
     input_order = [None]
     while input_order[0] == None:
         print_header()
-        print("1 - Build and output glycans library.\n2 - Analyze sample files in single-threaded mode\n3 - Reanalyze raw results files with new\n    parameters\n4 - Create template parameters file for command-\n    line execution\n")
+        print("1 - Build and output glycans library.\n2 - Analyze sample files in single-threaded mode\n3 - Reanalyze raw results files with new\n    parameters\n4 - Create template parameters file for command-\n    line execution\n5 - Exit")
         var = input("Select your option: ")
         if var == 'warranty':
             print("\nDisclaimer of Warranty.\n")
@@ -186,6 +204,13 @@ def interactive_terminal():
             print("PROGRAM IS WITH YOU. SHOULD THE PROGRAM PROVE")
             print("DEFECTIVE, YOU ASSUME THE COST OF ALL NECESSARY")
             print("SERVICING, REPAIR OR CORRECTION.\n")
+            continue
+        if var == 'version':
+            version_path = str(pathlib.Path(__file__).parent.parent.parent.resolve())
+            with open(version_path+"/Setup.py", "r") as f:
+                for lines in f:
+                    if lines[:12] == "    version=":
+                        print("\nGlycoGenius version: "+lines[13:-2].strip("'"))
             continue
         if var == 'license':
             license_path = str(pathlib.Path(__file__).parent.parent.parent.resolve())
@@ -229,6 +254,8 @@ def interactive_terminal():
         except:
             print("Wrong Input")
             continue
+        if var == 5:
+            os._exit(1)
         if var < 1 or var > 4:
             print("Wrong Input")
             continue
@@ -1142,13 +1169,13 @@ def imp_exp_gen_library(multithreaded_analysis,
             for i_i, i in enumerate(f):
                 for j in range(multithreaded_analysis[1]):
                     with open(save_path+'glycogenius_'+str(j)+'.py', 'a') as g:
-                        if i_i == 0:
+                        if i_i == 18:
                             g.write("import importlib\n")
                             g.write("spec1 = importlib.util.spec_from_file_location('Execution_Functions', '"+mt_path+"/Execution_Functions.py')\n")
                             g.write("Execution_Functions = importlib.util.module_from_spec(spec1)\n")
                             g.write("spec1.loader.exec_module(Execution_Functions)\n")
                             continue
-                        if i_i == 1:
+                        if i_i == 19:
                             g.write("spec2 = importlib.util.spec_from_file_location('General_Functions', '"+mt_path+"/General_Functions.py')\n")
                             g.write("General_Functions = importlib.util.module_from_spec(spec2)\n")
                             g.write("spec2.loader.exec_module(General_Functions)\n")
@@ -1547,10 +1574,9 @@ def output_filtered_data(curve_fit_score,
                     for m in temp_rts:
                         for l in range(len(fragments_dataframes[j_j]["Glycan"])-1, -1, -1):
                             if (fragments_dataframes[j_j]["Glycan"][l] == df1[j_j]["Glycan"][k_k] 
-                                and fragments_dataframes[j_j]["Adduct"][l] == df1[j_j]["Adduct"][k_k]
-                                and not unrestricted_fragments):
+                                and fragments_dataframes[j_j]["Adduct"][l] == df1[j_j]["Adduct"][k_k]):
                                 count += 1 
-                                if abs(fragments_dataframes[j_j]["RT"][l] - m) > 0.1:
+                                if abs(fragments_dataframes[j_j]["RT"][l] - m) > 0.1 and not unrestricted_fragments:
                                     count -= 1
                                     del fragments_dataframes[j_j]["Glycan"][l]
                                     del fragments_dataframes[j_j]["Adduct"][l]
@@ -2244,6 +2270,7 @@ def analyze_ms2(ms2_index,
                 min_max_gc,
                 max_charges,
                 tag_mass,
+                nglycan,
                 permethylated,
                 reduced,
                 filter_output,
@@ -2343,7 +2370,8 @@ def analyze_ms2(ms2_index,
                                   tolerance,
                                   tag_mass,
                                   permethylated,
-                                  reduced)
+                                  reduced,
+                                  nglycan)
     fragments_data = {}
     print('Scanning MS2 spectra...')
     for i_i, i in enumerate(analyzed_data[0]): #goes through each glycan found in analysis
