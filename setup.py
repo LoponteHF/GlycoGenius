@@ -11,7 +11,6 @@ setup(
     description='GlycoGenius is an all-in-one solution for data analysis of glycomics data.',
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="currently unavailable",
     packages=find_packages(),
     classifiers=[
         'Programming Language :: Python :: 3',
