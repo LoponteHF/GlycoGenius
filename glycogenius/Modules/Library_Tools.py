@@ -242,12 +242,34 @@ def full_glycans_library(library,
         i_neutral_mass = mass.calculate_mass(composition=i_atoms)
         i_neutral_tag = i_neutral_mass+tag[1]
         i_iso_dist = General_Functions.calculate_isotopic_pattern(i_atoms_tag, fast, high_res)
+        iso_corrected = i_iso_dist[0]
+        if fast:
+            iso_corrected = []
+            for j_j, j in enumerate(i_iso_dist[0]):
+                if j_j == 1:
+                    iso_corrected.append(abs(j*1.03))
+                    continue
+                if j_j == 2:
+                    iso_corrected.append(abs(j*(1.5-(0.00055*sum(i_atoms_tag.values())))))
+                    continue
+                if j_j == 3:
+                    iso_corrected.append(abs(j*(2.43-(0.00172*sum(i_atoms_tag.values())))))
+                    continue
+                if j_j == 4:
+                    iso_corrected.append(abs(j*(5.5-(0.0062*sum(i_atoms_tag.values())))))
+                    continue
+                if j_j == 5:
+                    iso_corrected.append(abs(j*(3.16-(0.00585*sum(i_atoms_tag.values())))))
+                    continue
+                else:
+                    iso_corrected.append(j)
+                    continue
         full_library[i_formula] = {}
         full_library[i_formula]['Monos_Composition'] = i
         full_library[i_formula]['Atoms_Glycan+Tag'] = i_atoms_tag
         full_library[i_formula]['Neutral_Mass'] = i_neutral_mass
         full_library[i_formula]['Neutral_Mass+Tag'] = i_neutral_tag
-        full_library[i_formula]['Isotopic_Distribution'] = i_iso_dist[0]
+        full_library[i_formula]['Isotopic_Distribution'] = iso_corrected
         full_library[i_formula]['Isotopic_Distribution_Masses'] = i_iso_dist[1]
         full_library[i_formula]['Adducts_mz'] = {}
         for j in adducts_combo:
@@ -263,12 +285,29 @@ def full_glycans_library(library,
         i_atoms = is_comp
         i_neutral_mass = internal_standard
         i_iso_dist = General_Functions.calculate_isotopic_pattern(i_atoms, fast, high_res)
+        if fast:
+            iso_corrected = []
+            for j_j, j in enumerate(i_iso_dist[0]):
+                if j_j == 1:
+                    iso_corrected.append(abs(j*1.03))
+                if j_j == 2:
+                    iso_corrected.append(abs(j*(1.5-(0.00055*sum(i_atoms.values())))))
+                if j_j == 3:
+                    iso_corrected.append(abs(j*(2.43-(0.00172*sum(i_atoms.values())))))
+                if j_j == 4:
+                    iso_corrected.append(abs(j*(5.5-(0.0062*sum(i_atoms.values())))))
+                if j_j == 5:
+                    iso_corrected.append(abs(j*(3.16-(0.00585*sum(i_atoms.values())))))
+                else:
+                    iso_corrected.append(j)
+        else:
+            iso_corrected = i_iso_dist[0]
         full_library[i_formula] = {}
         full_library[i_formula]['Monos_Composition'] = {"C": 0, "O": 0, "N": 0, "H": 0}
         full_library[i_formula]['Atoms_Glycan+Tag'] = is_comp
         full_library[i_formula]['Neutral_Mass'] = i_neutral_mass
         full_library[i_formula]['Neutral_Mass+Tag'] = i_neutral_mass
-        full_library[i_formula]['Isotopic_Distribution'] = i_iso_dist[0]
+        full_library[i_formula]['Isotopic_Distribution'] = iso_corrected
         full_library[i_formula]['Isotopic_Distribution_Masses'] = i_iso_dist[1]
         full_library[i_formula]['Adducts_mz'] = {}
         for j in adducts_combo:

@@ -32,7 +32,7 @@ reduced = no
 fast_iso = yes
 ; Allows you to calculate the isotopic distribution of glycans based only on carbon isotopes (fast, innacurate) or on all the atoms isotopes (VERY SLOW, very accurate). If not used, library building may take many hours.
 high_resolution_isotopic_dist = no
-; If not used, doesn't clump isotope peaks together, meaning that you'll have more than one isotopic peak in a 1 Da interval. Only use this if you have fast_iso on. Useful for when analyzing very high resolution data, such as data acquired on a FT-ICR mass spectrometer.
+; If not used, doesn't clump isotope peaks together, meaning that you'll have more than one isotopic peak in a 1 Da interval. Only use this if you have fast_iso on. Useful for when analyzing very high resolution data, such as data acquired on a FT mass spectrometers.
 internal_standard_mass = 0.0
 ; If using an internal standard, insert its mass here for the script to calculate its area.
 imp_library = no
@@ -76,9 +76,9 @@ signal_to_noise = 3
 custom_noise_level = no
 noise_levels = 0, 0
 ; Sets a custom level of noise for each sample, ignoring the automatic noise calculation. Noise for each sample is comma separated in "noise_levels". Warning: NOT RECOMMENDED unless you're really sure about what you're doing.
-samples_list = D:\fileA.mzML, D:\fileB.mzXML
+samples_path =
 ; A comma separated list of full path to files to be analyzed together.
-working_path = C:\GlycoGenius\
+working_path =
 ; Directory to load and save files from script.
 reanalysis = no
 output_plot_data = no

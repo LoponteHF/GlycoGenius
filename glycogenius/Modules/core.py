@@ -60,7 +60,7 @@ def main():
     curve_fit_score = 1.0
     s_to_n = 0
     custom_noise = (False, [])
-    samples_list = []
+    samples_path = ''
     save_path = ''
     reanalysis = (False, False)
 
@@ -68,7 +68,7 @@ def main():
     sneakpeek = (False, 0)
     verbose = False
 
-    if not os.isatty(0) or multithreaded_execution[0]:
+    if not os.isatty(0) or multithreaded_execution[0]: #If multithreaded execution or pipelined parameters file
         Execution_Functions.print_header(False)
         config = configparser.ConfigParser()
         configs = ""
@@ -113,13 +113,13 @@ def main():
         for i_i, i in enumerate(noise_levels):
             noise_levels[i_i] = int(i.strip())
         custom_noise = (config['analysis_parameters'].getboolean('custom_noise_level'), noise_levels)
-        samples_list = config['analysis_parameters']['samples_list'].split(",")
-        for i_i, i in enumerate(samples_list):
-            samples_list[i_i] = i.strip()
-        for i_i, i in enumerate(samples_list):
-            samples_list[i_i] = i.strip("'")
-        for i_i, i in enumerate(samples_list):
-            samples_list[i_i] = i.strip("\"")
+        samples_path = config['analysis_parameters']['samples_path']
+        samples_path = samples_path.strip()
+        samples_path = samples_path.strip("'")
+        samples_path = samples_path.strip("\"")
+        for i_i, i in enumerate(samples_path):
+            if i == "\\":
+                samples_path = samples_path[:i_i]+"/"+samples_path[i_i+1:]
         save_path = config['analysis_parameters']['working_path']
         save_path = save_path.strip()
         save_path = save_path.strip("'")
@@ -128,10 +128,10 @@ def main():
             if i == "\\":
                 save_path = save_path[:i_i]+"/"+save_path[i_i+1:]
         reanalysis = (config['analysis_parameters'].getboolean('reanalysis'), config['analysis_parameters'].getboolean('output_plot_data'))
-    else:
+    else: #If no parameters file pipelines, run CLI
         parameters = Execution_Functions.interactive_terminal()
         Execution_Functions.print_sep()
-        if parameters[0][0] == 69:
+        if parameters[0][0] == 69: #sneakpeek feature
             sneakpeek = (True, parameters[2])
             config = configparser.ConfigParser()
             configs = ""
@@ -176,7 +176,6 @@ def main():
                 save_path = parameters[7]
                 if save_path[-1] != "/":
                     save_path+= "/"
-                Path(save_path).mkdir(exist_ok = True, parents = True)
                 only_gen_lib = True
             if parameters[0][0] == 2:
                 analyze_ms2 = parameters[7]
@@ -188,14 +187,12 @@ def main():
                 iso_fit_score = parameters[13]
                 curve_fit_score = parameters[14]
                 s_to_n = parameters[15]
-                samples_list = parameters[16]
+                samples_path = parameters[16]
                 save_path = parameters[17]
                 permethylated = parameters[18]
                 reduced = parameters[19]
-                Path(save_path).mkdir(exist_ok = True, parents = True)
         if parameters[0][0] == 3:
             save_path = parameters[1]
-            Path(save_path).mkdir(exist_ok = True, parents = True)
             max_ppm = parameters[2]
             iso_fit_score = parameters[3]
             curve_fit_score = parameters[4]
@@ -206,6 +203,9 @@ def main():
             save_path = parameters[2]
             Path(save_path).mkdir(exist_ok = True, parents = True)
             Execution_Functions.generate_cfg_file(save_path, comments)
+
+    Path(save_path).mkdir(exist_ok = True, parents = True)
+    samples_list = Execution_Functions.samples_path_to_list(samples_path)
 
 #-----------------------------------------------------------------------------
 
@@ -278,6 +278,7 @@ def main():
                                                           max_charges,
                                                           custom_noise,
                                                           close_peaks,
+                                                          fast_iso,
                                                           verbose)
         if analyze_ms2[0]:
             Execution_Functions.print_sep()

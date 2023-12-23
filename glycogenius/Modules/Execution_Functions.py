@@ -37,7 +37,7 @@ File_Accessing = importlib.util.module_from_spec(spec3)
 spec3.loader.exec_module(File_Accessing)
 
 from pyteomics import mzxml, mzml, mass, auxiliary
-from itertools import combinations_with_replacement, islice
+from itertools import combinations_with_replacement, islice, product
 from pandas import DataFrame, ExcelWriter
 from numpy import percentile
 from re import split
@@ -93,9 +93,12 @@ def generate_cfg_file(path, comments):
         if i == "\\":
             glycogenius_path = glycogenius_path[:i_i]+"/"+glycogenius_path[i_i+1:]
     with open(path+'glycogenius_parameters.ini', 'w') as g:
-        with open(glycogenius_path+'/Parameters_Template.ini', 'r') as f:
+        with open(glycogenius_path+'/Parameters_Template.py', 'r') as f:
             for line in f:
-                if line == "working_path = C:/GlycoGenius/":
+                if line == "samples_path =":
+                    g.write("samples_path = "+path+"Samples Files/\n")
+                    continue
+                if line == "working_path =":
                     g.write("working_path = "+path+"\n")
                     continue
                 if not comments and line[0] == ';':
@@ -186,6 +189,7 @@ def interactive_terminal():
     date = datetime.datetime.now()
     begin_time = str(date)[2:4]+str(date)[5:7]+str(date)[8:10]+"_"+str(date)[11:13]+str(date)[14:16]+str(date)[17:19]
     input_order = [None]
+    default_path = "C:/GlycoGenius/"
     while input_order[0] == None:
         print_header()
         print("1 - Build and output glycans library.\n2 - Analyze sample files in single-threaded mode\n3 - Reanalyze raw results files with new\n    parameters\n4 - Create template parameters file for command-\n    line execution\n5 - Exit")
@@ -222,9 +226,9 @@ def interactive_terminal():
                     print(line, end = "")
             continue
         if var == 'sneakpeek':
-            path = 'C:\\Glycogenius\\'
+            path = default_path
             while True:
-                var = input("Insert the working directory (where the\n'resultsn_' files are, default: C:/Glycogenius/): ")
+                var = input("Insert the working directory (where the\n'resultsn_' files are, default: "+default_path+"): ")
                 if var == "":
                     var = path
                 print(var)
@@ -523,9 +527,9 @@ def interactive_terminal():
                     print('Wrong input')
                     continue
         if input_order[0] == 1: #Outputs of input_order == 1
-            path = 'C:\\GlycoGenius\\'
+            path = default_path
             while True:
-                var = input("Insert the path to save the files produced by\nthe script (leave blank for default:\nC:\\GlycoGenius\\): ")
+                var = input("Insert the path to save the files produced by\nthe script (leave blank for default:\n"+default_path+"): ")
                 if var == '':
                     var = path
                 print(var)
@@ -664,20 +668,11 @@ def interactive_terminal():
                     continue
                 sn = var
                 break
-            files = []
+            files = default_path+"Sample Files/"
             while True:
-                var = input("Insert the path to the file to be analyzed\n(ie. C:\\GlycoGenius\\file.mzxml). Leave blank\nto finalize: ")
+                var = input("Insert the path to the folder containing the\nsample files to be analyzed ( leave blank for\ndefault: "+default_path+"Sample Files/"+"): ")
                 if var == '':
-                    print(files)
-                    var2 = input("Proceed with these files? (y/n): ")
-                    if var2 == 'y':
-                        break
-                    if var2 == 'n':
-                        print("Emptied files list.")
-                        files = []
-                        continue
-                if var[0] == "'" or var[0] == "\"":
-                    var = var[1:-1]
+                    var = files
                 print(var)
                 var2 = input("Is this path correct? (y/n): ")
                 if var2 == 'n':
@@ -688,11 +683,11 @@ def interactive_terminal():
                             var = var[:i_i]+"/"+var[i_i+1:]
                     if var[-1] != "/":
                         var = var+"/"
-                    files.append(var)
-                    continue
-            path = 'C:\\GlycoGenius\\'
+                    path = var
+                    break
+            path = default_path
             while True:
-                var = input("Insert the path to save the files produced by\nthe script (leave blank for default:\nC:\\GlycoGenius\\): ")
+                var = input("Insert the path to save the files produced by\nthe script (leave blank for default:\n"+default_path+"): ")
                 if var == '':
                     var = path
                 print(var)
@@ -712,9 +707,9 @@ def interactive_terminal():
             if input_order[1] == 2:
                 return input_order, lib_settings, adducts, max_charges, tag_mass, fast_iso, high_res, ms2, accuracy_unit, accuracy_value, rt_int, min_isotop, max_ppm, iso_fit, curve_fit, sn, files, path, permethylated, reduced
     if input_order[0] == 3:
-        path = 'C:\\Glycogenius\\'
+        path = default_path
         while True:
-            var = input("Insert the working directory (where the\n'raw_data' files are, default: C:/Glycogenius/): ")
+            var = input("Insert the working directory (where the\n'raw_data' files are, default: "+default_path+"): ")
             if var == "":
                 var = path
             print(var)
@@ -788,9 +783,9 @@ def interactive_terminal():
             else:
                 print('Wrong input')
                 continue
-        path = 'C:\\GlycoGenius\\'
+        path = default_path
         while True:
-            var = input("Insert the path to the folder to save the\ntemplate file (Default: C:\\GlycoGenius\\): ")
+            var = input("Insert the path to the folder to save the\ntemplate file (Default: "+default_path+"): ")
             if var == "":
                 var = path
             print(var)
@@ -807,13 +802,53 @@ def interactive_terminal():
                 break
         return input_order, commented, path
                 
+def samples_path_to_list(path):
+    '''Detects all files in samples path and makes a list of the path to each file for
+    internal usage.
+    
+    Parameters
+    ----------
+    path : string
+        Path to the folder containing mzML and mzXML files to analyze.
+        
+    Uses
+    ----
+    itertools.product : 
+        Cartesian product of input iterables.
+        
+    Returns
+    -------
+    samples_list : list
+        A list containing the path to each file to be analyzed.
+    '''
+    if len(path) == 0:
+        return []
+    path = path.strip()
+    path = path.strip("'")
+    path = path.strip("\"")
+    mzml_possibilities = list(map(''.join, product(*zip("mzml".upper(), "mzml".lower()))))
+    mzxml_possibilities = list(map(''.join, product(*zip("mzxml".upper(), "mzxml".lower()))))
+    file_extensions = mzml_possibilities+mzxml_possibilities
+    for i_i, i in enumerate(path):
+        if i == "\\":
+            path = path[:i_i]+"/"+path[i_i+1:]
+    if path[-1] != "/":
+        path+= "/"
+    dir_list = os.listdir(path)
+    samples_list = []
+    for i_i, i in enumerate(dir_list):
+        if i.split('.')[-1] in file_extensions:
+            samples_list.append(path+i)
+    return samples_list
+    
 def list_of_data(samples_list): ##complete
     '''Detects if a file is mzXML or mzML and processes it into a generator using
     pyteomics.
 
     Parameters
     ----------
-    No parameters needed, but must be executed after parameters section of script.
+    samples_list : list
+        A list containing the path to each file to be analyzed.
 
     Uses
     ----
@@ -832,17 +867,15 @@ def list_of_data(samples_list): ##complete
         A list containing the generator of each file name at each index.
     '''
     data = []
+    mzml_possibilities = list(map(''.join, product(*zip("mzml".upper(), "mzml".lower()))))
+    mzxml_possibilities = list(map(''.join, product(*zip("mzxml".upper(), "mzxml".lower()))))
     for i in samples_list:
-        if i[-5:] == "mzXML" or i[-5:] == "mzxml" or i[-5:] == "MzXML":
+        if i.split('.')[-1] in mzxml_possibilities:
             mzxml_data = mzxml.MzXML(i)
             data.append(mzxml_data)
-        elif i[-4:] == "mzML" or i[-4:] == "mzml" or i[-4:] == "MzML":
+        else:
             mzml_data = File_Accessing.make_mzxml(i)
             data.append(mzml_data)
-        else:
-            sys.exit(i+
-                   " filename wrong."+
-                   " Please, check if file extension is either 'mzML' or 'mzXML'")
     return data
 
 def index_ms1_from_file(files):
@@ -1343,6 +1376,11 @@ def output_filtered_data(curve_fit_score,
     '''
     date = datetime.datetime.now()
     begin_time = str(date)[2:4]+str(date)[5:7]+str(date)[8:10]+"_"+str(date)[11:13]+str(date)[14:16]+str(date)[17:19]
+    version_path = str(pathlib.Path(__file__).parent.parent.parent.resolve())
+    with open(version_path+"/Setup.py", "r") as f: #grabs version from setup.py to add to raw_data files
+        for lines in f:
+            if lines[:12] == "    version=":
+                version = lines[13:-2].strip("'")
     if reanalysis[0] and not sneakpeek[0]:
         print("Reanalyzing raw data with new parameters...")
         results1_list = []
@@ -1364,6 +1402,9 @@ def output_filtered_data(curve_fit_score,
                     df2_import = file[1]
                     if analyze_ms2:
                         fragments_dataframes_import = file[2]
+                        total_threads = file[3]
+                    else:
+                        total_threads = file[2]
                     f.close()
                 with open(results2_list[i_i], 'rb') as f:
                     eic_dataframes_import = dill.load(f)
@@ -1403,11 +1444,13 @@ def output_filtered_data(curve_fit_score,
                         for j_j, j in enumerate(fragments_dataframes_import):
                             for k in j:
                                 fragments_dataframes[j_j][k] = fragments_dataframes[j_j][k] + fragments_dataframes_import[j_j][k]
+                if i_i == total_threads-1:
+                    break
             with open(save_path+'raw_data_1', 'wb') as f:
                 if analyze_ms2:
-                    dill.dump([df1, df2, fragments_dataframes], f)
+                    dill.dump([df1, df2, fragments_dataframes, version], f)
                 else:
-                    dill.dump([df1, df2], f)
+                    dill.dump([df1, df2, version], f)
                 f.close()
             with open(save_path+'raw_data_2', 'wb') as f:
                 dill.dump(eic_dataframes, f)
@@ -1432,7 +1475,7 @@ def output_filtered_data(curve_fit_score,
                 p5.unlink(missing_ok=True)
                 p6.unlink(missing_ok=True)
                 p7.unlink(missing_ok=True)
-        except Exception:
+        except:
             pass
     try:
         if sneakpeek[0]:
@@ -1442,6 +1485,13 @@ def output_filtered_data(curve_fit_score,
                 df2 = file[1]
                 if analyze_ms2:
                     fragments_dataframes = file[2]
+                    if reanalysis[0] and version != file[3]:
+                        input("Raw data files version incompatible with\ncurrent version (Current version: "+version+";\nRaw data version: "+file[3]+")")
+                        os._exit(1)
+                else:
+                    if reanalysis[0] and version != file[2]:
+                        input("Raw data files version incompatible with\ncurrent version (Current version: "+version+";\nRaw data version: "+file[2]+")")
+                        os._exit(1)
                 f.close()
         else:
             with open(save_path+'raw_data_1', 'rb') as f:
@@ -1883,13 +1933,18 @@ def arrange_raw_data(analyzed_data,
             if len(i[j]) < biggest_len:
                 for k in range(biggest_len-len(i[j])):
                     i[j].append(None)
+    version_path = str(pathlib.Path(__file__).parent.parent.parent.resolve())
+    with open(version_path+"/Setup.py", "r") as f: #grabs version from setup.py to add to raw_data files
+        for lines in f:
+            if lines[:12] == "    version=":
+                version = lines[13:-2].strip("'")
     if multithreaded_execution[0]:
-        sleep(multithreaded_execution[2]+multithreaded_execution[1])
+        sleep((multithreaded_execution[1])*(30/multithreaded_execution[2]))
         with open(save_path+'results1_'+str(multithreaded_execution[1]), 'wb') as f:
             if analyze_ms2:
-                dill.dump([df1, df2, fragments_dataframes], f)
+                dill.dump([df1, df2, fragments_dataframes, multithreaded_execution[2]], f)
             else:
-                dill.dump([df1, df2], f)
+                dill.dump([df1, df2, multithreaded_execution[2]], f)
             f.close()
         with open(save_path+'results2_'+str(multithreaded_execution[1]), 'wb') as f:
             dill.dump(eic_dataframes, f)
@@ -1910,7 +1965,7 @@ def arrange_raw_data(analyzed_data,
         results3_list = []
         results4_list = []
         results5_list = []
-        for i in range(multithreaded_analysis[1]):
+        for i in range(multithreaded_execution[2]):
             results1_list.append(save_path+'results1_'+str(i))
             results2_list.append(save_path+'results2_'+str(i))
             results3_list.append(save_path+'results3_'+str(i))
@@ -1965,39 +2020,21 @@ def arrange_raw_data(analyzed_data,
                                 fragments_dataframes[j_j][k] = fragments_dataframes[j_j][k] + fragments_dataframes_import[j_j][k]
             with open(save_path+'raw_data_1', 'wb') as f:
                 if analyze_ms2:
-                    dill.dump([df1, df2, fragments_dataframes], f)
-                    del df1
-                    del df1_import
-                    del df2
-                    del df2_import
-                    del fragments_dataframes
-                    del fragments_dataframes_import
+                    dill.dump([df1, df2, fragments_dataframes, version], f)
                 else:
-                    dill.dump([df1, df2], f)
-                    del df1
-                    del df1_import
-                    del df2
-                    del df2_import
+                    dill.dump([df1, df2, version], f)
                 f.close()
             with open(save_path+'raw_data_2', 'wb') as f:
                 dill.dump(eic_dataframes, f)
-                del eic_dataframes
-                del eic_dataframes_import
                 f.close()
             with open(save_path+'raw_data_3', 'wb') as f:
                 dill.dump(smoothed_eic_dataframes, f)
-                del smoothed_eic_dataframes
-                del smoothed_eic_dataframes_import
                 f.close()
             with open(save_path+'raw_data_4', 'wb') as f:
                 dill.dump(curve_fitting_dataframes, f)
-                del curve_fitting_dataframes
-                del curve_fitting_dataframes_import
                 f.close()
             with open(save_path+'raw_data_5', 'wb') as f:
                 dill.dump(raw_eic_dataframes, f)
-                del raw_eic_dataframes
-                del raw_eic_dataframes_import
                 f.close()
             for i in range(multithreaded_analysis[1]):
                 p3 = pathlib.Path(save_path+'results1_'+str(i))
@@ -2010,17 +2047,17 @@ def arrange_raw_data(analyzed_data,
                 p5.unlink(missing_ok=True)
                 p6.unlink(missing_ok=True)
                 p7.unlink(missing_ok=True)
-        except Exception:
+        except:
             pass
     else:
         with open(save_path+'raw_data_1', 'wb') as f:
             if analyze_ms2:
-                dill.dump([df1, df2, fragments_dataframes], f)
+                dill.dump([df1, df2, fragments_dataframes, version], f)
                 del df1
                 del df2
                 del fragments_dataframes
             else:
-                dill.dump([df1, df2], f)
+                dill.dump([df1, df2, version], f)
                 del df1
                 del df2
             f.close()
@@ -2058,6 +2095,7 @@ def analyze_files(library,
                   max_charges,
                   custom_noise,
                   close_peaks,
+                  fast_iso,
                   verbose = False): ##Complete
     '''Integrates all the file-accessing associated functions in this script to go
     through the files data, draw and process eic of hypothetical glycans, does 
@@ -2201,6 +2239,7 @@ def analyze_files(library,
                                    min_isotops,
                                    noise,
                                    max_charges,
+                                   fast_iso,
                                    verbose)
         if verbose:
             with open('log_'+str(i)+'_eic_debug.txt', 'w') as f:

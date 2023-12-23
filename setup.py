@@ -23,7 +23,8 @@ setup(
     ],
     python_requires='>=3.6',
     install_requires=["pandas", "scipy", "pyteomics",
-                     "dill", "numpy"],
+                     "dill", "numpy", "lxml",
+                     "openpyxl"],
     entry_points={
         'console_scripts': [
             'glycogenius = glycogenius:glycogenius',

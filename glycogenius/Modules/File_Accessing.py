@@ -121,6 +121,7 @@ def eic_from_glycan(files,
                     min_isotops,
                     noise,
                     max_charges,
+                    fast_iso,
                     verbose = False):
     '''Generates a very processed EIC for each adduct of each glycan of each sample.
     Removes non-monoisotopic peaks, check charges and calculates multiple quality scoring
@@ -359,20 +360,17 @@ def eic_from_glycan(files,
                     continue
                 else:
                     ppm_info[i][j_j][-1] = mean(mono_ppm)
-                    if len(iso_actual) <= 2 and len(iso_actual) > 0:
+                    if len(iso_actual) > 0:
+                        weights = [0.5, 0.35, 0.15, 0.1, 0.01, 0.001, 0.0001, 0.001, 0.0001, 0.00001]
                         temp_relation = []
                         for l in range(len(iso_actual)):
                             if iso_actual[l] >= iso_target[l]:
                                 temp_relation.append(iso_target[l]/iso_actual[l])
                             else:
                                 temp_relation.append(iso_actual[l]/iso_target[l])
-                        R_sq = mean(temp_relation)
+                        R_sq = numpy.average(temp_relation, weights = weights[:len(temp_relation)])
                     if len(iso_actual) == 0:
                         R_sq = 0.0
-                    if len(iso_actual) > 2:
-                        corr_matrix = numpy.corrcoef(iso_actual, iso_target)
-                        corr = corr_matrix[0,1]
-                        R_sq = corr**2
                     iso_fitting_quality[i][j_j][-1] = R_sq
                     data[i][j_j][1].append(intensity)
     return data, ppm_info, iso_fitting_quality, verbose_info, raw_data
