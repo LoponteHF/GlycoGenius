@@ -1485,11 +1485,11 @@ def output_filtered_data(curve_fit_score,
                 df2 = file[1]
                 if analyze_ms2:
                     fragments_dataframes = file[2]
-                    if reanalysis[0] and version != file[3]:
+                    if reanalysis[0] and ".".join(version.split('.')[:2]) != ".".join(file[3].split('.')[:2]):
                         input("Raw data files version incompatible with\ncurrent version (Current version: "+version+";\nRaw data version: "+file[3]+")")
                         os._exit(1)
                 else:
-                    if reanalysis[0] and version != file[2]:
+                    if reanalysis[0] and ".".join(version.split('.')[:2]) != ".".join(file[2].split('.')[:2]):
                         input("Raw data files version incompatible with\ncurrent version (Current version: "+version+";\nRaw data version: "+file[2]+")")
                         os._exit(1)
                 f.close()
@@ -1966,12 +1966,17 @@ def arrange_raw_data(analyzed_data,
         results4_list = []
         results5_list = []
         for i in range(multithreaded_execution[2]):
-            results1_list.append(save_path+'results1_'+str(i))
-            results2_list.append(save_path+'results2_'+str(i))
-            results3_list.append(save_path+'results3_'+str(i))
-            results4_list.append(save_path+'results4_'+str(i))
-            results5_list.append(save_path+'results5_'+str(i))
-        try:
+            results1_list.append('results1_'+str(i))
+            results2_list.append('results2_'+str(i))
+            results3_list.append('results3_'+str(i))
+            results4_list.append('results4_'+str(i))
+            results5_list.append('results5_'+str(i))
+        dir_list = os.listdir(save_path)
+        last = True
+        for i in results1_list:
+            if i not in dir_list:
+                last = False
+        if last:
             for i_i, i in enumerate(results1_list):
                 with open(i, 'rb') as f:
                     file = dill.load(f)
@@ -2047,8 +2052,6 @@ def arrange_raw_data(analyzed_data,
                 p5.unlink(missing_ok=True)
                 p6.unlink(missing_ok=True)
                 p7.unlink(missing_ok=True)
-        except:
-            pass
     else:
         with open(save_path+'raw_data_1', 'wb') as f:
             if analyze_ms2:
