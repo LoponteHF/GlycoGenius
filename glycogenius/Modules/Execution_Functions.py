@@ -49,28 +49,16 @@ import dill
 import sys
 import datetime
 import traceback
-from pkg_resources import get_distribution, DistributionNotFound
-import os.path
+import pkg_resources
 
 try:
-    _dist = get_distribution('glycogenius')
-    # Normalize case for Windows systems
-    dist_loc = os.path.normcase(_dist.location)
-    here = os.path.normcase(__file__)
-    if not here.startswith(os.path.join(dist_loc, 'glycogenius')):
-        # not installed, but there is another version that *is*
-        raise DistributionNotFound
-except DistributionNotFound:
-    try:
-        version_path = str(pathlib.Path(__file__).parent.parent.parent.resolve())
-        with open(version_path+"/Setup.py", "r") as f: #grabs version from setup.py to add to raw_data files
-            for lines in f:
-                if lines[:12] == "    version=":
-                    version = lines[13:-2].strip("'")
-    except:
-        version = 'Please install this project with setup.py'
-else:
-    version = _dist.version
+    version = pkg_resources.get_distribution("glycogenius").version
+except:
+    version_path = str(pathlib.Path(__file__).parent.parent.parent.resolve())
+    with open(version_path+"/Setup.py", "r") as f: #grabs version from setup.py to add to raw_data files
+        for lines in f:
+            if lines[:12] == "    version=":
+                version = lines[13:-2].strip("'")
 
 ##---------------------------------------------------------------------------------------
 ##Functions to be used for execution and organizing results data
