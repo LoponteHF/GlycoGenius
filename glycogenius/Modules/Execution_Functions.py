@@ -1307,6 +1307,8 @@ def output_filtered_data(curve_fit_score,
                          multithreaded_execution,
                          analyze_ms2,
                          unrestricted_fragments,
+                         plot_metaboanalyst,
+                         rt_tolerance,
                          sneakpeek):
     '''This function filters and converts raw results data into human readable
     excel files.
@@ -1347,6 +1349,10 @@ def output_filtered_data(curve_fit_score,
     analyze_ms2 : tuple
         A tuple with two indexes: The first one indicates whether to analyze ms2 data and the
         second one indicates whether ms2 data should be forced to fit glycans composition.
+        
+    plot_metaboanalyst : tuple
+    
+    rt_tolerance : float
         
     sneakpeek : boolean
         Allows to peek into incomplete multithreaded execution
@@ -1505,7 +1511,12 @@ def output_filtered_data(curve_fit_score,
         return
     if not reanalysis[0]:
         print("Analyzing raw data...")
+    df1_refactor = []
     for i_i, i in enumerate(df2["Sample_Number"]): #QCs cutoff
+        if analyze_ms2:
+            df1_refactor.append({"Glycan" : [], "Adduct" : [], "mz" : [], "RT" : [], "AUC" : [], "PPM" : [], "S/N" : [], "Iso_Fitting_Score" : [], "Curve_Fitting_Score" : [], "Detected_Fragments" : []})
+        else:
+            df1_refactor.append({"Glycan" : [], "Adduct" : [], "mz" : [], "RT" : [], "AUC" : [], "PPM" : [], "S/N" : [], "Iso_Fitting_Score" : [], "Curve_Fitting_Score" : []})
         for j_j, j in enumerate(df1[i_i]["Adduct"]): 
             temp_rt = df1[i_i]["RT"][j_j]
             temp_auc = df1[i_i]["AUC"][j_j]
@@ -1637,24 +1648,82 @@ def output_filtered_data(curve_fit_score,
                                     del fragments_dataframes[j_j]["Precursor_mz"][l]
                     if count == 0:
                         df1[j_j]["Detected_Fragments"][k_k] = "No" #QCs cutoff end
-    glycans_count = []
+    for i_i, i in enumerate(df1): #final arrangement for print
+        for j_j, j in enumerate(df1[i_i]["Adduct"]):
+            for k_k, k in enumerate(df1[i_i]["RT"][j_j].split(", ")):
+                if k != "":
+                    df1_refactor[i_i]["Glycan"].append(df1[i_i]["Glycan"][j_j])
+                    df1_refactor[i_i]["Adduct"].append(df1[i_i]["Adduct"][j_j])
+                    df1_refactor[i_i]["mz"].append(df1[i_i]["mz"][j_j])
+                    df1_refactor[i_i]["RT"].append(float(k))
+                    df1_refactor[i_i]["AUC"].append(float(df1[i_i]["AUC"][j_j].split(", ")[k_k]))
+                    df1_refactor[i_i]["PPM"].append(float(df1[i_i]["PPM"][j_j].split(", ")[k_k]))
+                    df1_refactor[i_i]["S/N"].append(float(df1[i_i]["S/N"][j_j].split(", ")[k_k]))
+                    df1_refactor[i_i]["Iso_Fitting_Score"].append(float(df1[i_i]["Iso_Fitting_Score"][j_j].split(", ")[k_k]))
+                    df1_refactor[i_i]["Curve_Fitting_Score"].append(float(df1[i_i]["Curve_Fitting_Score"][j_j].split(", ")[k_k]))
+    if analyze_ms2:
+        for j_j, j in enumerate(df1_refactor):
+            for k_k, k in enumerate(df1_refactor[j_j]["RT"]):
+                found = False
+                for l_l, l in enumerate(fragments_dataframes[j_j]["Glycan"]):
+                    if l == df1_refactor[j_j]["Glycan"][k_k] and fragments_dataframes[j_j]["Adduct"][l_l] == df1_refactor[j_j]["Adduct"][k_k]:
+                        if abs(fragments_dataframes[j_j]["RT"][l_l] - k) <= rt_tolerance:
+                            found = True
+                            break
+                if found:
+                    df1_refactor[j_j]["Detected_Fragments"].append("Yes")
+                else:
+                    df1_refactor[j_j]["Detected_Fragments"].append("No")
+    total_dataframes = [] #total glycans AUC dataframe
+    for i_i, i in enumerate(df1_refactor):
+        total_dataframes.append({"Glycan": [], "RT": [], "AUC": []})
+        current_glycan = ""
+        RTs = []
+        AUCs = []
+        for j_j in range(len(i["Glycan"])):
+            j = i["Glycan"][j_j]
+            found = False
+            if j == current_glycan:
+                for k_k, k in enumerate(RTs):
+                    if abs(i["RT"][j_j] - k) <= rt_tolerance:
+                        RTs[k_k] = (k+i["RT"][j_j])/2
+                        AUCs[k_k] = AUCs[k_k]+i["AUC"][j_j]
+                        found = True
+                        break
+                if not found:
+                    RTs.append(i["RT"][j_j])
+                    AUCs.append(i["AUC"][j_j])
+            if j != current_glycan:
+                if j_j != 0:
+                    for k_k, k in enumerate(RTs):
+                            total_dataframes[i_i]["Glycan"].append(current_glycan)
+                            total_dataframes[i_i]["RT"].append(k)
+                            total_dataframes[i_i]["AUC"].append(AUCs[k_k])
+                    RTs = []
+                    AUCs = []
+                current_glycan = j
+                RTs.append(i["RT"][j_j])
+                AUCs.append(i["AUC"][j_j])
+            if j_j == len(i["Glycan"])-1:
+                for k_k, k in enumerate(RTs):
+                    total_dataframes[i_i]["Glycan"].append(current_glycan)
+                    total_dataframes[i_i]["RT"].append(k)
+                    total_dataframes[i_i]["AUC"].append(AUCs[k_k])
+                RTs = []
+                AUCs = [] #total glycans AUC dataframe
+    glycans_count = [] #glycans counts
     last_glycan = ""
     found = False
-    for i_i, i in enumerate(df1):
+    for i_i, i in enumerate(df1_refactor):
         glycans_count.append(0)
         for j_j, j in enumerate(i["Glycan"]):
             if j_j == 0:
                 last_glycan = j
-            if j != last_glycan or j_j == len(i["Glycan"])-1:
-                if found:
-                    glycans_count[i_i]+= 1
-                found = False
+            if j != last_glycan:
+                glycans_count[i_i]+= 1
                 last_glycan = j
-            splitted = i["RT"][j_j].split(", ")
-            for k in splitted:
-                if len(k) > 0:
-                    found = True
-                    break
+            if j_j == len(i["Glycan"])-1:
+                glycans_count[i_i]+= 1
     df2["Glycans_Found"] = glycans_count
     if analyze_ms2:
         glycans_count = []
@@ -1667,19 +1736,81 @@ def output_filtered_data(curve_fit_score,
                 if j != last_glycan or j_j == len(i["Glycan"])-1:
                     glycans_count[i_i]+= 1
                     last_glycan = j
-    df2["Glycans_with_Fragments"] = glycans_count
-    df2 = DataFrame(df2)
+    df2["Glycans_with_Fragments"] = glycans_count #end of glycans counts
+    all_glycans_list = [] #here it makes a list of ALL the glycans found
+    for i in total_dataframes:
+        for j_j, j in enumerate(i["RT"]):
+            found = False
+            if len(all_glycans_list) > 0:
+                for k in all_glycans_list:
+                    splitted_glycan = k.split("_")
+                    if i["Glycan"][j_j] == splitted_glycan[0] and abs(j-float(splitted_glycan[-1])) <= rt_tolerance:
+                        found = True
+            if found:
+                continue
+            if len(all_glycans_list) == 0:
+                all_glycans_list.append(i["Glycan"][j_j]+"_"+"%.2f" % j)
+                continue
+            if not found:
+                all_glycans_list.append(i["Glycan"][j_j]+"_"+"%.2f" % j)
+    if plot_metaboanalyst: #start of metaboanalyst plot
+        print("Creating file for metaboanalyst plotting...", end="", flush=True)
+        with open(save_path+begin_time+"_metaboanalyst_data.csv", "w") as f:
+            samples_line = ["Sample"]
+            for i_i, i in enumerate(df2["File_Name"]):
+                samples_line.append(i)
+            f.write(",".join(samples_line)+"\n")
+            groups_line = ["Group"]
+            if len(plot_metaboanalyst[1]) > 0:
+                for i in df2["File_Name"]:
+                    for j in plot_metaboanalyst[1]:
+                        if j in i:
+                            groups_line.append(j)
+                            break
+            else:
+                for i in df2["File_Name"]:
+                    groups_line.append(i)
+            f.write(",".join(groups_line)+"\n")
+            for i in all_glycans_list:
+                glycan_line = []
+                i_splitted = i.split("_")
+                glycan_line.append(i)
+                for j in total_dataframes:
+                    found = False
+                    for k_k, k in enumerate(j["Glycan"]):
+                        if k == i_splitted[0] and abs(j["RT"][k_k] - float(i_splitted[-1])) <= rt_tolerance:
+                            found = True
+                            temp_AUC = j["AUC"][k_k]
+                            break
+                    if found:
+                        glycan_line.append(str(temp_AUC))
+                        continue
+                    if not found:
+                        glycan_line.append("0.0")
+                        continue
+                f.write(",".join(glycan_line)+"\n")
+            f.close() #end of metaboanalyst plot
+        print("Done!")
+    df2 = DataFrame(df2) #start of excel data printing
     with ExcelWriter(save_path+begin_time+'_Results_'+str(max_ppm)+'_'+str(iso_fit_score)+'_'+str(curve_fit_score)+'_'+str(sn)+'.xlsx') as writer:
         print("Creating results file...", end="", flush=True)
-        for i_i, i in enumerate(df1):
+        for i_i, i in enumerate(df1_refactor):
             result_df = DataFrame(i)
             result_df.to_excel(writer, sheet_name="Sample_"+str(i_i), index = False)
+            total_aucs_df = DataFrame(total_dataframes[i_i])
+            total_aucs_df.to_excel(writer, sheet_name="Sample_"+str(i_i)+"_Total_AUCs", index = False)
             if analyze_ms2:
-                fragments_df = DataFrame(fragments_dataframes[i_i])
-                fragments_df.to_excel(writer, sheet_name="Sample_"+str(i_i)+"_Fragments", index = False)
+                if len(fragments_dataframes[i_i]["Glycan"]) > 0:
+                    fragments_df = DataFrame(fragments_dataframes[i_i])
+                    fragments_df.to_excel(writer, sheet_name="Sample_"+str(i_i)+"_Fragments", index = False)
         df2.to_excel(writer, sheet_name="Index references", index = False)
     del df1
     del result_df
+    del total_dataframes
+    del total_aucs_df
+    if analyze_ms2:
+        del fragments_dataframes
+        del fragments_df
     print("Done!")
     if (reanalysis[1] and reanalysis[0]) or not reanalysis[0]:
         print("Creating data plotting files...", end= "", flush=True)
@@ -2198,7 +2329,6 @@ def analyze_files(library,
     '''
     begin_time = datetime.datetime.now()
     analyzed_data = {}
-    selected_peaks_width = []
     mean_sel_peaks = 0.0
     noise = {}
     rt_array_report = {}

@@ -46,7 +46,7 @@ only_gen_lib = no
 multithreaded_analysis = no
 threads_number = 20
 ; Allows you to split the execution and generated library into multiple pieces for multithreaded execution. After running GlycoGenius, there will be several .py files in working directory. Run the ones named Multithreaded_0.py-Multithreaded_n.py in whatever time you want, in how many amounts at a time you want.
-analyze_ms2 = no
+analyze_ms2 = yes
 force_fragments_to_glycans = yes
 unrestricted_fragments = no
 ; Allows to analyze ms2 data, as well. Fragments identified will be associated with each glycan. You can choose to filter identified fragments by monosaccharides compositions, in order to avoid reporting fragments that aren't compatible with detected precursor. If unrestricted_fragments is used, it searches for glycans in every ms2 scan, independently if the glycan was found in full scan.
@@ -56,7 +56,8 @@ accuracy_value = 0.01
 ; The value for the accuracy_unit parameter. You can use a broader accuracy value and then filter raw data using max_ppm, but this may lead to false positives.
 ret_time_begin = 1
 ret_time_end = 80
-; The minimum and maximum retention time used for various portions of the script. A shorter interval of ret_time makes the script run faster, so try to trim your sample as much as possible, if you know when your analytes are leaving the column.
+ret_time_tolerance = 0.2
+; The minimum and maximum retention time used for various portions of the script. A shorter interval of ret_time makes the script run faster, so try to trim your sample as much as possible, if you know when your analytes are leaving the column. Set the retention time tolerance used for fragments to adduct and same peak identification.
 min_isotopologue_peaks = 3
 ; Minimum amount of isotopologue peaks that an identified glycan mz must have to actually be taken into account by the script. Minimum amount is 2 (second one necessary to confirm charge). May affect isotopic distribution fitting score and can't be recalculated on data reanalysis.
 custom_min_points_per_peak = no
@@ -80,6 +81,9 @@ samples_path =
 ; A comma separated list of full path to files to be analyzed together.
 working_path =
 ; Directory to load and save files from script.
+plot_metaboanalyst = no
+metaboanalyst_groups =
+; Here you set up whether or not you want to output a .csv file to be used for plotting data using metaboanalyst. If you want that, you must specify your sample groups, comma separated. Sample groups specified must be present in sample filenames for proper identification. If none is set, groups become the filenames themselves.
 reanalysis = no
 output_plot_data = no
 ; Reanalyzes raw data with new max_ppm, isotopic_fitting_score, curve_fitting_score and signal_to_noise criteria. Overrides any other setting besides these mentioned. First parameter  produces a new Results file, second parameter also produces a new Plotting Data file (in case you deleted your original one. The data in it will not be any different than the former one). Warning: If setting a stricter max_ppm criteria on reanalysis without remaking the whole  execution with a new accuracy_value, data may still contain false positives.
