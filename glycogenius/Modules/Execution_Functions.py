@@ -49,6 +49,28 @@ import dill
 import sys
 import datetime
 import traceback
+from pkg_resources import get_distribution, DistributionNotFound
+import os.path
+
+try:
+    _dist = get_distribution('glycogenius')
+    # Normalize case for Windows systems
+    dist_loc = os.path.normcase(_dist.location)
+    here = os.path.normcase(__file__)
+    if not here.startswith(os.path.join(dist_loc, 'glycogenius')):
+        # not installed, but there is another version that *is*
+        raise DistributionNotFound
+except DistributionNotFound:
+    try:
+        version_path = str(pathlib.Path(__file__).parent.parent.parent.resolve())
+        with open(version_path+"/Setup.py", "r") as f: #grabs version from setup.py to add to raw_data files
+            for lines in f:
+                if lines[:12] == "    version=":
+                    version = lines[13:-2].strip("'")
+    except:
+        version = 'Please install this project with setup.py'
+else:
+    version = _dist.version
 
 ##---------------------------------------------------------------------------------------
 ##Functions to be used for execution and organizing results data
@@ -210,11 +232,7 @@ def interactive_terminal():
             print("SERVICING, REPAIR OR CORRECTION.\n")
             continue
         if var == 'version':
-            version_path = str(pathlib.Path(__file__).parent.parent.parent.resolve())
-            with open(version_path+"/Setup.py", "r") as f:
-                for lines in f:
-                    if lines[:12] == "    version=":
-                        print("\nGlycoGenius version: "+lines[13:-2].strip("'"))
+            print("\nGlycoGenius version: "+version)
             continue
         if var == 'license':
             license_path = str(pathlib.Path(__file__).parent.parent.parent.resolve())
@@ -1382,11 +1400,6 @@ def output_filtered_data(curve_fit_score,
     '''
     date = datetime.datetime.now()
     begin_time = str(date)[2:4]+str(date)[5:7]+str(date)[8:10]+"_"+str(date)[11:13]+str(date)[14:16]+str(date)[17:19]
-    version_path = str(pathlib.Path(__file__).parent.parent.parent.resolve())
-    with open(version_path+"/Setup.py", "r") as f: #grabs version from setup.py to add to raw_data files
-        for lines in f:
-            if lines[:12] == "    version=":
-                version = lines[13:-2].strip("'")
     if reanalysis[0] and not sneakpeek[0]:
         print("Reanalyzing raw data with new parameters...")
         results1_list = []
@@ -1491,13 +1504,6 @@ def output_filtered_data(curve_fit_score,
                 df2 = file[1]
                 if analyze_ms2:
                     fragments_dataframes = file[2]
-                    if reanalysis[0] and ".".join(version.split('.')[:2]) != ".".join(file[3].split('.')[:2]):
-                        input("Raw data files version incompatible with\ncurrent version (Current version: "+version+";\nRaw data version: "+file[3]+")")
-                        os._exit(1)
-                else:
-                    if reanalysis[0] and ".".join(version.split('.')[:2]) != ".".join(file[2].split('.')[:2]):
-                        input("Raw data files version incompatible with\ncurrent version (Current version: "+version+";\nRaw data version: "+file[2]+")")
-                        os._exit(1)
                 f.close()
         else:
             with open(save_path+'raw_data_1', 'rb') as f:
@@ -1506,6 +1512,13 @@ def output_filtered_data(curve_fit_score,
                 df2 = file[1]
                 if analyze_ms2:
                     fragments_dataframes = file[2]
+                    if reanalysis[0] and ".".join(version.split('.')[:2]) != ".".join(file[3].split('.')[:2]):
+                        input("Raw data files version incompatible with\ncurrent version (Current version: "+version+";\nRaw data version: "+file[3]+")")
+                        os._exit(1)
+                else:
+                    if reanalysis[0] and ".".join(version.split('.')[:2]) != ".".join(file[2].split('.')[:2]):
+                        input("Raw data files version incompatible with\ncurrent version (Current version: "+version+";\nRaw data version: "+file[2]+")")
+                        os._exit(1)
                 f.close()
     except:
         return
@@ -2064,11 +2077,6 @@ def arrange_raw_data(analyzed_data,
             if len(i[j]) < biggest_len:
                 for k in range(biggest_len-len(i[j])):
                     i[j].append(None)
-    version_path = str(pathlib.Path(__file__).parent.parent.parent.resolve())
-    with open(version_path+"/Setup.py", "r") as f: #grabs version from setup.py to add to raw_data files
-        for lines in f:
-            if lines[:12] == "    version=":
-                version = lines[13:-2].strip("'")
     if multithreaded_execution[0]:
         sleep((multithreaded_execution[1])*(30/multithreaded_execution[2]))
         with open(save_path+'results1_'+str(multithreaded_execution[1]), 'wb') as f:
