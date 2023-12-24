@@ -51,7 +51,7 @@ def main():
     analyze_ms2 = (False, False, False)
     accuracy_unit = 'pw'
     accuracy_value = 0.0
-    ret_time_interval = (0, 99999)
+    ret_time_interval = (0, 99999, 0.2)
     min_isotopologue_peaks = 0
     min_ppp = (False, 0)
     close_peaks = (False, 3)
@@ -62,6 +62,7 @@ def main():
     custom_noise = (False, [])
     samples_path = ''
     save_path = ''
+    plot_metaboanalyst = (False, [])
     reanalysis = (False, False)
 
     multithreaded_execution = (False, 0, 0) #editted by multithreaded 1
@@ -101,7 +102,7 @@ def main():
         analyze_ms2 = (config['analysis_parameters'].getboolean('analyze_ms2'), config['analysis_parameters'].getboolean('force_fragments_to_glycans'), config['analysis_parameters'].getboolean('unrestricted_fragments'))
         accuracy_unit = config['analysis_parameters']['accuracy_unit']
         accuracy_value = float(config['analysis_parameters']['accuracy_value'])
-        ret_time_interval = (float(config['analysis_parameters']['ret_time_begin']), float(config['analysis_parameters']['ret_time_end']))
+        ret_time_interval = (float(config['analysis_parameters']['ret_time_begin']), float(config['analysis_parameters']['ret_time_end']), float(config['analysis_parameters']['ret_time_tolerance']))
         min_isotopologue_peaks = int(config['analysis_parameters']['min_isotopologue_peaks'])
         min_ppp = (config['analysis_parameters'].getboolean('custom_min_points_per_peak'), int(config['analysis_parameters']['number_points_per_peak']))
         close_peaks = (config['analysis_parameters'].getboolean('limit_peaks_picked'), int(config['analysis_parameters']['max_number_peaks']))
@@ -127,6 +128,14 @@ def main():
         for i_i, i in enumerate(save_path):
             if i == "\\":
                 save_path = save_path[:i_i]+"/"+save_path[i_i+1:]
+        metaboanalyst_groups = config['analysis_parameters']['metaboanalyst_groups'].split(",")
+        for i_i in range(len(metaboanalyst_groups)-1, -1, -1):
+            metaboanalyst_groups[i_i] = metaboanalyst_groups[i_i].strip()
+            metaboanalyst_groups[i_i] = metaboanalyst_groups[i_i].strip("'")
+            metaboanalyst_groups[i_i] = metaboanalyst_groups[i_i].strip("\"")
+            if len(metaboanalyst_groups[i_i]) == 0:
+                del metaboanalyst_groups[i_i]
+        plot_metaboanalyst = (config['analysis_parameters'].getboolean('plot_metaboanalyst'), metaboanalyst_groups)
         reanalysis = (config['analysis_parameters'].getboolean('reanalysis'), config['analysis_parameters'].getboolean('output_plot_data'))
     else: #If no parameters file pipelines, run CLI
         parameters = Execution_Functions.interactive_terminal()
@@ -181,7 +190,7 @@ def main():
                 analyze_ms2 = parameters[7]
                 accuracy_unit = parameters[8]
                 accuracy_value = parameters[9]
-                ret_time_interval = parameters[10]
+                ret_time_interval = (parameters[10][0], parameters[10][1], 0.2)
                 min_isotopologue_peaks = parameters[11]
                 max_ppm = parameters[12]
                 iso_fit_score = parameters[13]
@@ -222,12 +231,18 @@ def main():
                                                  multithreaded_execution,
                                                  analyze_ms2[0],
                                                  analyze_ms2[2],
+                                                 plot_metaboanalyst,
+                                                 ret_time_interval[2],
                                                  sneakpeek)
 
     else:
         if multithreaded_execution[0]:
             print('Multithreaded Execution: '+str(multithreaded_execution[1]))
         samples_names = Execution_Functions.sample_names(samples_list)
+        print("Sample files detected: "+str(len(samples_names)))
+        for i in samples_names:
+            print("--> "+i)
+        Execution_Functions.print_sep()
         library = Execution_Functions.imp_exp_gen_library(multithreaded_analysis,
                                                           multithreaded_execution,
                                                           samples_names,
@@ -319,6 +334,8 @@ def main():
                                                  multithreaded_execution,
                                                  analyze_ms2[0],
                                                  analyze_ms2[2],
+                                                 plot_metaboanalyst,
+                                                 ret_time_interval[2],
                                                  sneakpeek)
                                                  
     if not os.isatty(0):
