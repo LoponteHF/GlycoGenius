@@ -580,11 +580,11 @@ def interactive_terminal():
                         continue
             accuracy_unit = "pw"
             while True:
-                var = input("What is the accuracy unit you want to input for\nmz tolerance? (ppm/pw): ")
+                var = input("What is the accuracy unit you want to input for\nmz tolerance? (ppm/mz): ")
                 if var == 'ppm':
                     accuracy_unit = var
                     break
-                if var == 'pw':
+                if var == 'mz':
                     break
                 else:
                     print('Wrong input')
@@ -968,32 +968,6 @@ def sample_names(samples_list):
         curated_samples.append(i[backlash+1:dot])
     return curated_samples
 
-def tolerance(unit,
-              value):
-    '''A fast, but not super accurate way to convert 'ppm' mass accuracy into 'pw' (peak
-    width, aka. mz tolerance).
-
-    Parameters
-    ----------
-    unit : string
-        Can be either "ppm" (particles-per-million) or "pw" (peak width [tolerance]).
-
-    value : float
-        Float value of the tolerance, based on the unit inputted.
-
-    Returns
-    -------
-    tolerance : float
-        If unit == "ppm", converts value into "pw", if unit == "pw", outputs value as is.
-        ie. 10 ppm gets converted to 0.01 pw tolerance.
-    '''
-    if unit == "ppm":
-        return (1000.0-(-((value*1000)/10**6)+1000))
-    elif unit == "pw":
-        return value
-    else:
-        return("Unit for tolerance not 'ppm' or 'pw'.")
-
 def imp_exp_gen_library(multithreaded_analysis,
                         multithreaded_execution,
                         samples_names,
@@ -1357,8 +1331,14 @@ def output_filtered_data(curve_fit_score,
         second one indicates whether ms2 data should be forced to fit glycans composition.
         
     plot_metaboanalyst : tuple
+        A tuple with two indexes: The first one indicates whether or not to output a file to be
+        used in metaboanalyst and the second one indicates the groups for the samples to be separated
+        in.
     
     rt_tolerance : float
+        Tolerance of retention time (in minutes) at which an MS2 feature can be attributed to a 
+        specific retention time peak and also for peaks in different samples to be regarded as the
+        same peak (and thus be compared with each other).
         
     sneakpeek : boolean
         Allows to peek into incomplete multithreaded execution
@@ -1509,6 +1489,8 @@ def output_filtered_data(curve_fit_score,
                         os._exit(1)
                 f.close()
     except:
+        if reanalysis[0]:
+            print("\nRaw data files not found. If you're not\nreanalyzing existing raw data, set\n'reanalysis' to 'no' in parameters before\nexecution or choose a different option in the\ncommand-line interface.\n")
         return
     if not reanalysis[0]:
         print("Analyzing raw data...")
@@ -1622,34 +1604,8 @@ def output_filtered_data(curve_fit_score,
                             del fragments_dataframes[j_j]["Fragment_mz"][k]
                             del fragments_dataframes[j_j]["Fragment_Intensity"][k]
                             del fragments_dataframes[j_j]["RT"][k]
-                            del fragments_dataframes[j_j]["Precursor_mz"][k]
-    if analyze_ms2:
-        for j_j, j in enumerate(df2["Sample_Number"]):
-            for k_k, k in enumerate(df1[j_j]["RT"]):
-                splitted = k.split(", ")
-                temp_rts = []
-                for l in splitted:
-                    if len(l) > 0:
-                        temp_rts.append(float(l))
-                if len(temp_rts) > 0:
-                    count = 0
-                    for m in temp_rts:
-                        for l in range(len(fragments_dataframes[j_j]["Glycan"])-1, -1, -1):
-                            if (fragments_dataframes[j_j]["Glycan"][l] == df1[j_j]["Glycan"][k_k] 
-                                and fragments_dataframes[j_j]["Adduct"][l] == df1[j_j]["Adduct"][k_k]):
-                                count += 1 
-                                if abs(fragments_dataframes[j_j]["RT"][l] - m) > 0.1 and not unrestricted_fragments:
-                                    count -= 1
-                                    del fragments_dataframes[j_j]["Glycan"][l]
-                                    del fragments_dataframes[j_j]["Adduct"][l]
-                                    del fragments_dataframes[j_j]["Fragment"][l]
-                                    del fragments_dataframes[j_j]["Fragment_mz"][l]
-                                    del fragments_dataframes[j_j]["Fragment_Intensity"][l]
-                                    del fragments_dataframes[j_j]["RT"][l]
-                                    del fragments_dataframes[j_j]["Precursor_mz"][l]
-                    if count == 0:
-                        df1[j_j]["Detected_Fragments"][k_k] = "No" #QCs cutoff end
-    for i_i, i in enumerate(df1): #final arrangement for print
+                            del fragments_dataframes[j_j]["Precursor_mz"][k] #QCs cutoff end
+    for i_i, i in enumerate(df1): #final arrangement for standard results print
         for j_j, j in enumerate(df1[i_i]["Adduct"]):
             for k_k, k in enumerate(df1[i_i]["RT"][j_j].split(", ")):
                 if k != "":
@@ -1663,18 +1619,31 @@ def output_filtered_data(curve_fit_score,
                     df1_refactor[i_i]["Iso_Fitting_Score"].append(float(df1[i_i]["Iso_Fitting_Score"][j_j].split(", ")[k_k]))
                     df1_refactor[i_i]["Curve_Fitting_Score"].append(float(df1[i_i]["Curve_Fitting_Score"][j_j].split(", ")[k_k]))
     if analyze_ms2:
+        to_keep = []
         for j_j, j in enumerate(df1_refactor):
+            to_keep.append([])
             for k_k, k in enumerate(df1_refactor[j_j]["RT"]):
                 found = False
                 for l_l, l in enumerate(fragments_dataframes[j_j]["Glycan"]):
                     if l == df1_refactor[j_j]["Glycan"][k_k] and fragments_dataframes[j_j]["Adduct"][l_l] == df1_refactor[j_j]["Adduct"][k_k]:
                         if abs(fragments_dataframes[j_j]["RT"][l_l] - k) <= rt_tolerance:
                             found = True
-                            break
+                            to_keep[j_j].append(l_l)
                 if found:
                     df1_refactor[j_j]["Detected_Fragments"].append("Yes")
                 else:
                     df1_refactor[j_j]["Detected_Fragments"].append("No")
+        if not unrestricted_fragments:  #Filters fragments with RT outside the detected peaks range
+            for i_i, i in enumerate(to_keep):
+                for k_k in range(len(fragments_dataframes[i_i]["Glycan"])-1, -1, -1):
+                    if k_k not in to_keep[i_i]:
+                        del fragments_dataframes[i_i]["Glycan"][k_k]
+                        del fragments_dataframes[i_i]["Adduct"][k_k]
+                        del fragments_dataframes[i_i]["Fragment"][k_k]
+                        del fragments_dataframes[i_i]["Fragment_mz"][k_k]
+                        del fragments_dataframes[i_i]["Fragment_Intensity"][k_k]
+                        del fragments_dataframes[i_i]["RT"][k_k]
+                        del fragments_dataframes[i_i]["Precursor_mz"][k_k]
     total_dataframes = [] #total glycans AUC dataframe
     for i_i, i in enumerate(df1_refactor):
         total_dataframes.append({"Glycan": [], "RT": [], "AUC": []})
@@ -1712,7 +1681,7 @@ def output_filtered_data(curve_fit_score,
                     total_dataframes[i_i]["AUC"].append(AUCs[k_k])
                 RTs = []
                 AUCs = [] #total glycans AUC dataframe
-    glycans_count = [] #glycans counts
+    glycans_count = [] #glycans composition counts
     last_glycan = ""
     found = False
     for i_i, i in enumerate(df1_refactor):
@@ -1725,7 +1694,7 @@ def output_filtered_data(curve_fit_score,
                 last_glycan = j
             if j_j == len(i["Glycan"])-1:
                 glycans_count[i_i]+= 1
-    df2["Glycans_Found"] = glycans_count
+    df2["MS1_Glycans_Compositions"] = glycans_count
     if analyze_ms2:
         glycans_count = []
         last_glycan = ""
@@ -1737,10 +1706,12 @@ def output_filtered_data(curve_fit_score,
                 if j != last_glycan or j_j == len(i["Glycan"])-1:
                     glycans_count[i_i]+= 1
                     last_glycan = j
-    df2["Glycans_with_Fragments"] = glycans_count #end of glycans counts
+    df2["MS2_Glycans_Compositions"] = glycans_count #end of glycans counts
     all_glycans_list = [] #here it makes a list of ALL the glycans found
     for i in total_dataframes:
         for j_j, j in enumerate(i["RT"]):
+            if i["Glycan"][j_j] == "Internal Standard":
+                continue
             found = False
             if len(all_glycans_list) > 0:
                 for k in all_glycans_list:
@@ -1754,41 +1725,75 @@ def output_filtered_data(curve_fit_score,
                 continue
             if not found:
                 all_glycans_list.append(i["Glycan"][j_j]+"_"+"%.2f" % j)
-    if plot_metaboanalyst: #start of metaboanalyst plot
+    if plot_metaboanalyst[0]: #start of metaboanalyst plot
         print("Creating file for metaboanalyst plotting...", end="", flush=True)
         with open(save_path+begin_time+"_metaboanalyst_data.csv", "w") as f:
             samples_line = ["Sample"]
             for i_i, i in enumerate(df2["File_Name"]):
                 samples_line.append(i)
-            f.write(",".join(samples_line)+"\n")
             groups_line = ["Group"]
             if len(plot_metaboanalyst[1]) > 0:
                 for i in df2["File_Name"]:
+                    found = False
                     for j in plot_metaboanalyst[1]:
                         if j in i:
+                            found = True
                             groups_line.append(j)
                             break
+                    if not found:
+                        groups_line.append("Ungrouped")
             else:
                 for i in df2["File_Name"]:
-                    groups_line.append(i)
+                    groups_line.append("Ungrouped")
+            found_int_std = False
+            for i in total_dataframes:
+                if "Internal Standard" in i["Glycan"]:
+                    found_int_std = True
+                    break
+            if found_int_std:
+                with open(save_path+begin_time+"_metaboanalyst_data_normalized.csv", "a") as g:
+                    g.write(",".join(samples_line)+"\n")
+                    g.write(",".join(groups_line)+"\n")
+                    g.close()
+                int_std_id = []
+                for i in total_dataframes:
+                    if "Internal Standard" in i["Glycan"]:
+                        int_std_id.append(i["Glycan"].index("Internal Standard"))
+            f.write(",".join(samples_line)+"\n")
             f.write(",".join(groups_line)+"\n")
             for i in all_glycans_list:
                 glycan_line = []
+                glycan_line_IS = []
                 i_splitted = i.split("_")
+                glycan_line_IS.append(i)
                 glycan_line.append(i)
-                for j in total_dataframes:
+                for j_j, j in enumerate(total_dataframes):
                     found = False
                     for k_k, k in enumerate(j["Glycan"]):
+                        if k == "Internal Standard":
+                            continue
                         if k == i_splitted[0] and abs(j["RT"][k_k] - float(i_splitted[-1])) <= rt_tolerance:
                             found = True
-                            temp_AUC = j["AUC"][k_k]
+                            if "Internal Standard" in j["Glycan"]:
+                                temp_AUC_IS = j["AUC"][k_k]/j["AUC"][int_std_id[j_j]]
+                                temp_AUC = j["AUC"][k_k]
+                            else:
+                                temp_AUC = j["AUC"][k_k]
                             break
                     if found:
+                        if "Internal Standard" in j["Glycan"]:
+                            glycan_line_IS.append(temp_auc_IS)
                         glycan_line.append(str(temp_AUC))
                         continue
                     if not found:
+                        if "Internal Standard" in j["Glycan"]:
+                            glycan_line_IS.append(0.0)
                         glycan_line.append("0.0")
                         continue
+                if found_int_std:
+                    with open(save_path+begin_time+"_metaboanalyst_data_normalized.csv", "a") as g:
+                        g.write(",".join(glycan_line_IS)+"\n")
+                        g.close()
                 f.write(",".join(glycan_line)+"\n")
             f.close() #end of metaboanalyst plot
         print("Done!")
@@ -1810,8 +1815,9 @@ def output_filtered_data(curve_fit_score,
     del total_dataframes
     del total_aucs_df
     if analyze_ms2:
+        if len(fragments_dataframes[i_i]["Glycan"]) > 0:
+            del fragments_df
         del fragments_dataframes
-        del fragments_df
     print("Done!")
     if (reanalysis[1] and reanalysis[0]) or not reanalysis[0]:
         print("Creating data plotting files...", end= "", flush=True)
@@ -1935,7 +1941,7 @@ def arrange_raw_data(analyzed_data,
     begin_time = datetime.datetime.now()
     print('Arranging raw data...', end='', flush = True)
     df1 = []
-    df2 = {"Sample_Number" : [], "File_Name" : [], "Noise_Level" : []}
+    df2 = {"Sample_Number" : [], "File_Name" : [], "Average_Noise_Level" : []}
     raw_eic_dataframes = []
     eic_dataframes = []
     smoothed_eic_dataframes = []
@@ -1955,10 +1961,10 @@ def arrange_raw_data(analyzed_data,
         curve_fitting_dataframes.append({})
         df2["Sample_Number"].append(i_i)
         df2["File_Name"].append(i)
-        df2["Noise_Level"].append(float("%.1f" % round(analyzed_data[2][i_i],1)))
+        df2["Average_Noise_Level"].append(float("%.1f" % round(analyzed_data[2][i_i],1)))
         if analyze_ms2:
             df1.append({"Glycan" : [], "Adduct" : [], "mz" : [], "RT" : [], "AUC" : [], "PPM" : [], "S/N" : [], "Iso_Fitting_Score" : [], "Curve_Fitting_Score" : [], "Detected_Fragments" : []})
-            fragments_dataframes.append({"Glycan" : [], "Adduct" : [], "Fragment" : [], "Fragment_mz" : [], "Fragment_Intensity" : [], "RT" : [], "Precursor_mz" : []})
+            fragments_dataframes.append({"Glycan" : [], "Adduct" : [], "Precursor_mz" : [], "Fragment" : [], "Fragment_mz" : [], "Fragment_Intensity" : [], "RT" : []})
         else:
             df1.append({"Glycan" : [], "Adduct" : [], "mz" : [], "RT" : [], "AUC" : [], "PPM" : [], "S/N" : [], "Iso_Fitting_Score" : [], "Curve_Fitting_Score" : []})
     for i_i, i in enumerate(analyzed_data[0]): #i = glycan (key)
@@ -2246,8 +2252,9 @@ def analyze_files(library,
     ms1_index : dict
         A dictionary containing the ms1 indexes of each sample file.
         
-    tolerance : float
-        The mz acceptable tolerance.
+    tolerance : tuple
+        First index contains the unit of the tolerance and the second one is the value of 
+        that unit.
         
     ret_time_interval : tuple
         A tuple where the first index contains the beggining time of the retention time
@@ -2327,29 +2334,31 @@ def analyze_files(library,
     analyzed_data = {}
     mean_sel_peaks = 0.0
     noise = {}
+    noise_avg = {}
     rt_array_report = {}
     if not custom_noise[0]:
         print('Analyzing noise level of samples... ', end='', flush = True)
     for i_i, i in enumerate(data):
         rt_array_report[i_i] = []
         temp_noise = []
+        temp_avg_noise = []
         if custom_noise[0]:
             temp_noise.append(custom_noise[1][i_i])
             continue
-        noise[i_i] = 0
         for j_j, j in enumerate(ms1_index[i_i]):
             rt_array_report[i_i].append(i[j]['retentionTime'])
-            if (i[j]['retentionTime'] < ret_time_interval[0] or i[j]['retentionTime'] > ret_time_interval[1]):
-                continue
-            mz_ints = dict(zip(i[j]['m/z array'], i[j]['intensity array']))
-            noise_level = General_Functions.noise_level_calc_mzarray(mz_ints)
+            mz_ints = [i[j]['m/z array'], i[j]['intensity array']]
+            noise_level = General_Functions.rt_noise_level_parameters_set(mz_ints)
+            noise_avg_level = percentile(mz_ints[1], 95)
             temp_noise.append(noise_level)
-        noise[i_i] = percentile(temp_noise, 66.8)
+            temp_avg_noise.append(noise_avg_level)
+        noise[i_i] = temp_noise
+        noise_avg[i_i] = percentile(temp_avg_noise, 66.8)
     print('Done!')
     print_sep()
     if verbose:
-        print('Noise Level: '+str(noise))
-        noise_report = 'Noise Level: '+str(noise)
+        print('Noise Level: '+str(noise_avg))
+        noise_report = 'Noise Level: '+str(noise_avg)
     print("Analyzing glycans in samples' MS1 spectra...")
     for i_i, i in enumerate(library):
         verbose_info = []
@@ -2361,15 +2370,16 @@ def analyze_files(library,
             verbose_info.append('EIC RT Array: '+str(rt_array_report))
         glycan_data['Adducts_mz_data'] = {}
         temp_eic = File_Accessing.eic_from_glycan(data,
-                                   glycan_data,
-                                   ms1_index,
-                                   ret_time_interval,
-                                   tolerance,
-                                   min_isotops,
-                                   noise,
-                                   max_charges,
-                                   fast_iso,
-                                   verbose)
+                                                  i,
+                                                  glycan_data,
+                                                  ms1_index,
+                                                  ret_time_interval,
+                                                  tolerance,
+                                                  min_isotops,
+                                                  noise,
+                                                  max_charges,
+                                                  fast_iso,
+                                                  verbose)
         if verbose:
             with open('log_'+str(i)+'_eic_debug.txt', 'w') as f:
                 for j in temp_eic[3]:
@@ -2390,24 +2400,25 @@ def analyze_files(library,
                 if verbose:
                     verbose_info.append('Smoothed EIC INT Array: '+str(temp_eic_smoothed[1]))
                     verbose_info.append('Raw PPM error: '+str(temp_eic[1][j][k])+'\nRaw Isotopic Fitting Score: '+str(temp_eic[2][j][k]))
-                if max(temp_eic[0][j][k][1]) < noise[k]:
+                if max(temp_eic[0][j][k][1]) < noise_avg[k] and i != "Internal Standard":
                     continue
                 temp_peaks = File_Accessing.peaks_from_eic(temp_eic[0][j][k],
                                             temp_eic_smoothed,
                                             ret_time_interval,
                                             min_ppp,
-                                            close_peaks)
+                                            close_peaks,
+                                            i)
                 if len(temp_peaks) == 0:
                     continue
                 temp_peaks_auc = File_Accessing.peaks_auc_from_eic(temp_eic[0][j][k],
                                                     ms1_index[k],
                                                     temp_peaks)
                 for l_l, l in enumerate(temp_peaks):
-                    if temp_peaks_auc[l_l] >= noise[k]:
+                    if temp_peaks_auc[l_l] >= noise_avg[k]:
                         l['AUC'] = temp_peaks_auc[l_l]
-                        l['Average_PPM'] = File_Accessing.average_ppm_calc(temp_eic[1][j][k], tolerance, l)
+                        l['Average_PPM'] = File_Accessing.average_ppm_calc(temp_eic[1][j][k], (tolerance[0], tolerance[1], glycan_data['Adducts_mz'][j]), l)
                         l['Iso_Fit_Score'] = File_Accessing.iso_fit_score_calc(temp_eic[2][j][k], l)
-                        l['Signal-to-Noise'] = l['int']/noise[k]
+                        l['Signal-to-Noise'] = l['int']/(General_Functions.local_noise_calc(noise[k][l['id']], glycan_data['Adducts_mz'][j]))
                         l['Curve_Fit_Score'] = File_Accessing.peak_curve_fit(temp_eic_smoothed, l)
                         glycan_data['Adducts_mz_data'][j][k][1].append(l)
                 if verbose:
@@ -2422,7 +2433,7 @@ def analyze_files(library,
                     f.write("\n")
                 f.close()
     print('Sample MS1 analysis done in '+str(datetime.datetime.now() - begin_time)+'!')
-    return analyzed_data, rt_array_report, noise
+    return analyzed_data, rt_array_report, noise_avg
     
 def analyze_ms2(ms2_index, 
                 data, 
@@ -2442,7 +2453,8 @@ def analyze_ms2(ms2_index,
                 permethylated,
                 reduced,
                 filter_output,
-                unrestricted_fragments):
+                unrestricted_fragments,
+                rt_tolerance):
     '''Analyzes the MS2 data in the sample files, outputting the found matches.
     
     Parameters
@@ -2461,8 +2473,9 @@ def analyze_ms2(ms2_index,
         A tuple where the first index contains the beggining time of the retention time
         interval you wish to analyze and the second contains the end time.
         
-    tolerance : float
-        The mz acceptable tolerance.
+    tolerance : tuple
+        First index contains the unit of the tolerance and the second one is the value of 
+        that unit.
         
     min_max_mono : tuple
         Minimum and maximum amount of monosaccharides for the hypotethical glycans in the
@@ -2526,6 +2539,21 @@ def analyze_ms2(ms2_index,
         Dictionary containing the fragments data.
     '''
     begin_time = datetime.datetime.now()
+    no_ms2 = True
+    for i in ms2_index:
+        if len(ms2_index[i]) != 0:
+            no_ms2 = False
+            break
+    if no_ms2:
+        print('No MS2 data to analyze...')
+        dummy_fragment_data = {}
+        for i in analyzed_data[0]:
+            dummy_fragment_data[i] = {}
+            for j in analyzed_data[0][i]['Adducts_mz_data']:
+                dummy_fragment_data[i][j] = {}
+                for k_k, k in enumerate(data):
+                    dummy_fragment_data[i][j][k_k] = []
+        return analyzed_data[0], analyzed_data[1], analyzed_data[2], dummy_fragment_data
     print('Analyzing MS2 data...')
     fragments = Library_Tools.fragments_library(min_max_monos,
                                   min_max_hex,
@@ -2547,6 +2575,8 @@ def analyze_ms2(ms2_index,
         for j_j, j in enumerate(analyzed_data[0][i]['Adducts_mz_data']): #goes through each adduct
             fragments_data[i][j] = {}
             for k_k, k in enumerate(data): #goes through each file
+                if len(ms2_index[k_k]) == 0:
+                    continue
                 fragments_data[i][j][k_k] = []
                 if len(analyzed_data[0][i]['Adducts_mz_data'][j][k_k][1]) == 0 and not unrestricted_fragments: #checks if found the adduct
                     continue
@@ -2555,9 +2585,9 @@ def analyze_ms2(ms2_index,
                         if k[l]['retentionTime'] < rt_interval[0] or k[l]['retentionTime'] > rt_interval[1]:
                             continue
                     else:
-                        if k[l]['retentionTime'] < analyzed_data[0][i]['Adducts_mz_data'][j][k_k][1][0]['peak_interval'][0] or k[l]['retentionTime'] > analyzed_data[0][i]['Adducts_mz_data'][j][k_k][1][-1]['peak_interval'][1]: #skips spectra outside peak interval of peaks found
+                        if k[l]['retentionTime'] < analyzed_data[0][i]['Adducts_mz_data'][j][k_k][1][0]['peak_interval'][0] - rt_tolerance or k[l]['retentionTime'] > analyzed_data[0][i]['Adducts_mz_data'][j][k_k][1][-1]['peak_interval'][1] + rt_tolerance: #skips spectra outside peak interval of peaks found
                             continue
-                    if abs((k[l]['precursorMz'][0]['precursorMz']) - analyzed_data[0][i]['Adducts_mz'][j]) <= (1.0074/General_Functions.form_to_charge(j))+tolerance: #checks if precursor matches adduct mz
+                    if abs((k[l]['precursorMz'][0]['precursorMz']) - analyzed_data[0][i]['Adducts_mz'][j]) <= (1.0074/General_Functions.form_to_charge(j))+General_Functions.tolerance_calc(tolerance[0], tolerance[1], analyzed_data[0][i]['Adducts_mz'][j]): #checks if precursor matches adduct mz
                         found_count = 0
                         total = len(k[l]['m/z array'])
                         for m_m, m in enumerate(k[l]['m/z array']):
@@ -2617,7 +2647,7 @@ def analyze_ms2(ms2_index,
                                         if (n['Monos_Composition']['H'] > analyzed_data[0][i]['Monos_Composition']['H'] or n['Monos_Composition']['N'] > analyzed_data[0][i]['Monos_Composition']['N'] or n['Monos_Composition']['S'] > analyzed_data[0][i]['Monos_Composition']['S'] or n['Monos_Composition']['F'] > analyzed_data[0][i]['Monos_Composition']['F'] or n['Monos_Composition']['G'] > analyzed_data[0][i]['Monos_Composition']['G']):
                                             continue
                                 for o in n['Adducts_mz']:
-                                    if abs(n['Adducts_mz'][o]-m) <= tolerance: #fragments data outputted in the form of (Glycan, Adduct, Fragment, Fragment mz, intensity, retention time, precursor)
+                                    if abs(n['Adducts_mz'][o]-m) <= General_Functions.tolerance_calc(tolerance[0], tolerance[1], n['Adducts_mz'][o]): #fragments data outputted in the form of (Glycan, Adduct, Fragment, Fragment mz, intensity, retention time, precursor)
                                         if len(n['Formula']) > 3 and n['Formula'][-3] != "_":
                                             fragments_data[i][j][k_k].append((i, j, n['Formula']+'_'+o, n['Adducts_mz'][o], k[l]['intensity array'][m_m], k[l]['retentionTime'], k[l]['precursorMz'][0]['precursorMz']))
                                         elif len(n['Formula']) > 3 and n['Formula'][-3] == "_" and combo:

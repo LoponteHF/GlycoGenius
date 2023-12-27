@@ -1,7 +1,7 @@
 [library_building]
 use_custom_glycans_list = no
 custom_glycans_list = H3N2, H5N2, H5N4S2F1
-; Allows you to only search for target glycans by inputing them in the "custom_glycans_list", as formulas. If True, overrides imp_library. Monosaccharides accepted: Hexoses (H), HexNAc (N), Acetyl Sialic Acid (S), Glycolyl Sialic Acid (G), Deoxyhexose (F).
+; Allows you to only search for target glycans by inputing them in the "custom_glycans_list", as formulas. If True, overrides imp_library. Monosaccharides accepted: Hexoses (H), HexNAc (N), Acetyl Sialic Acid (S), Glycolyl Sialic Acid (G), Deoxyhexose (F). Case sensitive.
 min_monos = 5
 max_monos = 18
 min_hex = 3
@@ -20,7 +20,7 @@ max_gc = 0
 force_nglycan = yes
 ; Used to force some monosaccharides compositions associated with N-Glycans biologically known features.
 max_adducts = H3Na1
-; Indicates the desired adducts and their maximum amount. H3Na1 means a maximum of 3 Hydrogens and a maximum of 1 Sodium per adduct combination.
+; Indicates the desired adducts and their maximum amount. H3Na1 means a maximum of 3 Hydrogens and a maximum of 1 Sodium per adduct combination. Case sensitive.
 max_charges = 3
 ; Limits the maximum amount of calculated charges for each glycan. Set to a negative value if you want to do negative mode analysis.
 tag_mass = 133.0644
@@ -49,15 +49,15 @@ threads_number = 20
 analyze_ms2 = yes
 force_fragments_to_glycans = yes
 unrestricted_fragments = no
-; Allows to analyze ms2 data, as well. Fragments identified will be associated with each glycan. You can choose to filter identified fragments by monosaccharides compositions, in order to avoid reporting fragments that aren't compatible with detected precursor. If unrestricted_fragments is used, it searches for glycans in every ms2 scan, independently if the glycan was found in full scan.
-accuracy_unit = pw
-; Determines the units of mz tolerance to be used by the script. Options: 'ppm' or 'pw'. 'ppm' = Particles per Million, where 10 ppm is around 0.01 mz tolerance, 'pw' = Peak width, 0.01 pw means it tolerates a 0.01 mz variance
+; Allows to analyze ms2 data, as well. Fragments identified will be associated with each glycan. You can choose to filter identified fragments by monosaccharides compositions, in order to avoid reporting fragments that aren't compatible with detected precursor. If unrestricted_fragments is used, it searches for glycans in every ms2 scan, regardless if the glycan was found in full scan. This will take a bit longer.
+accuracy_unit = mz
+; Determines the units of mz tolerance to be used by the script. Options: 'ppm' or 'pw'. 'ppm' = Particles per Million, where 10 ppm is around 0.01 mz tolerance at mz 1000, 'mz' = Fixed mz tolerance from centroid, 0.01 mz means it tolerates a 0.01 variance in mz
 accuracy_value = 0.01
 ; The value for the accuracy_unit parameter. You can use a broader accuracy value and then filter raw data using max_ppm, but this may lead to false positives.
 ret_time_begin = 1
 ret_time_end = 80
 ret_time_tolerance = 0.2
-; The minimum and maximum retention time used for various portions of the script. A shorter interval of ret_time makes the script run faster, so try to trim your sample as much as possible, if you know when your analytes are leaving the column. Set the retention time tolerance used for fragments to adduct and same peak identification.
+; The minimum and maximum retention time, in minutes, used for various portions of the script. A shorter interval of ret_time makes the script run faster, so try to trim your sample as much as possible, if you know when your analytes are leaving the column. Set the retention time tolerance used for fragments to adduct and same peak identification.
 min_isotopologue_peaks = 3
 ; Minimum amount of isotopologue peaks that an identified glycan mz must have to actually be taken into account by the script. Minimum amount is 2 (second one necessary to confirm charge). May affect isotopic distribution fitting score and can't be recalculated on data reanalysis.
 custom_min_points_per_peak = no
@@ -68,7 +68,7 @@ max_number_peaks = 5
 ; If used, picks only the most intense peak on the EIC and up to [max_number_peaks]-1 other peaks closest to it. Warning: This may reduce the range of your results and it can't be changed on reanalysis.
 max_ppm = 10
 ; Maximum PPM for data curation. If value is greater than equivalent accuracy_value, data won't be filtered by this criteria, as it was already filtered during processing by accuracy_value. Can be reapplied on raw data reanalysis.
-isotopic_fitting_score = 0.6
+isotopic_fitting_score = 0.5
 ; Minimum score of the isotopic distribution fitting in order to consider a mz peak viable. Can be reapplied on raw data reanalysis.
 curve_fitting_score = 0.9
 ; Minimum score for the chromatogram peak curve fitting to a gaussian to consider a viable peak. Can be reapplied on raw data reanalysis.
@@ -82,8 +82,8 @@ samples_path =
 working_path =
 ; Directory to load and save files from script.
 plot_metaboanalyst = no
-metaboanalyst_groups =
-; Here you set up whether or not you want to output a .csv file to be used for plotting data using metaboanalyst. If you want that, you must specify your sample groups, comma separated. Sample groups specified must be present in sample filenames for proper identification. If none is set, groups become the filenames themselves.
+metaboanalyst_groups = CONTROL, TREATED
+; Here you set up whether or not you want to output a .csv file to be used for plotting data using metaboanalyst. If you want that, you must specify your sample groups, comma separated. Sample groups specified must be present in sample filenames for proper identification. If none is set, samples are defaulted to "ungrouped". Case sensitive.
 reanalysis = no
 output_plot_data = no
 ; Reanalyzes raw data with new max_ppm, isotopic_fitting_score, curve_fitting_score and signal_to_noise criteria. Overrides any other setting besides these mentioned. First parameter  produces a new Results file, second parameter also produces a new Plotting Data file (in case you deleted your original one. The data in it will not be any different than the former one). Warning: If setting a stricter max_ppm criteria on reanalysis without remaking the whole  execution with a new accuracy_value, data may still contain false positives.

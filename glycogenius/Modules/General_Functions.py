@@ -67,7 +67,37 @@ def calculate_ppm_diff(mz, target):
     '''
     return ((target-mz)/target)*(10**6)
     
-def noise_level_calc_mzarray(mz_int):
+def tolerance_calc(unit,
+                   value, 
+                   mz = 1000):
+    '''A fast, but not super accurate way to convert 'ppm' mass accuracy into 'pw' (peak
+    width, aka. mz tolerance).
+
+    Parameters
+    ----------
+    unit : string
+        Can be either "ppm" (particles-per-million) or "pw" (peak width [tolerance]).
+
+    value : float
+        Float value of the tolerance, based on the unit inputted.
+        
+    mz : float
+        mz at which to calculate the PPM difference.
+
+    Returns
+    -------
+    tolerance : float
+        If unit == "ppm", converts value into "pw", if unit == "pw", outputs value as is.
+        ie. 10 ppm gets converted to 0.01 pw tolerance.
+    '''
+    if unit == "ppm":
+        return (mz-(-((value*mz)/10**6)+mz))
+    elif unit == "mz":
+        return value
+    else:
+        return("Unit for tolerance not 'ppm' or 'mz'.")
+    
+def rt_noise_level_parameters_set(mz_int):
     '''Gathers the int at the 95th percentile of the mz/int array (which is 
     equivalent to the 3rd SD from the mean.
     
@@ -87,10 +117,21 @@ def noise_level_calc_mzarray(mz_int):
     scalar
         The intensity of the 95th percentile of the intensity array.
     '''
-    int_list = []
-    for i in mz_int:
-        int_list.append(mz_int[i])
-    return percentile(int_list, 95)
+    int_list_first_quarter = []
+    int_list_last_quarter = []
+    first_quarter_end = mz_int[0][-1]/4
+    last_quarter_begin = (mz_int[0][-1]/4)*3
+    for i_i, i in enumerate(mz_int[0]):
+        if i <= first_quarter_end:
+            int_list_first_quarter.append(mz_int[1][i_i])
+        if i > last_quarter_begin:
+            int_list_last_quarter.append(mz_int[1][i_i])
+    return percentile(int_list_first_quarter, 95), percentile(int_list_last_quarter, 95), mz_int[0][-1]
+    
+def local_noise_calc(noise_specs, x):
+    '''
+    '''
+    return noise_specs[0] + (((noise_specs[1]-noise_specs[0])/noise_specs[2])*x)
     
 def normpdf(x, mean, sd):
     '''Calculates the intensity of a gaussian bell curve at the x-axis point x

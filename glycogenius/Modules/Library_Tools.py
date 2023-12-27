@@ -157,9 +157,10 @@ def full_glycans_library(library,
 
     max_charges : int
         The maximum amount of charges to calculate per glycan.
-
-    tolerance : float
-        The mz acceptable tolerance. Used to calculate the intensoids, at this point.
+        
+    tolerance : tuple
+        First index contains the unit of the tolerance and the second one is the value of 
+        that unit.
 
     tag_mass : float
         The tag's added mass to the glycans, if the glycans are tagged.
@@ -280,42 +281,21 @@ def full_glycans_library(library,
                                      carrier_charge = charges)
             full_library[i_formula]['Adducts_mz'][General_Functions.comp_to_formula(j)] = mz
     if internal_standard != 0.0:
-        is_comp = General_Functions.calculate_comp_from_mass(internal_standard)[0]
         i_formula = 'Internal Standard'
-        i_atoms = is_comp
         i_neutral_mass = internal_standard
-        i_iso_dist = General_Functions.calculate_isotopic_pattern(i_atoms, fast, high_res)
-        if fast:
-            iso_corrected = []
-            for j_j, j in enumerate(i_iso_dist[0]):
-                if j_j == 1:
-                    iso_corrected.append(abs(j*1.03))
-                if j_j == 2:
-                    iso_corrected.append(abs(j*(1.5-(0.00055*sum(i_atoms.values())))))
-                if j_j == 3:
-                    iso_corrected.append(abs(j*(2.43-(0.00172*sum(i_atoms.values())))))
-                if j_j == 4:
-                    iso_corrected.append(abs(j*(5.5-(0.0062*sum(i_atoms.values())))))
-                if j_j == 5:
-                    iso_corrected.append(abs(j*(3.16-(0.00585*sum(i_atoms.values())))))
-                else:
-                    iso_corrected.append(j)
-        else:
-            iso_corrected = i_iso_dist[0]
+        i_iso_dist = [[1.0, 0.9, 0.7, 0.4, 0.1], []]
+        for i in range(len(i_iso_dist[0])):
+            i_iso_dist[1].append(internal_standard+(i*General_Functions.h_mass))
         full_library[i_formula] = {}
         full_library[i_formula]['Monos_Composition'] = {"C": 0, "O": 0, "N": 0, "H": 0}
-        full_library[i_formula]['Atoms_Glycan+Tag'] = is_comp
         full_library[i_formula]['Neutral_Mass'] = i_neutral_mass
         full_library[i_formula]['Neutral_Mass+Tag'] = i_neutral_mass
-        full_library[i_formula]['Isotopic_Distribution'] = iso_corrected
+        full_library[i_formula]['Isotopic_Distribution'] = i_iso_dist[0]
         full_library[i_formula]['Isotopic_Distribution_Masses'] = i_iso_dist[1]
         full_library[i_formula]['Adducts_mz'] = {}
         for j in adducts_combo:
             charges = sum(j.values())
-            mz = mass.calculate_mass(i_atoms,
-                                     charge = charges,
-                                     charge_carrier = j,
-                                     carrier_charge = charges)
+            mz = (i_neutral_mass+mass.calculate_mass(j))/charges
             full_library[i_formula]['Adducts_mz'][General_Functions.comp_to_formula(j)] = mz
     return full_library
 
@@ -503,7 +483,7 @@ def fragments_library(min_max_mono,
                                          carrier_charge = charges)
                 found = False
                 for k_k, k in enumerate(adducts_mz[0]):
-                    if abs(mz - k) <= tolerance:
+                    if abs(mz - k) <= General_Functions.tolerance_calc(tolerance[0], tolerance[1], mz):
                         combo_frags_lib.append({})
                         combo_frags_lib[-1]['Formula'] = str(frag_library[adducts_mz[2][k_k]]['Formula']+'_'+adducts_mz[1][k_k]+'/'+frag_library[index]['Formula']+'_'+General_Functions.comp_to_formula(j))
                         combo_frags_lib[-1]['Adducts_mz'] = {}

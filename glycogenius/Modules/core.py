@@ -79,6 +79,8 @@ def main():
         custom_glycans = config['library_building']['custom_glycans_list'].split(",")
         for i_i, i in enumerate(custom_glycans):
             custom_glycans[i_i] = i.strip()
+            if len(i) == 0:
+                custom_glycans = custom_glycans[:i_i]+custom_glycans[i_i+1:]
         custom_glycans_list = (config['library_building'].getboolean('use_custom_glycans_list'), custom_glycans)
         min_max_monos = (int(config['library_building']['min_monos']), int(config['library_building']['max_monos']))
         min_max_hex = (int(config['library_building']['min_hex']), int(config['library_building']['max_hex']))
@@ -271,8 +273,7 @@ def main():
             library = full_library
         print('Library length: '+str(len(library)))
         Execution_Functions.print_sep()
-        tolerance = Execution_Functions.tolerance(accuracy_unit,
-                                                  accuracy_value)
+        tolerance = (accuracy_unit, accuracy_value)
         data = Execution_Functions.list_of_data(samples_list)
         print("Indexing spectra...", end = "", flush = True)
         ms1_index = Execution_Functions.index_ms1_from_file(data)
@@ -315,7 +316,8 @@ def main():
                                                             permethylated,
                                                             reduced,
                                                             analyze_ms2[1],
-                                                            analyze_ms2[2])
+                                                            analyze_ms2[2],
+                                                            ret_time_interval[2])
         Execution_Functions.print_sep()
         Execution_Functions.arrange_raw_data(analyzed_data,
                                              samples_names,

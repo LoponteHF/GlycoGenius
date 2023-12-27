@@ -114,6 +114,7 @@ class make_mzxml(object):
             return data
         
 def eic_from_glycan(files,
+                    glycan,
                     glycan_info,
                     ms1_indexes,
                     rt_interval,
@@ -143,9 +144,10 @@ def eic_from_glycan(files,
     rt_interval : tuple
         A tuple where the first index contains the beggining time of the retention time
         interval you wish to analyze and the second contains the end time.
-
-    tolerance : float
-        The mz acceptable tolerance.
+        
+    tolerance : tuple
+        First index contains the unit of the tolerance and the second one is the value of 
+        that unit.
         
     min_isotops : int
         The minimum amount of isotopologues required to consider an RT mz peak valid.
@@ -213,6 +215,8 @@ def eic_from_glycan(files,
     iso_fitting_quality = {}
     verbose_info = []
     raw_data = {}
+    if glycan == "Internal Standard":
+        min_isotops = 2
     for i in glycan_info['Adducts_mz']:
         if verbose:
             print('Adduct: '+str(i)+" mz: "+str(glycan_info['Adducts_mz'][i]))
@@ -259,7 +263,7 @@ def eic_from_glycan(files,
                     sec_peak_rel_int = glycan_info['Isotopic_Distribution'][1]
                     last_peak = (glycan_info['Isotopic_Distribution_Masses'][-1]+adduct_mass)/adduct_charge
                     no_iso_peaks = len(glycan_info['Isotopic_Distribution_Masses'])
-                    before_target = glycan_info['Adducts_mz'][i]-General_Functions.h_mass-tolerance
+                    before_target = glycan_info['Adducts_mz'][i]-General_Functions.h_mass-General_Functions.tolerance_calc(tolerance[0], tolerance[1], glycan_info['Adducts_mz'][i])
                     mono_ppm = []
                     iso_actual = []
                     iso_target = []
@@ -282,7 +286,7 @@ def eic_from_glycan(files,
                             break
                         if l < before_target: #This is the last check for quick skips
                             continue
-                        if l > second_peak + tolerance and iso_distro == 1: #This is the first check for quick skips that's dependent on mz array acquired data but independent of noise
+                        if l > second_peak + General_Functions.tolerance_calc(tolerance[0], tolerance[1], l) and iso_distro == 1: #This is the first check for quick skips that's dependent on mz array acquired data but independent of noise
                             if verbose:
                                 verbose_info.append("------m/z "+str(l)+", int "+str(sliced_int[l_l]))
                                 verbose_info.append("--------Couldn't check correct charge.")
@@ -293,13 +297,13 @@ def eic_from_glycan(files,
                                 verbose_info.append("------m/z "+str(l)+", int "+str(sliced_int[l_l]))
                                 verbose_info.append("--------Reached the end of isotopic distribution without errors.")
                             break
-                        if l > (target_mz + tolerance) and not found:
+                        if l > (target_mz + General_Functions.tolerance_calc(tolerance[0], tolerance[1], l)) and not found:
                             if verbose:
                                 verbose_info.append("------m/z "+str(l)+", int "+str(sliced_int[l_l]))
                                 verbose_info.append("--------Couldn't find monoisotopic peak.")
                             not_good = True
                             break
-                        if l > last_peak + tolerance and found:
+                        if l > last_peak + General_Functions.tolerance_calc(tolerance[0], tolerance[1], l) and found:
                             if verbose:
                                 verbose_info.append("------m/z "+str(l)+", int "+str(sliced_int[l_l]))
                                 verbose_info.append("--------Checked all available isotopologue peaks with no error.")
@@ -307,24 +311,24 @@ def eic_from_glycan(files,
                             if iso_distro < min_isotops:
                                 not_good = True
                             break
-                        if l > target_mz + tolerance and l < target_mz + General_Functions.h_mass and found:
+                        if l > target_mz + General_Functions.tolerance_calc(tolerance[0], tolerance[1], l) and l < target_mz + General_Functions.h_mass and found:
                             for m in m_range:
-                                if abs(l-(target_mz+(General_Functions.h_mass/m))) <= tolerance and m != adduct_charge and sliced_int[l_l] < mono_int*(sec_peak_rel_int*1.2) and sliced_int[l_l] > mono_int*(sec_peak_rel_int*0.8):
+                                if abs(l-(target_mz+(General_Functions.h_mass/m))) <= General_Functions.tolerance_calc(tolerance[0], tolerance[1], l) and m != adduct_charge and sliced_int[l_l] < mono_int*(sec_peak_rel_int*1.2) and sliced_int[l_l] > mono_int*(sec_peak_rel_int*0.8):
                                     if verbose:
                                         verbose_info.append("------m/z "+str(l)+", int "+str(sliced_int[l_l]))
                                         verbose_info.append("--------Incorrect charge assigned.")
                                     not_good = True
                                     break
-                        if l > target_mz - General_Functions.h_mass - tolerance and l < target_mz - tolerance:
+                        if l > target_mz - General_Functions.h_mass - General_Functions.tolerance_calc(tolerance[0], tolerance[1], l) and l < target_mz - General_Functions.tolerance_calc(tolerance[0], tolerance[1], l):
                             nearby_id = l_l
                             for m in m_range:
-                                if abs(l-(target_mz-(General_Functions.h_mass/m))) <= tolerance:
+                                if abs(l-(target_mz-(General_Functions.h_mass/m))) <= General_Functions.tolerance_calc(tolerance[0], tolerance[1], l):
                                     if verbose:
                                         verbose_info.append("------m/z "+str(l)+", int "+str(sliced_int[l_l]))
                                         verbose_info.append("--------Not monoisotopic.")
                                     bad_peaks_before_target.append(sliced_int[l_l])
                                     break
-                        if l > target_mz + tolerance and abs(l-((glycan_info['Isotopic_Distribution_Masses'][iso_distro]+adduct_mass)/adduct_charge)) <= tolerance:
+                        if l > target_mz + General_Functions.tolerance_calc(tolerance[0], tolerance[1], l) and abs(l-((glycan_info['Isotopic_Distribution_Masses'][iso_distro]+adduct_mass)/adduct_charge)) <= General_Functions.tolerance_calc(tolerance[0], tolerance[1], l):
                             if sliced_int[l_l] > mono_int*glycan_info['Isotopic_Distribution'][iso_distro]:
                                 intensity += mono_int*glycan_info['Isotopic_Distribution'][iso_distro]
                             if sliced_int[l_l] <= mono_int*glycan_info['Isotopic_Distribution'][iso_distro]:
@@ -334,9 +338,9 @@ def eic_from_glycan(files,
                                 iso_target.append(mono_int*glycan_info['Isotopic_Distribution'][iso_distro])
                             iso_distro += 1
                             continue
-                        if sliced_int[l_l] < noise[j_j]: #Everything from here is dependent on noise level
+                        if sliced_int[l_l] < General_Functions.local_noise_calc(noise[j_j][k_k], l) and glycan != "Internal Standard": #Everything from here is dependent on noise level
                             continue
-                        if l >= target_mz - tolerance and abs(l-target_mz) <= tolerance:
+                        if l >= target_mz - General_Functions.tolerance_calc(tolerance[0], tolerance[1], l) and abs(l-target_mz) <= General_Functions.tolerance_calc(tolerance[0], tolerance[1], l):
                             mono_ppm.append(General_Functions.calculate_ppm_diff(l, target_mz))
                             intensity += sliced_int[l_l]
                             mono_int += sliced_int[l_l]
@@ -347,10 +351,10 @@ def eic_from_glycan(files,
                             found = True
                             continue
                     for l_l in range(nearby_id, len(sliced_mz)):
-                        if sliced_mz[l_l] > target_mz+tolerance or l_l == len(sliced_mz)-1:
+                        if sliced_mz[l_l] > target_mz+General_Functions.tolerance_calc(tolerance[0], tolerance[1], sliced_mz[l_l]) or l_l == len(sliced_mz)-1:
                             raw_data[i][j_j][1].append(0.0)
                             break
-                        if abs(sliced_mz[l_l] - target_mz) <= tolerance:
+                        if abs(sliced_mz[l_l] - target_mz) <= General_Functions.tolerance_calc(tolerance[0], tolerance[1], sliced_mz[l_l]):
                             raw_data[i][j_j][1].append(sliced_int[l_l])
                             break
                 if not_good:
@@ -398,8 +402,8 @@ def eic_smoothing(rt_int):
     filtered_ints : list
         A list containing the processed intensities.
     '''
-    points = 21
-    polynomial_degree = 6
+    points = 20
+    polynomial_degree = 4
     while polynomial_degree >= points:
         points+=1
     filtered_ints = list(savgol_filter(rt_int[1], points, polynomial_degree))
@@ -515,8 +519,9 @@ def average_ppm_calc(ppm_array,
     ppm_array : list
         A list containing ppm differences.
         
-    tolerance : float
-        The mz tolerance.
+    tolerance : tuple
+        First index contains the unit of the tolerance and the second one is the value of 
+        that unit and the third index is the mz of the glycan.
         
     peak : dict
         A dictionary containing all sorts of identified peaks information.
@@ -539,7 +544,7 @@ def average_ppm_calc(ppm_array,
         if i != inf:
             ppms.append(i)
         else:
-            ppms.append(General_Functions.calculate_ppm_diff(1000-tolerance, 1000))
+            ppms.append(General_Functions.calculate_ppm_diff(tolerance[2]-General_Functions.tolerance_calc(tolerance[0], tolerance[1], tolerance[2]), tolerance[2]))
             missing_points+= 1
     return mean(ppms), missing_points
 
@@ -547,7 +552,8 @@ def peaks_from_eic(rt_int,
                    rt_int_smoothed,
                    rt_interval,
                    min_ppp,
-                   close_peaks):
+                   close_peaks,
+                   glycan):
     '''Does multi peak-picking in a given smoothed EIC.
     
     Parameters
@@ -608,10 +614,10 @@ def peaks_from_eic(rt_int,
                 going_down = False
                 good = False
                 if min_ppp[0]:
-                    if i_i-temp_start >= min_ppp[1]:
+                    if i_i-temp_start >= min_ppp[1] or glycan == "Internal Standard":
                         good = True
                 else:
-                    if i_i-temp_start >= int(0.2/(rt_int[0][-1]-rt_int[0][-2])):
+                    if i_i-temp_start >= int(0.2/(rt_int[0][-1]-rt_int[0][-2])) or glycan == "Internal Standard":
                         good = True
                 if good:
                     peaks.append({'id': temp_max_id_iu, 'rt': rt_int[0][temp_max_id_iu], 'int': temp_max, 'peak_width': temp_peak_width, 'peak_interval': (rt_int[0][temp_start], rt_int[0][i_i]), 'peak_interval_id': (temp_start, i_i)})
@@ -620,11 +626,13 @@ def peaks_from_eic(rt_int,
             if (i_i != 0 and i > rt_int_smoothed[1][i_i-1] and not going_up and not going_down):
                 temp_start = i_i-1
                 going_up = True
-    if close_peaks[0]:
+    if close_peaks[0] or glycan == "Internal Standard":
         peaks = sorted(peaks, key=lambda x: x['int'], reverse = True)
         for i_i, i in enumerate(peaks):
             peaks[i_i]['proximity'] = abs(i['rt']-peaks[0]['rt'])
         peaks = sorted(peaks, key=lambda x: x['proximity'])
+        if glycan == "Internal Standard":
+            close_peaks = (True, 1)
         return sorted(peaks[:close_peaks[1]], key=lambda x: x['rt'])
     return sorted(peaks, key=lambda x: x['rt'])
 
