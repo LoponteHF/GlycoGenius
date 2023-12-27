@@ -68,9 +68,9 @@ max_number_peaks = 5
 ; If used, picks only the most intense peak on the EIC and up to [max_number_peaks]-1 other peaks closest to it. Warning: This may reduce the range of your results and it can't be changed on reanalysis.
 max_ppm = 10
 ; Maximum PPM for data curation. If value is greater than equivalent accuracy_value, data won't be filtered by this criteria, as it was already filtered during processing by accuracy_value. Can be reapplied on raw data reanalysis.
-isotopic_fitting_score = 0.5
+isotopic_fitting_score = 0.8
 ; Minimum score of the isotopic distribution fitting in order to consider a mz peak viable. Can be reapplied on raw data reanalysis.
-curve_fitting_score = 0.9
+curve_fitting_score = 0.95
 ; Minimum score for the chromatogram peak curve fitting to a gaussian to consider a viable peak. Can be reapplied on raw data reanalysis.
 signal_to_noise = 3
 ; Minimum signal-to-noise ratio to consider a chromatogram peak viable. Can be reapplied on raw data reanalysis.

@@ -1767,7 +1767,7 @@ def output_filtered_data(curve_fit_score,
                 i_splitted = i.split("_")
                 glycan_line_IS.append(i)
                 glycan_line.append(i)
-                for j_j, j in enumerate(total_dataframes):
+                for j_j, j in enumerate(total_dataframes): #moving through samples
                     found = False
                     for k_k, k in enumerate(j["Glycan"]):
                         if k == "Internal Standard":
@@ -1782,12 +1782,12 @@ def output_filtered_data(curve_fit_score,
                             break
                     if found:
                         if "Internal Standard" in j["Glycan"]:
-                            glycan_line_IS.append(temp_auc_IS)
+                            glycan_line_IS.append(str(temp_AUC_IS))
                         glycan_line.append(str(temp_AUC))
                         continue
                     if not found:
                         if "Internal Standard" in j["Glycan"]:
-                            glycan_line_IS.append(0.0)
+                            glycan_line_IS.append("0.0")
                         glycan_line.append("0.0")
                         continue
                 if found_int_std:

@@ -369,7 +369,7 @@ def eic_from_glycan(files,
                         temp_relation = []
                         for l in range(len(iso_actual)):
                             if iso_actual[l] >= iso_target[l]:
-                                temp_relation.append(iso_target[l]/iso_actual[l])
+                                temp_relation.append(((iso_target[l]/iso_actual[l])+1)/2)
                             else:
                                 temp_relation.append(iso_actual[l]/iso_target[l])
                         R_sq = numpy.average(temp_relation, weights = weights[:len(temp_relation)])
@@ -402,8 +402,8 @@ def eic_smoothing(rt_int):
     filtered_ints : list
         A list containing the processed intensities.
     '''
-    points = 20
-    polynomial_degree = 4
+    points = 21
+    polynomial_degree = 3
     while polynomial_degree >= points:
         points+=1
     filtered_ints = list(savgol_filter(rt_int[1], points, polynomial_degree))
@@ -507,7 +507,27 @@ def iso_fit_score_calc(iso_fits,
     float
        The arithmetic mean of the isotopic fitting scores for the given peak.
     '''
-    return mean(iso_fits[peak['peak_interval_id'][0]:peak['peak_interval_id'][1]+1])
+    missing_points = 0
+    calculated_iso_points = []
+    max_missing_points = (peak['peak_interval_id'][1]-peak['peak_interval_id'][0])/2
+    regular_mean = mean(iso_fits[peak['peak_interval_id'][0]:peak['peak_interval_id'][1]+1])
+    iter_range = range(peak['peak_interval_id'][0], peak['peak_interval_id'][1]+1)
+    for i in iter_range:
+        if iso_fits[i] == 0.0:
+            if missing_points == 0:
+                missing_points+= 1
+                continue
+            if missing_points > 0 and missing_points <= max_missing_points:
+                calculated_iso_points.append(regular_mean-(missing_points*(regular_mean/max_missing_points)))
+                missing_points+= 1
+                continue
+            if missing_points > max_missing_points:
+                return 0.0
+        calculated_iso_points.append(iso_fits[i])
+    if len(calculated_iso_points) > 0:
+        return mean(calculated_iso_points)
+    else:
+        return 0.0
     
 def average_ppm_calc(ppm_array,
                      tolerance,
