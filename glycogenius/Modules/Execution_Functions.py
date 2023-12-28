@@ -2377,6 +2377,7 @@ def analyze_files(library,
                                                   tolerance,
                                                   min_isotops,
                                                   noise,
+                                                  noise_avg,
                                                   max_charges,
                                                   fast_iso,
                                                   verbose)
