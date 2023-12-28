@@ -26,6 +26,9 @@ In order to do that, this tool is able to do several different tasks:
 
 1. Export your MS data to an MzXML or MzML file;
 2. Type 'glycogenius' in the terminal;
+~~~
+		glycogenius
+~~~
 3. Follow instructions;
    - You can analyze directly on the CLI;
    - You can export a parameters file for advanced executions;

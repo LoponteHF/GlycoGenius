@@ -105,10 +105,10 @@ def generate_cfg_file(path, comments):
     with open(path+'glycogenius_parameters.ini', 'w') as g:
         with open(glycogenius_path+'/Parameters_Template.py', 'r') as f:
             for line in f:
-                if line == "samples_path =":
+                if line[0:14] == "samples_path =":
                     g.write("samples_path = "+path+"Samples Files/\n")
                     continue
-                if line == "working_path =":
+                if line[0:14] == "working_path =":
                     g.write("working_path = "+path+"\n")
                     continue
                 if not comments and line[0] == ';':
@@ -475,6 +475,7 @@ def interactive_terminal():
             else:
                 print("Wrong Input")
                 continue
+        print("")
         if var == 'y':
             while True:
                 var2 = input("Insert the tag added mass\n(ie. 133.0644 for GirP or 219.1735 for ProA): ")
@@ -522,6 +523,7 @@ def interactive_terminal():
                 continue
         high_res = False
         if not fast_iso:
+            print("")
             while True:
                 var = input("Do you need a high resolution isotopic\ndistribution? It may be important for very high\naccuracy mass spectrometers, such as\nFT-ICR (y/n): ")
                 if var == 'y':
@@ -532,6 +534,8 @@ def interactive_terminal():
                 else:
                     print('Wrong input')
                     continue
+            if input_order[0] != 1:
+                print("")
         if input_order[0] == 1: #Outputs of input_order == 1
             path = default_path
             while True:
@@ -556,7 +560,7 @@ def interactive_terminal():
                 return input_order, lib_settings, adducts, max_charges, tag_mass, fast_iso, high_res, path, permethylated, reduced
         else:
             print_sep()
-            ms2 = [False, False]
+            ms2 = [False, False, False]
             while True:
                 var = input("Do you wish to analyze MS2 data? (y/n): ")
                 if var == 'y':
@@ -567,6 +571,7 @@ def interactive_terminal():
                 else:
                     print('Wrong input')
                     continue
+            print("")
             if ms2[0]:
                 while True:
                     var = input("Do you want to only output fragments compatible\nwith identified precursor glycan? (y/n): ")
@@ -578,6 +583,7 @@ def interactive_terminal():
                     else:
                         print('Wrong input')
                         continue
+                print("")
             accuracy_unit = "pw"
             while True:
                 var = input("What is the accuracy unit you want to input for\nmz tolerance? (ppm/mz): ")
@@ -589,6 +595,7 @@ def interactive_terminal():
                 else:
                     print('Wrong input')
                     continue
+            print("")
             accuracy_value = 0.0
             while True:
                 var = input("Insert the accuracy value for the unit you've\nchosen (ie. '0.01' or '10'): ")
@@ -599,6 +606,7 @@ def interactive_terminal():
                     continue
                 accuracy_value = var
                 break
+            print("")
             rt_int = [0.0, 999]
             while True:
                 var = input("Insert the start of the retention time interval\nat which you want to analyze, in minutes: ")
@@ -609,6 +617,7 @@ def interactive_terminal():
                     continue
                 rt_int[0] = var
                 break
+            print("")
             while True:
                 var = input("Insert the end of the retention time interval at\nwhich you want to analyze, in minutes: ")
                 try:
@@ -618,6 +627,7 @@ def interactive_terminal():
                     continue
                 rt_int[1] = var
                 break
+            print("")
             min_isotop = 2
             while True:
                 var = input("Insert the minimum amount of detected\nisotopologue peaks for a mz in a spectrum to be\nincluded in the processed EIC: ")
@@ -628,6 +638,7 @@ def interactive_terminal():
                     continue
                 min_isotop = var
                 break
+            print("")
             max_ppm = 10
             while True:
                 var = input("Insert the maximum amount of PPM difference that\na detected glycan must have in order to show up\nin results' table: ")
@@ -638,6 +649,7 @@ def interactive_terminal():
                     continue
                 max_ppm = var
                 break
+            print("")
             iso_fit = 0.5
             while True:
                 var = input("Insert the minimum isotopic fitting score for a\nglycan in order for it to show up in the\nresults' table (values between 0.0 and 1.0): ")
@@ -651,6 +663,7 @@ def interactive_terminal():
                     continue
                 iso_fit = var
                 break
+            print("")
             curve_fit = 0.5
             while True:
                 var = input("Insert the minimum curve fitting score for a\nglycan in order for it to show up in the\nresults' table (values between 0.0 and 1.0): ")
@@ -664,6 +677,7 @@ def interactive_terminal():
                     continue
                 curve_fit = var
                 break
+            print("")
             sn = 3
             while True:
                 var = input("Insert the minimum signal-to-noise ratio that a\ndetected glycan must have in order to show up in\nresults' table: ")
@@ -674,6 +688,7 @@ def interactive_terminal():
                     continue
                 sn = var
                 break
+            print("")
             files = default_path+"Sample Files/"
             while True:
                 var = input("Insert the path to the folder containing the\nsample files to be analyzed ( leave blank for\ndefault: "+default_path+"Sample Files/"+"): ")
@@ -691,6 +706,7 @@ def interactive_terminal():
                         var = var+"/"
                     path = var
                     break
+            print("")
             path = default_path
             while True:
                 var = input("Insert the path to save the files produced by\nthe script (leave blank for default:\n"+default_path+"): ")
@@ -1706,7 +1722,7 @@ def output_filtered_data(curve_fit_score,
                 if j != last_glycan or j_j == len(i["Glycan"])-1:
                     glycans_count[i_i]+= 1
                     last_glycan = j
-    df2["MS2_Glycans_Compositions"] = glycans_count #end of glycans counts
+        df2["MS2_Glycans_Compositions"] = glycans_count #end of glycans counts
     all_glycans_list = [] #here it makes a list of ALL the glycans found
     for i in total_dataframes:
         for j_j, j in enumerate(i["RT"]):
