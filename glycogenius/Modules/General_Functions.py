@@ -133,6 +133,8 @@ def rt_noise_level_parameters_set(mz_int):
 def local_noise_calc(noise_specs, x):
     '''
     '''
+    if noise_specs[2] == 0.0:
+        return 0.0
     return noise_specs[0] + (((noise_specs[1]-noise_specs[0])/noise_specs[2])*x)
     
 def normpdf(x, mean, sd):
