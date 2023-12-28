@@ -117,6 +117,8 @@ def rt_noise_level_parameters_set(mz_int):
     scalar
         The intensity of the 95th percentile of the intensity array.
     '''
+    if len(mz_int[0]) == 0:
+        return 0.0, 0.0, 0.0
     int_list_first_quarter = []
     int_list_last_quarter = []
     first_quarter_end = mz_int[0][-1]/4
