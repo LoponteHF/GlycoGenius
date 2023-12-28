@@ -746,6 +746,7 @@ def interactive_terminal():
                     var = var+"/"
                 path = var
                 break
+        print("")
         max_ppm = 10
         while True:
             var = input("Insert the maximum amount of PPM difference that\na detected glycan must have in order to show up\nin results' table: ")
@@ -756,6 +757,7 @@ def interactive_terminal():
                 continue
             max_ppm = var
             break
+        print("")
         iso_fit = 0.5
         while True:
             var = input("Insert the minimum isotopic fitting score for a\nglycan in order for it to show up in the\nresults' table (values between 0.0 and 1.0): ")
@@ -769,6 +771,7 @@ def interactive_terminal():
                 continue
             iso_fit = var
             break
+        print("")
         curve_fit = 0.5
         while True:
             var = input("Insert the minimum curve fitting score for a\nglycan in order for it to show up in the\nresults' table (values between 0.0 and 1.0): ")
@@ -782,6 +785,7 @@ def interactive_terminal():
                 continue
             curve_fit = var
             break
+        print("")
         sn = 3
         while True:
             var = input("Insert the minimum signal-to-noise ratio that\na detected glycan must have in order to show up\nin results' table: ")
@@ -792,6 +796,7 @@ def interactive_terminal():
                 continue
             sn = var
             break
+        print("")
         return input_order, path, max_ppm, iso_fit, curve_fit, sn
     if input_order[0] == 4:
         commented = False
@@ -1494,7 +1499,8 @@ def output_filtered_data(curve_fit_score,
                 file = dill.load(f)
                 df1 = file[0]
                 df2 = file[1]
-                if analyze_ms2:
+                if type(file[2]) == list:
+                    analyze_ms2 = True
                     fragments_dataframes = file[2]
                     if reanalysis[0] and ".".join(version.split('.')[:2]) != ".".join(file[3].split('.')[:2]):
                         input("Raw data files version incompatible with\ncurrent version (Current version: "+version+";\nRaw data version: "+file[3]+")")
