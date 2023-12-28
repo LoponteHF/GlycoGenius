@@ -128,13 +128,15 @@ def rt_noise_level_parameters_set(mz_int):
             int_list_first_quarter.append(mz_int[1][i_i])
         if i > last_quarter_begin:
             int_list_last_quarter.append(mz_int[1][i_i])
+    if len(int_list_first_quarter) == 0 or len(int_list_last_quarter) == 0:
+        return 0.0, 0.0, 0.0
     return percentile(int_list_first_quarter, 95), percentile(int_list_last_quarter, 95), mz_int[0][-1]
     
-def local_noise_calc(noise_specs, x):
+def local_noise_calc(noise_specs, x, avg_noise):
     '''
     '''
     if noise_specs[2] == 0.0:
-        return 0.0
+        return avg_noise
     return noise_specs[0] + (((noise_specs[1]-noise_specs[0])/noise_specs[2])*x)
     
 def normpdf(x, mean, sd):

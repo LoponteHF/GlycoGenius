@@ -121,6 +121,7 @@ def eic_from_glycan(files,
                     tolerance,
                     min_isotops,
                     noise,
+                    avg_noise,
                     max_charges,
                     fast_iso,
                     verbose = False):
@@ -154,6 +155,9 @@ def eic_from_glycan(files,
         
     noise : list
         A list containing the calculated noise level of each sample.
+    
+    avg_noise : float
+        Fallback average noise in case local noise can't be calculated.
         
     max_charges : int
         The maximum amount of charges the queried mz should have.
@@ -338,7 +342,7 @@ def eic_from_glycan(files,
                                 iso_target.append(mono_int*glycan_info['Isotopic_Distribution'][iso_distro])
                             iso_distro += 1
                             continue
-                        if sliced_int[l_l] < General_Functions.local_noise_calc(noise[j_j][k_k], l) and glycan != "Internal Standard": #Everything from here is dependent on noise level
+                        if sliced_int[l_l] < General_Functions.local_noise_calc(noise[j_j][k_k], l, avg_noise[j_j]) and glycan != "Internal Standard": #Everything from here is dependent on noise level
                             continue
                         if l >= target_mz - General_Functions.tolerance_calc(tolerance[0], tolerance[1], l) and abs(l-target_mz) <= General_Functions.tolerance_calc(tolerance[0], tolerance[1], l):
                             mono_ppm.append(General_Functions.calculate_ppm_diff(l, target_mz))
