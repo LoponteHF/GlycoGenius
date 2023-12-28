@@ -612,21 +612,22 @@ def peaks_from_eic(rt_int,
     '''
     peaks = []
     temp_start = 0
-    temp_max = 0.0
+    temp_max = 0
     temp_max_id_iu = 0
     going_up = False
     going_down = False
     counter = 0
     max_counter = int(0.1/(rt_int[0][-1]-rt_int[0][-2]))
     for i_i, i in enumerate(rt_int_smoothed[1]):
+#        print("RT:", "%.2f" % round(rt_int[0][i_i], 2),"INT:", "%.2f" % round(rt_int[1][i_i], 2), "TEMP_MAX:", temp_max,"TEMP_MAX_ID:", temp_max_id_iu, going_up, going_down, counter)
         if (rt_int[0][i_i] >= rt_interval[1] or rt_int[0][i_i] == rt_int[0][-1]):
             break
         if rt_int[0][i_i] >= rt_interval[0]:
+            if (going_up or going_down) and rt_int[1][i_i] > temp_max:
+                temp_max = rt_int[1][i_i]
+                temp_max_id_iu = i_i
             if (going_up and (i < rt_int_smoothed[1][i_i-1] or rt_int_smoothed[1][i_i] == 0)):
                 counter+=1
-                if rt_int[1][i_i] > temp_max:
-                    temp_max = rt_int[1][i_i]
-                    temp_max_id_iu = i_i
                 if counter <= max_counter:
                     continue
                 elif counter > max_counter:
@@ -645,6 +646,9 @@ def peaks_from_eic(rt_int,
                         good = True
                 if good:
                     peaks.append({'id': temp_max_id_iu, 'rt': rt_int[0][temp_max_id_iu], 'int': temp_max, 'peak_width': temp_peak_width, 'peak_interval': (rt_int[0][temp_start], rt_int[0][i_i]), 'peak_interval_id': (temp_start, i_i)})
+                    temp_max = 0
+                    temp_max_id_iu = 0
+                if not good:
                     temp_max = 0
                     temp_max_id_iu = 0
             if (i_i != 0 and i > rt_int_smoothed[1][i_i-1] and not going_up and not going_down):
