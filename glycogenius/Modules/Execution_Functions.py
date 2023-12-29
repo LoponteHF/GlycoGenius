@@ -50,6 +50,7 @@ import sys
 import datetime
 import traceback
 import pkg_resources
+import platform
 
 try:
     version = pkg_resources.get_distribution("glycogenius").version
@@ -199,7 +200,14 @@ def interactive_terminal():
     date = datetime.datetime.now()
     begin_time = str(date)[2:4]+str(date)[5:7]+str(date)[8:10]+"_"+str(date)[11:13]+str(date)[14:16]+str(date)[17:19]
     input_order = [None]
-    default_path = "C:/GlycoGenius/"
+    curr_os = platform.system()
+    if curr_os == "Linux":
+        default_path = "~/GlycoGenius/"
+    if curr_os == "Windows":
+        default_path = "C:/GlycoGenius/"
+    if curr_os == "Darwin":
+        print("OS not tested for compatibility.")
+        default_path = "~/GlycoGenius/"
     while input_order[0] == None:
         print_header()
         print("1 - Build and output glycans library.\n2 - Analyze sample files in single-threaded mode\n3 - Reanalyze raw results files with new\n    parameters\n4 - Create template parameters file for command-\n    line execution\n5 - Exit")
