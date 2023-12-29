@@ -241,10 +241,11 @@ def main():
         if multithreaded_execution[0]:
             print('Multithreaded Execution: '+str(multithreaded_execution[1]))
         samples_names = Execution_Functions.sample_names(samples_list)
-        print("Sample files detected: "+str(len(samples_names)))
-        for i in samples_names:
-            print("--> "+i)
-        Execution_Functions.print_sep()
+        if not only_gen_lib:
+            print("Sample files detected: "+str(len(samples_names)))
+            for i in samples_names:
+                print("--> "+i)
+            Execution_Functions.print_sep()
         library = Execution_Functions.imp_exp_gen_library(multithreaded_analysis,
                                                           multithreaded_execution,
                                                           samples_names,

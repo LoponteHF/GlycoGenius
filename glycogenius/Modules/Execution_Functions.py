@@ -107,7 +107,7 @@ def generate_cfg_file(path, comments):
         with open(glycogenius_path+'/Parameters_Template.py', 'r') as f:
             for line in f:
                 if line[0:14] == "samples_path =":
-                    g.write("samples_path = "+path+"Samples Files/\n")
+                    g.write("samples_path = "+path+"Sample Files/\n")
                     continue
                 if line[0:14] == "working_path =":
                     g.write("working_path = "+path+"\n")
