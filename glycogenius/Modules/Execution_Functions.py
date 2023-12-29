@@ -207,7 +207,7 @@ def interactive_terminal():
         default_path = "C:/GlycoGenius/"
     if curr_os == "Darwin":
         print("OS not tested for compatibility.")
-        default_path = "~/GlycoGenius/"
+        default_path = "/home/GlycoGenius/"
     while input_order[0] == None:
         print_header()
         print("1 - Build and output glycans library.\n2 - Analyze sample files in single-threaded mode\n3 - Reanalyze raw results files with new\n    parameters\n4 - Create template parameters file for command-\n    line execution\n5 - Exit")
