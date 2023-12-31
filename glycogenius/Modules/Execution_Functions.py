@@ -1316,6 +1316,7 @@ def output_filtered_data(curve_fit_score,
                          multithreaded_execution,
                          analyze_ms2,
                          unrestricted_fragments,
+                         reporter_ions,
                          plot_metaboanalyst,
                          rt_tolerance,
                          sneakpeek):
@@ -1358,6 +1359,9 @@ def output_filtered_data(curve_fit_score,
     analyze_ms2 : tuple
         A tuple with two indexes: The first one indicates whether to analyze ms2 data and the
         second one indicates whether ms2 data should be forced to fit glycans composition.
+        
+    reporter_ions : list
+        A list containing the reporter ions you wish to filter your data with.
         
     plot_metaboanalyst : tuple
         A tuple with two indexes: The first one indicates whether or not to output a file to be
@@ -1587,6 +1591,7 @@ def output_filtered_data(curve_fit_score,
                                     del fragments_dataframes[i_i]["Fragment_Intensity"][k]
                                     del fragments_dataframes[i_i]["RT"][k]
                                     del fragments_dataframes[i_i]["Precursor_mz"][k]
+                                    del fragments_dataframes[i_i]["Annotated_peaks/Total_peaks"][k]
             df1[i_i]["RT"][j_j] = str(temp_rt)[1:-1]
             df1[i_i]["AUC"][j_j] = str(temp_auc)[1:-1]
             df1[i_i]["PPM"][j_j] = str(temp_ppm)[1:-1]
@@ -1634,7 +1639,8 @@ def output_filtered_data(curve_fit_score,
                             del fragments_dataframes[j_j]["Fragment_mz"][k]
                             del fragments_dataframes[j_j]["Fragment_Intensity"][k]
                             del fragments_dataframes[j_j]["RT"][k]
-                            del fragments_dataframes[j_j]["Precursor_mz"][k] #QCs cutoff end
+                            del fragments_dataframes[j_j]["Precursor_mz"][k]
+                            del fragments_dataframes[j_j]["Annotated_peaks/Total_peaks"][k] #QCs cutoff end
     for i_i, i in enumerate(df1): #final arrangement for standard results print
         for j_j, j in enumerate(df1[i_i]["Adduct"]):
             for k_k, k in enumerate(df1[i_i]["RT"][j_j].split(", ")):
@@ -1674,6 +1680,74 @@ def output_filtered_data(curve_fit_score,
                         del fragments_dataframes[i_i]["Fragment_Intensity"][k_k]
                         del fragments_dataframes[i_i]["RT"][k_k]
                         del fragments_dataframes[i_i]["Precursor_mz"][k_k]
+                        del fragments_dataframes[i_i]["Annotated_peaks/Total_peaks"][k_k]
+        if len(reporter_ions) != 0: #reporter_ions filtering
+            for i_i, i in enumerate(fragments_dataframes):
+                to_remove = []
+                temp_list_fragments = []
+                temp_list_mz = []
+                current_checking = ""
+                for j_j, j in enumerate(fragments_dataframes[i_i]["Glycan"]):
+                    to_check = j+"_"+fragments_dataframes[i_i]["Adduct"][j_j]+"_"+str(fragments_dataframes[i_i]["RT"][j_j])
+                    if to_check != current_checking:
+                        found = False
+                        current_checking = to_check
+                        temp_list_fragments = []
+                        temp_list_mz = []
+                        for k in range(j_j, len(fragments_dataframes[i_i]["Glycan"])):
+                            to_check_2 = fragments_dataframes[i_i]["Glycan"][k]+"_"+fragments_dataframes[i_i]["Adduct"][k]+"_"+str(fragments_dataframes[i_i]["RT"][k])
+                            if to_check == to_check_2:
+                                temp_list_fragments.append(fragments_dataframes[i_i]["Fragment"][k])
+                                temp_list_mz.append(fragments_dataframes[i_i]["Fragment_mz"][k])
+                            else:
+                                break
+                        for k_k, k in enumerate(reporter_ions):
+                            try:
+                                current_reporter = float(k)
+                            except:
+                                current_reporter = k
+                            if type(current_reporter) == float:
+                                for l in temp_list_mz:
+                                    if abs(current_reporter - l) <= 0.1:
+                                        found = True
+                                        break
+                                if found:
+                                    break
+                            if type(current_reporter) == str:
+                                for l in temp_list_fragments:
+                                    if current_reporter == l.split("+")[0].split("-")[0].split("_")[0]:
+                                        found = True
+                                        break
+                                if found:
+                                    break
+                    if not found and current_checking == to_check:
+                        to_remove.append(j_j)
+                if len(to_remove) != 0:
+                    for k_k in sorted(to_remove, reverse = True):
+                        del fragments_dataframes[i_i]["Glycan"][k_k]
+                        del fragments_dataframes[i_i]["Adduct"][k_k]
+                        del fragments_dataframes[i_i]["Fragment"][k_k]
+                        del fragments_dataframes[i_i]["Fragment_mz"][k_k]
+                        del fragments_dataframes[i_i]["Fragment_Intensity"][k_k]
+                        del fragments_dataframes[i_i]["RT"][k_k]
+                        del fragments_dataframes[i_i]["Precursor_mz"][k_k]
+                        del fragments_dataframes[i_i]["Annotated_peaks/Total_peaks"][k_k] #end of reporter ions filtering
+        for i_i, i in enumerate(fragments_dataframes): #annotated_peaks ratio calculation
+            temp_list_fragments = []
+            current_checking = ""
+            for j_j, j in enumerate(fragments_dataframes[i_i]["Glycan"]):
+                to_check = j+"_"+fragments_dataframes[i_i]["Adduct"][j_j]+"_"+str(fragments_dataframes[i_i]["RT"][j_j])
+                if to_check != current_checking:
+                    current_checking = to_check
+                    temp_list_fragments = []
+                    for k in range(j_j, len(fragments_dataframes[i_i]["Glycan"])):
+                        to_check_2 = fragments_dataframes[i_i]["Glycan"][k]+"_"+fragments_dataframes[i_i]["Adduct"][k]+"_"+str(fragments_dataframes[i_i]["RT"][k])
+                        if to_check == to_check_2:
+                            temp_list_fragments.append(fragments_dataframes[i_i]["Fragment"][k])
+                        else:
+                            break
+                if current_checking == to_check and fragments_dataframes[i_i]["Annotated_peaks/Total_peaks"] != 0:
+                    fragments_dataframes[i_i]["Annotated_peaks/Total_peaks"][j_j] = float("%.3f" % round(len(temp_list_fragments)/fragments_dataframes[i_i]["Annotated_peaks/Total_peaks"][j_j], 3)) #end of annotated_peaks ratio calculation
     total_dataframes = [] #total glycans AUC dataframe
     for i_i, i in enumerate(df1_refactor):
         total_dataframes.append({"Glycan": [], "RT": [], "AUC": []})
@@ -1994,7 +2068,7 @@ def arrange_raw_data(analyzed_data,
         df2["Average_Noise_Level"].append(float("%.1f" % round(analyzed_data[2][i_i],1)))
         if analyze_ms2:
             df1.append({"Glycan" : [], "Adduct" : [], "mz" : [], "RT" : [], "AUC" : [], "PPM" : [], "S/N" : [], "Iso_Fitting_Score" : [], "Curve_Fitting_Score" : [], "Detected_Fragments" : []})
-            fragments_dataframes.append({"Glycan" : [], "Adduct" : [], "Precursor_mz" : [], "Fragment" : [], "Fragment_mz" : [], "Fragment_Intensity" : [], "RT" : []})
+            fragments_dataframes.append({"Glycan" : [], "Adduct" : [], "Precursor_mz" : [], "Fragment" : [], "Fragment_mz" : [], "Fragment_Intensity" : [], "RT" : [], "Annotated_peaks/Total_peaks" : []})
         else:
             df1.append({"Glycan" : [], "Adduct" : [], "mz" : [], "RT" : [], "AUC" : [], "PPM" : [], "S/N" : [], "Iso_Fitting_Score" : [], "Curve_Fitting_Score" : []})
     for i_i, i in enumerate(analyzed_data[0]): #i = glycan (key)
@@ -2079,6 +2153,7 @@ def arrange_raw_data(analyzed_data,
                                 fragments_dataframes[k_k]["Fragment_Intensity"].append(float("%.2f" % round(m[4], 2)))
                                 fragments_dataframes[k_k]["RT"].append(float("%.2f" % round(m[5],2)))
                                 fragments_dataframes[k_k]["Precursor_mz"].append(float("%.4f" % round(m[6], 4)))
+                                fragments_dataframes[k_k]["Annotated_peaks/Total_peaks"].append(int(m[7]))
                             df1[k_k]["Detected_Fragments"].append('Yes')
                         else:
                             df1[k_k]["Detected_Fragments"].append('No')
@@ -2680,11 +2755,11 @@ def analyze_ms2(ms2_index,
                                 for o in n['Adducts_mz']:
                                     if abs(n['Adducts_mz'][o]-m) <= General_Functions.tolerance_calc(tolerance[0], tolerance[1], n['Adducts_mz'][o]): #fragments data outputted in the form of (Glycan, Adduct, Fragment, Fragment mz, intensity, retention time, precursor)
                                         if len(n['Formula']) > 3 and n['Formula'][-3] != "_":
-                                            fragments_data[i][j][k_k].append((i, j, n['Formula']+'_'+o, n['Adducts_mz'][o], k[l]['intensity array'][m_m], k[l]['retentionTime'], k[l]['precursorMz'][0]['precursorMz']))
+                                            fragments_data[i][j][k_k].append((i, j, n['Formula']+'_'+o, n['Adducts_mz'][o], k[l]['intensity array'][m_m], k[l]['retentionTime'], k[l]['precursorMz'][0]['precursorMz'], len(k[l]['m/z array'])))
                                         elif len(n['Formula']) > 3 and n['Formula'][-3] == "_" and combo:
-                                            fragments_data[i][j][k_k].append((i, j, new_formula, n['Adducts_mz'][o], k[l]['intensity array'][m_m], k[l]['retentionTime'], k[l]['precursorMz'][0]['precursorMz']))
+                                            fragments_data[i][j][k_k].append((i, j, new_formula, n['Adducts_mz'][o], k[l]['intensity array'][m_m], k[l]['retentionTime'], k[l]['precursorMz'][0]['precursorMz'], len(k[l]['m/z array'])))
                                         else:
-                                            fragments_data[i][j][k_k].append((i, j, n['Formula'], n['Adducts_mz'][o], k[l]['intensity array'][m_m], k[l]['retentionTime'], k[l]['precursorMz'][0]['precursorMz']))
+                                            fragments_data[i][j][k_k].append((i, j, n['Formula'], n['Adducts_mz'][o], k[l]['intensity array'][m_m], k[l]['retentionTime'], k[l]['precursorMz'][0]['precursorMz'], len(k[l]['m/z array'])))
                                         found = True
                                         break
                             if found:

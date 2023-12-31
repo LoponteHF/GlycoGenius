@@ -49,6 +49,7 @@ def main():
 
     multithreaded_analysis = (False, 1)
     analyze_ms2 = (False, False, False)
+    reporter_ions = []
     accuracy_unit = 'pw'
     accuracy_value = 0.0
     ret_time_interval = (0, 99999, 0.2)
@@ -102,6 +103,11 @@ def main():
         only_gen_lib = config['library_building'].getboolean('only_gen_lib')
         multithreaded_analysis = (config['analysis_parameters'].getboolean('multithreaded_analysis'), int(config['analysis_parameters']['threads_number']))
         analyze_ms2 = (config['analysis_parameters'].getboolean('analyze_ms2'), config['analysis_parameters'].getboolean('force_fragments_to_glycans'), config['analysis_parameters'].getboolean('unrestricted_fragments'))
+        reporter_ions = config['analysis_parameters']['reporter_ions'].split(",")
+        for i_i, i in enumerate(reporter_ions):
+            reporter_ions[i_i] = i.strip()
+            if len(i) == 0:
+                reporter_ions = reporter_ions[:i_i]+reporter_ions[i_i+1:]
         accuracy_unit = config['analysis_parameters']['accuracy_unit']
         accuracy_value = float(config['analysis_parameters']['accuracy_value'])
         ret_time_interval = (float(config['analysis_parameters']['ret_time_begin']), float(config['analysis_parameters']['ret_time_end']), float(config['analysis_parameters']['ret_time_tolerance']))
@@ -233,6 +239,7 @@ def main():
                                                  multithreaded_execution,
                                                  analyze_ms2[0],
                                                  analyze_ms2[2],
+                                                 reporter_ions,
                                                  plot_metaboanalyst,
                                                  ret_time_interval[2],
                                                  sneakpeek)
@@ -337,6 +344,7 @@ def main():
                                                  multithreaded_execution,
                                                  analyze_ms2[0],
                                                  analyze_ms2[2],
+                                                 reporter_ions,
                                                  plot_metaboanalyst,
                                                  ret_time_interval[2],
                                                  sneakpeek)
