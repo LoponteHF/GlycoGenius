@@ -1497,6 +1497,10 @@ def output_filtered_data(curve_fit_score,
                 p7.unlink(missing_ok=True)
         except:
             pass
+    files_list_in_path = os.listdir(save_path)
+    for i in files_list_in_path:
+        if "results1" in i:
+            return
     try:
         if sneakpeek[0]:
             with open(save_path+'results1_'+str(sneakpeek[1]), 'rb') as f:
@@ -2681,9 +2685,9 @@ def analyze_ms2(ms2_index,
         for j_j, j in enumerate(analyzed_data[0][i]['Adducts_mz_data']): #goes through each adduct
             fragments_data[i][j] = {}
             for k_k, k in enumerate(data): #goes through each file
+                fragments_data[i][j][k_k] = []
                 if len(ms2_index[k_k]) == 0:
                     continue
-                fragments_data[i][j][k_k] = []
                 if len(analyzed_data[0][i]['Adducts_mz_data'][j][k_k][1]) == 0 and not unrestricted_fragments: #checks if found the adduct
                     continue
                 for l in ms2_index[k_k]:

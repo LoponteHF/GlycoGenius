@@ -563,12 +563,13 @@ def average_ppm_calc(ppm_array,
         tolerance of the analysis.
     '''
     ppms = []
+    ppm_default = General_Functions.calculate_ppm_diff(tolerance[2]-General_Functions.tolerance_calc(tolerance[0], tolerance[1], tolerance[2]), tolerance[2])
     missing_points = 0
     for i in ppm_array[peak['peak_interval_id'][0]:peak['peak_interval_id'][1]+1]:
         if i != inf:
             ppms.append(i)
         else:
-            ppms.append(General_Functions.calculate_ppm_diff(tolerance[2]-General_Functions.tolerance_calc(tolerance[0], tolerance[1], tolerance[2]), tolerance[2]))
+            ppms.append(ppm_default)
             missing_points+= 1
     return mean(ppms), missing_points
 
