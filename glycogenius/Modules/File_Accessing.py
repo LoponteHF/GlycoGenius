@@ -219,8 +219,6 @@ def eic_from_glycan(files,
     iso_fitting_quality = {}
     verbose_info = []
     raw_data = {}
-    if glycan == "Internal Standard":
-        min_isotops = 2
     for i in glycan_info['Adducts_mz']:
         if verbose:
             print('Adduct: '+str(i)+" mz: "+str(glycan_info['Adducts_mz'][i]))
@@ -342,7 +340,7 @@ def eic_from_glycan(files,
                                 iso_target.append(mono_int*glycan_info['Isotopic_Distribution'][iso_distro])
                             iso_distro += 1
                             continue
-                        if sliced_int[l_l] < General_Functions.local_noise_calc(noise[j_j][k_k], l, avg_noise[j_j]) and glycan != "Internal Standard": #Everything from here is dependent on noise level
+                        if sliced_int[l_l] < General_Functions.local_noise_calc(noise[j_j][k_k], l, avg_noise[j_j]): #Everything from here is dependent on noise level
                             continue
                         if l >= target_mz - General_Functions.tolerance_calc(tolerance[0], tolerance[1], l) and abs(l-target_mz) <= General_Functions.tolerance_calc(tolerance[0], tolerance[1], l):
                             mono_ppm.append(General_Functions.calculate_ppm_diff(l, target_mz))

@@ -1863,10 +1863,16 @@ def output_filtered_data(curve_fit_score,
                     g.write(",".join(samples_line)+"\n")
                     g.write(",".join(groups_line)+"\n")
                     g.close()
-                int_std_id = []
+                is_areas = []
                 for i in total_dataframes:
                     if "Internal Standard" in i["Glycan"]:
-                        int_std_id.append(i["Glycan"].index("Internal Standard"))
+                        temp_areas = []
+                        for j_j, j in enumerate(i["Glycan"]):
+                            if j == "Internal Standard":
+                                temp_areas.append(i["AUC"][j_j])
+                        is_areas.append(max(temp_areas))
+                    else:
+                        is_areas.append(0.0)
             f.write(",".join(samples_line)+"\n")
             f.write(",".join(groups_line)+"\n")
             for i in all_glycans_list:
@@ -1883,7 +1889,10 @@ def output_filtered_data(curve_fit_score,
                         if k == i_splitted[0] and abs(j["RT"][k_k] - float(i_splitted[-1])) <= rt_tolerance:
                             found = True
                             if "Internal Standard" in j["Glycan"]:
-                                temp_AUC_IS = j["AUC"][k_k]/j["AUC"][int_std_id[j_j]]
+                                if is_areas[j_j] > 0.0:
+                                    temp_AUC_IS = j["AUC"][k_k]/is_areas[j_j]
+                                else:
+                                    temp_AUC_IS = 0.0
                                 temp_AUC = j["AUC"][k_k]
                             else:
                                 temp_AUC = j["AUC"][k_k]
@@ -2501,7 +2510,10 @@ def analyze_files(library,
                 if verbose:
                     verbose_info.append('Adduct: '+str(j)+' mz: '+str(glycan_data['Adducts_mz'][j])+' Sample: '+str(k))
                     verbose_info.append('EIC INT Array: '+str(temp_eic[0][j][k][1]))
-                temp_eic_smoothed = File_Accessing.eic_smoothing(temp_eic[0][j][k])
+                if i == "Internal Standard":
+                    temp_eic_smoothed = File_Accessing.eic_smoothing(temp_eic[4][j][k])
+                else:
+                    temp_eic_smoothed = File_Accessing.eic_smoothing(temp_eic[0][j][k])
                 glycan_data['Adducts_mz_data'][j][k] = []
                 glycan_data['Adducts_mz_data'][j][k].append(temp_eic[0][j][k][1])
                 glycan_data['Adducts_mz_data'][j][k].append([])
@@ -2512,17 +2524,30 @@ def analyze_files(library,
                     verbose_info.append('Raw PPM error: '+str(temp_eic[1][j][k])+'\nRaw Isotopic Fitting Score: '+str(temp_eic[2][j][k]))
                 if max(temp_eic[0][j][k][1]) < noise_avg[k] and i != "Internal Standard":
                     continue
-                temp_peaks = File_Accessing.peaks_from_eic(temp_eic[0][j][k],
-                                            temp_eic_smoothed,
-                                            ret_time_interval,
-                                            min_ppp,
-                                            close_peaks,
-                                            i)
+                if i == "Internal Standard":
+                    temp_peaks = File_Accessing.peaks_from_eic(temp_eic[4][j][k],
+                                                               temp_eic_smoothed,
+                                                               ret_time_interval,
+                                                               min_ppp,
+                                                               close_peaks,
+                                                               i)
+                else:
+                    temp_peaks = File_Accessing.peaks_from_eic(temp_eic[0][j][k],
+                                                               temp_eic_smoothed,
+                                                               ret_time_interval,
+                                                               min_ppp,
+                                                               close_peaks,
+                                                               i)
                 if len(temp_peaks) == 0:
                     continue
-                temp_peaks_auc = File_Accessing.peaks_auc_from_eic(temp_eic[0][j][k],
-                                                    ms1_index[k],
-                                                    temp_peaks)
+                if i == "Internal Standard":
+                    temp_peaks_auc = File_Accessing.peaks_auc_from_eic(temp_eic[4][j][k],
+                                                                       ms1_index[k],
+                                                                       temp_peaks)
+                else:
+                    temp_peaks_auc = File_Accessing.peaks_auc_from_eic(temp_eic[0][j][k],
+                                                                       ms1_index[k],
+                                                                       temp_peaks)
                 for l_l, l in enumerate(temp_peaks):
                     if temp_peaks_auc[l_l] >= noise_avg[k]:
                         l['AUC'] = temp_peaks_auc[l_l]

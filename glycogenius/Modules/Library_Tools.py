@@ -283,11 +283,20 @@ def full_glycans_library(library,
     if internal_standard != 0.0:
         i_formula = 'Internal Standard'
         i_neutral_mass = internal_standard
+        if tag[1] == 0.0:
+            if permethylated:
+                i_neutral_mass = i_neutral_mass+mass.calculate_mass({'C': 2, 'H': 4})
+                if reduced:
+                    i_neutral_mass = i_neutral_mass+mass.calculate_mass({'O': 1})
+            if not permethylated and reduced:
+                i_neutral_mass = i_neutral_mass+mass.calculate_mass({'H': 2})
+        else:
+            i_neutral_mass = i_neutral_mass+tag_mass
         i_iso_dist = [[1.0, 0.9, 0.7, 0.4, 0.1], []]
         for i in range(len(i_iso_dist[0])):
             i_iso_dist[1].append(internal_standard+(i*General_Functions.h_mass))
         full_library[i_formula] = {}
-        full_library[i_formula]['Monos_Composition'] = {"C": 0, "O": 0, "N": 0, "H": 0}
+        full_library[i_formula]['Monos_Composition'] = {"H": 0, "N": 0, "S": 0, "F": 0, "G": 0}
         full_library[i_formula]['Neutral_Mass'] = i_neutral_mass
         full_library[i_formula]['Neutral_Mass+Tag'] = i_neutral_mass
         full_library[i_formula]['Isotopic_Distribution'] = i_iso_dist[0]
