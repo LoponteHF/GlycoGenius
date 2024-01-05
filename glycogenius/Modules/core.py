@@ -53,6 +53,7 @@ def main():
     accuracy_unit = 'pw'
     accuracy_value = 0.0
     ret_time_interval = (0, 99999, 0.2)
+    rt_tolerance_frag = 0.0
     min_isotopologue_peaks = 0
     min_ppp = (False, 0)
     close_peaks = (False, 3)
@@ -64,7 +65,6 @@ def main():
     samples_path = ''
     save_path = ''
     plot_metaboanalyst = (False, [])
-    rt_tolerance_metab = 0.0
     reanalysis = (False, False)
 
     multithreaded_execution = (False, 0, 0) #editted by multithreaded 1
@@ -109,6 +109,7 @@ def main():
             reporter_ions[i_i] = i.strip()
             if len(i) == 0:
                 reporter_ions = reporter_ions[:i_i]+reporter_ions[i_i+1:]
+        rt_tolerance_frag = float(config['analysis_parameters']['ret_time_tolerance_ms2'])
         accuracy_unit = config['analysis_parameters']['accuracy_unit']
         accuracy_value = float(config['analysis_parameters']['accuracy_value'])
         ret_time_interval = (float(config['analysis_parameters']['ret_time_begin']), float(config['analysis_parameters']['ret_time_end']), float(config['analysis_parameters']['ret_time_tolerance']))
@@ -145,7 +146,6 @@ def main():
             if len(metaboanalyst_groups[i_i]) == 0:
                 del metaboanalyst_groups[i_i]
         plot_metaboanalyst = (config['analysis_parameters'].getboolean('plot_metaboanalyst'), metaboanalyst_groups)
-        rt_tolerance_metab = float(config['analysis_parameters']['rt_tolerance_metaboanalyst'])
         reanalysis = (config['analysis_parameters'].getboolean('reanalysis'), config['analysis_parameters'].getboolean('output_plot_data'))
     else: #If no parameters file pipelines, run CLI
         parameters = Execution_Functions.interactive_terminal()
@@ -244,7 +244,7 @@ def main():
                                                  reporter_ions,
                                                  plot_metaboanalyst,
                                                  ret_time_interval[2],
-                                                 rt_tolerance_metab,
+                                                 rt_tolerance_frag,
                                                  sneakpeek)
 
     else:
@@ -350,7 +350,7 @@ def main():
                                                  reporter_ions,
                                                  plot_metaboanalyst,
                                                  ret_time_interval[2],
-                                                 rt_tolerance_metab,
+                                                 rt_tolerance_frag,
                                                  sneakpeek)
                                                  
     if not os.isatty(0):

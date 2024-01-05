@@ -1319,7 +1319,7 @@ def output_filtered_data(curve_fit_score,
                          reporter_ions,
                          plot_metaboanalyst,
                          rt_tolerance,
-                         rt_tolerance_metab,
+                         rt_tolerance_frag,
                          sneakpeek):
     '''This function filters and converts raw results data into human readable
     excel files.
@@ -1667,7 +1667,7 @@ def output_filtered_data(curve_fit_score,
                 found = False
                 for l_l, l in enumerate(fragments_dataframes[j_j]["Glycan"]):
                     if l == df1_refactor[j_j]["Glycan"][k_k] and fragments_dataframes[j_j]["Adduct"][l_l] == df1_refactor[j_j]["Adduct"][k_k]:
-                        if abs(fragments_dataframes[j_j]["RT"][l_l] - k) <= rt_tolerance:
+                        if abs(fragments_dataframes[j_j]["RT"][l_l] - k) <= rt_tolerance_frag:
                             found = True
                             to_keep[j_j].append(l_l)
                 if found:
@@ -1887,7 +1887,7 @@ def output_filtered_data(curve_fit_score,
                     for k_k, k in enumerate(j["Glycan"]):
                         if k == "Internal Standard":
                             continue
-                        if k == i_splitted[0] and abs(j["RT"][k_k] - float(i_splitted[-1])) <= rt_tolerance_metab:
+                        if k == i_splitted[0] and abs(j["RT"][k_k] - float(i_splitted[-1])) <= rt_tolerance:
                             found = True
                             if "Internal Standard" in j["Glycan"]:
                                 if is_areas[j_j] > 0.0:
