@@ -64,6 +64,7 @@ def main():
     samples_path = ''
     save_path = ''
     plot_metaboanalyst = (False, [])
+    rt_tolerance_metab = 0.0
     reanalysis = (False, False)
 
     multithreaded_execution = (False, 0, 0) #editted by multithreaded 1
@@ -144,6 +145,7 @@ def main():
             if len(metaboanalyst_groups[i_i]) == 0:
                 del metaboanalyst_groups[i_i]
         plot_metaboanalyst = (config['analysis_parameters'].getboolean('plot_metaboanalyst'), metaboanalyst_groups)
+        rt_tolerance_metab = float(config['analysis_parameters']['rt_tolerance_metaboanalyst'])
         reanalysis = (config['analysis_parameters'].getboolean('reanalysis'), config['analysis_parameters'].getboolean('output_plot_data'))
     else: #If no parameters file pipelines, run CLI
         parameters = Execution_Functions.interactive_terminal()
@@ -242,6 +244,7 @@ def main():
                                                  reporter_ions,
                                                  plot_metaboanalyst,
                                                  ret_time_interval[2],
+                                                 rt_tolerance_metab,
                                                  sneakpeek)
 
     else:
@@ -347,6 +350,7 @@ def main():
                                                  reporter_ions,
                                                  plot_metaboanalyst,
                                                  ret_time_interval[2],
+                                                 rt_tolerance_metab,
                                                  sneakpeek)
                                                  
     if not os.isatty(0):
