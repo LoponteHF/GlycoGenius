@@ -133,9 +133,27 @@ def rt_noise_level_parameters_set(mz_int):
     return percentile(int_list_first_quarter, 95), percentile(int_list_last_quarter, 95), mz_int[0][-1]
     
 def local_noise_calc(noise_specs, x, avg_noise):
+    '''Uses the noise_specs produced by rt_noise_level_parameters_set to 
+    calculate the local noise levels. If any of the parameters are considered
+    abnormal (ie. absurdly high or no peaks on the array) it defaults to avg_noise.
+    
+    Parameters
+    ----------
+    noise_specs : tuple
+        A tuple containing scalars, as produced by rt_noise_level_parameters_set
+        
+    x : float
+        The mz at which you want to calculate the noise.
+        
+    avg_noise : float
+        The average noise of the file, used for fallback.
+        
+    Returns
+    -------
+    float
+        A float containing the local or average noise level.
     '''
-    '''
-    if noise_specs[2] == 0.0:
+    if noise_specs[2] == 0.0 or noise_specs[1] > noise_specs[0]*5:
         return avg_noise
     return noise_specs[0] + (((noise_specs[1]-noise_specs[0])/noise_specs[2])*x)
     
