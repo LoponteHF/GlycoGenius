@@ -153,7 +153,7 @@ def local_noise_calc(noise_specs, x, avg_noise):
     float
         A float containing the local or average noise level.
     '''
-    if noise_specs[2] == 0.0 or noise_specs[1] > noise_specs[0]*5:
+    if noise_specs[2] == 0.0 or noise_specs[1] > noise_specs[0]*5 or noise_specs[0] > noise_specs[1]*5:
         return avg_noise
     return noise_specs[0] + (((noise_specs[1]-noise_specs[0])/noise_specs[2])*x)
     

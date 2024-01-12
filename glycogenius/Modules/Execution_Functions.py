@@ -1400,8 +1400,12 @@ def imp_exp_gen_library(multithreaded_analysis,
         print("Check it in Glycans_Library.xlsx.")
         print("If you wish to analyze files,")
         print("set 'only_gen_lib' to False and input")
-        input("remaining parameters.\nPress Enter to exit.")
-        os._exit(1)
+        try:
+            input("remaining parameters.\nPress Enter to exit.")
+            os._exit(1)
+        except:
+            print("remaining parameters.\nPress Enter to exit.")
+            os._exit(1)
     return full_library
         
 def output_filtered_data(curve_fit_score,
@@ -1618,12 +1622,20 @@ def output_filtered_data(curve_fit_score,
                     analyze_ms2 = True
                     fragments_dataframes = file[2]
                     if reanalysis[0] and ".".join(version.split('.')[:2]) != ".".join(file[3].split('.')[:2]):
-                        input("Raw data files version incompatible with\ncurrent version (Current version: "+version+";\nRaw data version: "+file[3]+")")
-                        os._exit(1)
+                        try:
+                            input("Raw data files version incompatible with\ncurrent version (Current version: "+version+";\nRaw data version: "+file[3]+")")
+                            os._exit(1)
+                        except:
+                            print("Raw data files version incompatible with\ncurrent version (Current version: "+version+";\nRaw data version: "+file[3]+")")
+                            os._exit(1)
                 else:
                     if reanalysis[0] and ".".join(version.split('.')[:2]) != ".".join(file[2].split('.')[:2]):
-                        input("Raw data files version incompatible with\ncurrent version (Current version: "+version+";\nRaw data version: "+file[2]+")")
-                        os._exit(1)
+                        try:
+                            input("Raw data files version incompatible with\ncurrent version (Current version: "+version+";\nRaw data version: "+file[3]+")")
+                            os._exit(1)
+                        except:
+                            print("Raw data files version incompatible with\ncurrent version (Current version: "+version+";\nRaw data version: "+file[3]+")")
+                            os._exit(1)
                 f.close()
     except:
         if reanalysis[0]:
@@ -2565,8 +2577,11 @@ def analyze_files(library,
         for j_j, j in enumerate(ms1_index[i_i]):
             rt_array_report[i_i].append(i[j]['retentionTime'])
             mz_ints = [i[j]['m/z array'], i[j]['intensity array']]
-            noise_level = General_Functions.rt_noise_level_parameters_set(mz_ints)
             noise_avg_level = percentile(mz_ints[1], 95)
+            if i[j]['retentionTime'] < ret_time_interval[0] or i[j]['retentionTime'] > ret_time_interval[1]:
+                noise_level = (0.0, 0.0, 0.0)
+            else:
+                noise_level = General_Functions.rt_noise_level_parameters_set(mz_ints)
             temp_noise.append(noise_level)
             temp_avg_noise.append(noise_avg_level)
         noise[i_i] = temp_noise

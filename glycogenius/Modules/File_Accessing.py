@@ -272,7 +272,11 @@ def eic_from_glycan(files,
                     bad_peaks_before_target = []
                     nearby_id = 0
                     checked_bad_peaks_before_target = False
+                    iso_found = False
                     for l_l, l in enumerate(sliced_mz):
+                        if iso_found and l > ((glycan_info['Isotopic_Distribution_Masses'][iso_distro]+adduct_mass)/adduct_charge) + General_Functions.tolerance_calc(tolerance[0], tolerance[1], l):
+                            iso_distro += 1
+                            iso_found = False
                         if not_good: #Here are checks for quick skips
                             break
                         if l_l == len(sliced_mz)-1 and not found:
@@ -336,7 +340,7 @@ def eic_from_glycan(files,
                             if iso_distro <= min_isotops - 1:
                                 iso_actual.append(sliced_int[l_l])
                                 iso_target.append(mono_int*glycan_info['Isotopic_Distribution'][iso_distro])
-                            iso_distro += 1
+                            iso_found = True
                             continue
                         if not checked_bad_peaks_before_target and l > target_mz + General_Functions.tolerance_calc(tolerance[0], tolerance[1], l):
                             checked_bad_peaks_before_target = True
@@ -355,10 +359,10 @@ def eic_from_glycan(files,
                             found = True
                             continue
                     for l_l in range(nearby_id, len(sliced_mz)):
-                        if sliced_mz[l_l] > target_mz+General_Functions.tolerance_calc(tolerance[0], tolerance[1], sliced_mz[l_l]) or l_l == len(sliced_mz)-1:
+                        if sliced_mz[l_l] > target_mz+General_Functions.tolerance_calc(tolerance[0], tolerance[1], target_mz) or l_l == len(sliced_mz)-1:
                             raw_data[i][j_j][1].append(0.0)
                             break
-                        if abs(sliced_mz[l_l] - target_mz) <= General_Functions.tolerance_calc(tolerance[0], tolerance[1], sliced_mz[l_l]):
+                        if abs(sliced_mz[l_l] - target_mz) <= General_Functions.tolerance_calc(tolerance[0], tolerance[1], target_mz):
                             raw_data[i][j_j][1].append(sliced_int[l_l])
                             break
                 if not_good:

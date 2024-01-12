@@ -131,6 +131,8 @@ def main():
         for i_i, i in enumerate(samples_path):
             if i == "\\":
                 samples_path = samples_path[:i_i]+"/"+samples_path[i_i+1:]
+        if samples_path[-1] != "/":
+            samples_path = samples_path+"/"
         save_path = config['analysis_parameters']['working_path']
         save_path = save_path.strip()
         save_path = save_path.strip("'")
@@ -138,6 +140,8 @@ def main():
         for i_i, i in enumerate(save_path):
             if i == "\\":
                 save_path = save_path[:i_i]+"/"+save_path[i_i+1:]
+        if save_path[-1] != "/":
+            save_path = save_path+"/"
         metaboanalyst_groups = config['analysis_parameters']['metaboanalyst_groups'].split(",")
         for i_i in range(len(metaboanalyst_groups)-1, -1, -1):
             metaboanalyst_groups[i_i] = metaboanalyst_groups[i_i].strip()
@@ -285,14 +289,15 @@ def main():
         print('Library length: '+str(len(library)))
         Execution_Functions.print_sep()
         tolerance = (accuracy_unit, accuracy_value)
+        print("Preparing files for analysis...", end = "", flush = True)
         data = Execution_Functions.list_of_data(samples_list)
+        print("Done!")
         print("Indexing spectra...", end = "", flush = True)
         ms1_index = Execution_Functions.index_ms1_from_file(data)
         if analyze_ms2[0]:
             data = Execution_Functions.list_of_data(samples_list)
             ms2_index = Execution_Functions.index_ms2_from_file(data)
         print("Done!")
-        Execution_Functions.print_sep()
         lib_size = len(library)
         analyzed_data = Execution_Functions.analyze_files(library,
                                                           lib_size,
