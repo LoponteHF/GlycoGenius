@@ -315,7 +315,7 @@ def eic_from_glycan(files,
                             break
                         if l > target_mz + General_Functions.tolerance_calc(tolerance[0], tolerance[1], l) and l < target_mz + General_Functions.h_mass and found:
                             for m in m_range:
-                                if abs(l-(target_mz+(General_Functions.h_mass/m))) <= General_Functions.tolerance_calc(tolerance[0], tolerance[1], l) and m != adduct_charge and (sliced_int[l_l] < mono_int*2) or m >= 4) and sliced_int[l_l] > mono_int*0.5):
+                                if abs(l-(target_mz+(General_Functions.h_mass/m))) <= General_Functions.tolerance_calc(tolerance[0], tolerance[1], l) and m != adduct_charge and ((sliced_int[l_l] < mono_int*2) or m >= 4) and sliced_int[l_l] > mono_int*0.5:
                                     if verbose:
                                         verbose_info.append("------m/z "+str(l)+", int "+str(sliced_int[l_l]))
                                         verbose_info.append("--------Incorrect charge assigned.")
