@@ -259,7 +259,7 @@ def eic_from_glycan(files,
                     iso_distro = 1
                     sliced_mz = j[k]['m/z array']
                     sliced_int = j[k]['intensity array']
-                    m_range = range(1, abs(max_charges)*2)
+                    m_range = range(2, abs(max_charges)*2)
                     target_mz = glycan_info['Adducts_mz'][i]
                     second_peak = (glycan_info['Isotopic_Distribution_Masses'][1]+adduct_mass)/adduct_charge
                     sec_peak_rel_int = glycan_info['Isotopic_Distribution'][1]
@@ -273,8 +273,18 @@ def eic_from_glycan(files,
                     nearby_id = 0
                     checked_bad_peaks_before_target = False
                     iso_found = False
+                    current_iso_peak1 = []
+                    current_iso_peak2 = []
                     for l_l, l in enumerate(sliced_mz):
                         if iso_found and l > ((glycan_info['Isotopic_Distribution_Masses'][iso_distro]+adduct_mass)/adduct_charge) + General_Functions.tolerance_calc(tolerance[0], tolerance[1], l):
+                            if len(current_iso_peak1) > 5: #here data is profile
+                                iso_actual.append(max(current_iso_peak1))
+                                iso_target.append(max(current_iso_peak2))
+                            else:
+                                iso_actual.append(sum(current_iso_peak1))
+                                iso_target.append(sum(current_iso_peak2))
+                            current_iso_peak1 = []
+                            current_iso_peak2 = []
                             iso_distro += 1
                             iso_found = False
                         if not_good: #Here are checks for quick skips
@@ -315,10 +325,11 @@ def eic_from_glycan(files,
                             break
                         if l > target_mz + General_Functions.tolerance_calc(tolerance[0], tolerance[1], l) and l < target_mz + General_Functions.h_mass and found:
                             for m in m_range:
-                                if abs(l-(target_mz+(General_Functions.h_mass/m))) <= General_Functions.tolerance_calc(tolerance[0], tolerance[1], l) and m != adduct_charge and ((sliced_int[l_l] < mono_int*2) or m >= 4) and sliced_int[l_l] > mono_int*0.5:
+                                expected_value = (l*m*0.0004)+0.0467 #based on linear regression of the relationship between masses and the second isotopic peak relative intensity of glycans
+                                if m != adduct_charge and abs(l-(target_mz+(General_Functions.h_mass/m))) <= General_Functions.tolerance_calc(tolerance[0], tolerance[1], l) and sliced_int[l_l] > General_Functions.local_noise_calc(noise[j_j][k_k], l, avg_noise[j_j]) and abs(sliced_int[l_l] - mono_int*expected_value) < mono_int*expected_value*0.2:
                                     if verbose:
                                         verbose_info.append("------m/z "+str(l)+", int "+str(sliced_int[l_l]))
-                                        verbose_info.append("--------Incorrect charge assigned.")
+                                        verbose_info.append("--------Incorrect charge assigned. Peak intensity: "+str(sliced_int[l_l])+" Monoisotopic peak intensity: "+str(mono_int)+" Charge detected: "+str(m)+" Found/Mono: "+str(sliced_int[l_l]/mono_int))
                                     not_good = True
                                     break
                             if not_good:
@@ -327,25 +338,25 @@ def eic_from_glycan(files,
                             nearby_id = l_l
                             for m in m_range:
                                 if abs(l-(target_mz-(General_Functions.h_mass/m))) <= General_Functions.tolerance_calc(tolerance[0], tolerance[1], l):
-                                    if verbose:
-                                        verbose_info.append("------m/z "+str(l)+", int "+str(sliced_int[l_l]))
-                                        verbose_info.append("--------Not monoisotopic.")
-                                    bad_peaks_before_target.append(sliced_int[l_l])
+                                    bad_peaks_before_target.append((sliced_int[l_l], m))
                                     break
                         if l > target_mz + General_Functions.tolerance_calc(tolerance[0], tolerance[1], l) and abs(l-((glycan_info['Isotopic_Distribution_Masses'][iso_distro]+adduct_mass)/adduct_charge)) <= General_Functions.tolerance_calc(tolerance[0], tolerance[1], l):
                             if sliced_int[l_l] > mono_int*glycan_info['Isotopic_Distribution'][iso_distro]:
                                 intensity += mono_int*glycan_info['Isotopic_Distribution'][iso_distro]
                             if sliced_int[l_l] <= mono_int*glycan_info['Isotopic_Distribution'][iso_distro]:
                                 intensity += sliced_int[l_l]
-                            if iso_distro <= min_isotops - 1:
-                                iso_actual.append(sliced_int[l_l])
-                                iso_target.append(mono_int*glycan_info['Isotopic_Distribution'][iso_distro])
+                            current_iso_peak1.append(sliced_int[l_l])
+                            current_iso_peak2.append(mono_int*glycan_info['Isotopic_Distribution'][iso_distro])
                             iso_found = True
                             continue
                         if not checked_bad_peaks_before_target and l > target_mz + General_Functions.tolerance_calc(tolerance[0], tolerance[1], l):
                             checked_bad_peaks_before_target = True
                             for m in bad_peaks_before_target:
-                                if m > mono_int*0.5:
+                                expected_value = 1/((l*m[1]*0.0004)+0.0467) #based on linear regression of the relationship between masses and the second isotopic peak relative intensity of glycans
+                                if abs(m[0] - mono_int*expected_value) < mono_int*expected_value*0.2 or m[0] > mono_int:
+                                    if verbose:
+                                        verbose_info.append("------m/z "+str(l)+", int "+str(sliced_int[l_l]))
+                                        verbose_info.append("--------Not monoisotopic.")
                                     not_good = True
                                     break
                             if not_good:
@@ -372,14 +383,31 @@ def eic_from_glycan(files,
                     continue
                 else:
                     ppm_info[i][j_j][-1] = mean(mono_ppm)
+#                    print(j[k]['retentionTime'], iso_actual, iso_target)
                     if len(iso_actual) > 0:
-                        weights = [1, 0.7, 0.3, 0.1, 0.02, 0.003, 0.0002, 0.00001, 0.00001, 0.000001]
+                        weights = [1, 0.4, 0.1, 0.05, 0.02, 0.003, 0.0002, 0.00001, 0.00001, 0.000001]
                         temp_relation = []
                         for l in range(len(iso_actual)):
                             if iso_actual[l] >= iso_target[l]:
-                                temp_relation.append(((iso_target[l]/iso_actual[l])+9)/10)
+                                relation = iso_target[l]/iso_actual[l]
+                                if relation >= 0.7:
+                                    temp_relation.append(((relation)+9)/10)
+                                if relation < 0.7 and relation >= 0.5:
+                                    temp_relation.append(((relation)+6)/7)
+                                if relation < 0.5 and relation >= 0.3:
+                                    temp_relation.append(((relation)+3)/4)
+                                if relation < 0.3:
+                                    temp_relation.append(relation)
                             else:
-                                temp_relation.append(((iso_actual[l]/iso_target[l])+9)/10)
+                                relation = iso_actual[l]/iso_target[l]
+                                if relation >= 0.7:
+                                    temp_relation.append(((relation)+9)/10)
+                                if relation < 0.70 and relation >= 0.5:
+                                    temp_relation.append(((relation)+6)/7)
+                                if relation < 0.5 and relation >= 0.3:
+                                    temp_relation.append(((relation)+3)/4)
+                                if relation < 0.3:
+                                    temp_relation.append(relation)
                         R_sq = numpy.average(temp_relation, weights = weights[:len(temp_relation)])
                     if len(iso_actual) == 0:
                         R_sq = 0.0
@@ -557,13 +585,21 @@ def average_ppm_calc(ppm_array,
     ppms = []
     ppm_default = General_Functions.calculate_ppm_diff(tolerance[2]-General_Functions.tolerance_calc(tolerance[0], tolerance[1], tolerance[2]), tolerance[2])
     missing_points = 0
+    weights_list = []
+    for i in range(peak['peak_interval_id'][1]-peak['peak_interval_id'][0]+1):
+        weights_list.append(General_Functions.normpdf(i, (peak['peak_interval_id'][1]-peak['peak_interval_id'][0]+1)/2, (peak['peak_interval_id'][1]-peak['peak_interval_id'][0])/6))
+    scaler = (1/max(weights_list))
+    weights_list_scaled = []
+    for i in weights_list:
+        weights_list_scaled.append(i*scaler)
     for i in ppm_array[peak['peak_interval_id'][0]:peak['peak_interval_id'][1]+1]:
         if i != inf:
             ppms.append(i)
         else:
             ppms.append(ppm_default)
             missing_points+= 1
-    return mean(ppms), missing_points
+    regular_mean = numpy.average(ppms, weights = weights_list_scaled)
+    return regular_mean, missing_points
 
 def peaks_from_eic(rt_int, 
                    rt_int_smoothed,

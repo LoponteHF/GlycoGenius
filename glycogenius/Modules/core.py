@@ -54,7 +54,7 @@ def main():
     accuracy_value = 0.0
     ret_time_interval = (0, 99999, 0.2)
     rt_tolerance_frag = 0.0
-    min_isotopologue_peaks = 0
+    min_isotopologue_peaks = 2
     min_ppp = (False, 0)
     close_peaks = (False, 3)
     max_ppm = 0
@@ -113,7 +113,6 @@ def main():
         accuracy_unit = config['analysis_parameters']['accuracy_unit']
         accuracy_value = float(config['analysis_parameters']['accuracy_value'])
         ret_time_interval = (float(config['analysis_parameters']['ret_time_begin']), float(config['analysis_parameters']['ret_time_end']), float(config['analysis_parameters']['ret_time_tolerance']))
-        min_isotopologue_peaks = int(config['analysis_parameters']['min_isotopologue_peaks'])
         min_ppp = (config['analysis_parameters'].getboolean('custom_min_points_per_peak'), int(config['analysis_parameters']['number_points_per_peak']))
         close_peaks = (config['analysis_parameters'].getboolean('limit_peaks_picked'), int(config['analysis_parameters']['max_number_peaks']))
         max_ppm = int(config['analysis_parameters']['max_ppm'])

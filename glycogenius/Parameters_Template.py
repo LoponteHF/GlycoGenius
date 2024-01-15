@@ -60,8 +60,6 @@ ret_time_begin = 1
 ret_time_end = 80
 ret_time_tolerance = 0.2
 ; The minimum and maximum retention time, in minutes, used for various portions of the script. A shorter interval of ret_time makes the script run faster, so try to trim your sample as much as possible, if you know when your analytes are leaving the column. Set the retention time tolerance used for and same peak identification. ret_time_tolerance can be reapplied on raw data reanalysis.
-min_isotopologue_peaks = 3
-; Minimum amount of isotopologue peaks that an identified glycan mz must have to actually be taken into account by the script. Minimum amount is 2 (second one necessary to confirm charge). May affect isotopic distribution fitting score.
 custom_min_points_per_peak = no
 number_points_per_peak = 5
 ; If used, set the minimum number of datapoints to consider a chromatogram peak part of the raw dataset. If left on False it calculates automatically.

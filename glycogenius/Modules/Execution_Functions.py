@@ -261,7 +261,7 @@ def interactive_terminal():
             while True:
                 var = input("Type execution number: ")
                 try:
-                    var = int(var)
+                    number = int(var)
                 except:
                     print("Wrong Input")
                     continue
@@ -637,16 +637,6 @@ def interactive_terminal():
                 break
             print("")
             min_isotop = 2
-            while True:
-                var = input("Insert the minimum amount of detected\nisotopologue peaks for a mz in a spectrum to be\nincluded in the processed EIC: ")
-                try:
-                    var = int(var)
-                except:
-                    print('Wrong input')
-                    continue
-                min_isotop = var
-                break
-            print("")
             max_ppm = 10
             while True:
                 var = input("Insert the maximum amount of PPM difference that\na detected glycan must have in order to show up\nin results' table: ")
@@ -1401,10 +1391,10 @@ def imp_exp_gen_library(multithreaded_analysis,
         print("If you wish to analyze files,")
         print("set 'only_gen_lib' to False and input")
         try:
-            input("remaining parameters.\nPress Enter to exit.")
+            input("remaining parameters.")
+            print("\nPress Enter to exit.")
             os._exit(1)
         except:
-            print("remaining parameters.\nPress Enter to exit.")
             os._exit(1)
     return full_library
         
@@ -1600,10 +1590,11 @@ def output_filtered_data(curve_fit_score,
                 p7.unlink(missing_ok=True)
         except:
             pass
-    files_list_in_path = os.listdir(save_path)
-    for i in files_list_in_path:
-        if "results1" in i:
-            return
+    if not sneakpeek[0]:
+        files_list_in_path = os.listdir(save_path)
+        for i in files_list_in_path:
+            if "results1" in i:
+                return
     try:
         if sneakpeek[0]:
             with open(save_path+'results1_'+str(sneakpeek[1]), 'rb') as f:
