@@ -259,7 +259,7 @@ def eic_from_glycan(files,
                     iso_distro = 1
                     sliced_mz = j[k]['m/z array']
                     sliced_int = j[k]['intensity array']
-                    m_range = range(2, abs(max_charges)*2)
+                    charge_range = range(1, abs(max_charges)*2)
                     target_mz = glycan_info['Adducts_mz'][i]
                     second_peak = (glycan_info['Isotopic_Distribution_Masses'][1]+adduct_mass)/adduct_charge
                     sec_peak_rel_int = glycan_info['Isotopic_Distribution'][1]
@@ -324,9 +324,11 @@ def eic_from_glycan(files,
                                 not_good = True
                             break
                         if l > target_mz + General_Functions.tolerance_calc(tolerance[0], tolerance[1], l) and l < target_mz + General_Functions.h_mass and found:
-                            for m in m_range:
-                                expected_value = (l*m*0.0004)+0.0467 #based on linear regression of the relationship between masses and the second isotopic peak relative intensity of glycans
-                                if m != adduct_charge and abs(l-(target_mz+(General_Functions.h_mass/m))) <= General_Functions.tolerance_calc(tolerance[0], tolerance[1], l) and sliced_int[l_l] > General_Functions.local_noise_calc(noise[j_j][k_k], l, avg_noise[j_j]) and abs(sliced_int[l_l] - mono_int*expected_value) < mono_int*expected_value*0.2:
+                            for m in charge_range:
+                                if m == 1:
+                                    continue
+                                expected_value = (l*m*0.0006)+0.1401 #based on linear regression of the relationship between masses and the second isotopic peak relative intensity of the average of different organic macromolecules
+                                if m != adduct_charge and abs(l-(target_mz+(General_Functions.h_mass/m))) <= General_Functions.tolerance_calc(tolerance[0], tolerance[1], l) and (sliced_int[l_l] > mono_int*expected_value*0.6):
                                     if verbose:
                                         verbose_info.append("------m/z "+str(l)+", int "+str(sliced_int[l_l]))
                                         verbose_info.append("--------Incorrect charge assigned. Peak intensity: "+str(sliced_int[l_l])+" Monoisotopic peak intensity: "+str(mono_int)+" Charge detected: "+str(m)+" Found/Mono: "+str(sliced_int[l_l]/mono_int))
@@ -336,7 +338,7 @@ def eic_from_glycan(files,
                                 break
                         if l > target_mz - General_Functions.h_mass - General_Functions.tolerance_calc(tolerance[0], tolerance[1], l) and l < target_mz - General_Functions.tolerance_calc(tolerance[0], tolerance[1], l):
                             nearby_id = l_l
-                            for m in m_range:
+                            for m in charge_range:
                                 if abs(l-(target_mz-(General_Functions.h_mass/m))) <= General_Functions.tolerance_calc(tolerance[0], tolerance[1], l):
                                     bad_peaks_before_target.append((sliced_int[l_l], m))
                                     break
@@ -352,8 +354,8 @@ def eic_from_glycan(files,
                         if not checked_bad_peaks_before_target and l > target_mz + General_Functions.tolerance_calc(tolerance[0], tolerance[1], l):
                             checked_bad_peaks_before_target = True
                             for m in bad_peaks_before_target:
-                                expected_value = 1/((l*m[1]*0.0004)+0.0467) #based on linear regression of the relationship between masses and the second isotopic peak relative intensity of glycans
-                                if abs(m[0] - mono_int*expected_value) < mono_int*expected_value*0.2 or m[0] > mono_int:
+                                expected_value = 1/((l*m[1]*0.0006)+0.1401) #based on linear regression of the relationship between masses and the second isotopic peak relative intensity of the average of different organic macromolecules
+                                if (m[0] > mono_int*expected_value*0.6):
                                     if verbose:
                                         verbose_info.append("------m/z "+str(l)+", int "+str(sliced_int[l_l]))
                                         verbose_info.append("--------Not monoisotopic.")

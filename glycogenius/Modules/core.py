@@ -50,17 +50,17 @@ def main():
     multithreaded_analysis = (False, 1)
     analyze_ms2 = (False, False, False)
     reporter_ions = []
-    accuracy_unit = 'pw'
-    accuracy_value = 0.0
+    accuracy_unit = 'mz'
+    accuracy_value = 0.01
     ret_time_interval = (0, 99999, 0.2)
-    rt_tolerance_frag = 0.0
+    rt_tolerance_frag = 0.2
     min_isotopologue_peaks = 2
     min_ppp = (False, 0)
     close_peaks = (False, 3)
-    max_ppm = 0
-    iso_fit_score = 1.0
-    curve_fit_score = 1.0
-    s_to_n = 0
+    max_ppm = 10
+    iso_fit_score = 0.9
+    curve_fit_score = 0.9
+    s_to_n = 3
     custom_noise = (False, [])
     samples_path = ''
     save_path = ''
@@ -227,6 +227,8 @@ def main():
             Execution_Functions.generate_cfg_file(save_path, comments)
 
     Path(save_path).mkdir(exist_ok = True, parents = True)
+    if samples_path != '':
+        Path(samples_path).mkdir(exist_ok = True, parents = True)
     samples_list = Execution_Functions.samples_path_to_list(samples_path)
 
 #-----------------------------------------------------------------------------
@@ -254,7 +256,7 @@ def main():
         if multithreaded_execution[0]:
             print('Multithreaded Execution: '+str(multithreaded_execution[1]))
         samples_names = Execution_Functions.sample_names(samples_list)
-        if not only_gen_lib:
+        if not only_gen_lib and not reanalysis[0]:
             print("Sample files detected: "+str(len(samples_names)))
             for i in samples_names:
                 print("--> "+i)

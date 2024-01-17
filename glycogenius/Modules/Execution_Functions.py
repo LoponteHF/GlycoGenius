@@ -324,7 +324,9 @@ def interactive_terminal():
             for i in range(len(lib_settings)):
                 if i == 0:
                     while lib_settings[0] == None:
-                        var = input("Type the minimum amount of monosaccharides: ")
+                        var = input("Type the minimum amount of monosaccharides\n (default: 5): ")
+                        if var == '':
+                            lib_settings[0] = 5
                         try:
                             var = int(var)
                         except:
@@ -332,7 +334,9 @@ def interactive_terminal():
                         lib_settings[0] = var
                 if i == 1:
                     while lib_settings[1] == None:
-                        var = input("Type the maximum amount of monosaccharides: ")
+                        var = input("Type the maximum amount of monosaccharides\n (default: 18): ")
+                        if var == '':
+                            lib_settings[1] = 18
                         try:
                             var = int(var)
                         except:
@@ -340,7 +344,9 @@ def interactive_terminal():
                         lib_settings[1] = var
                 if i == 2:
                     while lib_settings[2] == None:
-                        var = input("Type the minimum amount of Hex: ")
+                        var = input("Type the minimum amount of Hex (default: 3): ")
+                        if var == '':
+                            lib_settings[2] = 3
                         try:
                             var = int(var)
                         except:
@@ -348,7 +354,9 @@ def interactive_terminal():
                         lib_settings[2] = var
                 if i == 3:
                     while lib_settings[3] == None:
-                        var = input("Type the maximum amount of Hex: ")
+                        var = input("Type the maximum amount of Hex (default: 10): ")
+                        if var == '':
+                            lib_settings[3] = 10
                         try:
                             var = int(var)
                         except:
@@ -356,7 +364,9 @@ def interactive_terminal():
                         lib_settings[3] = var
                 if i == 4:
                     while lib_settings[4] == None:
-                        var = input("Type the minimum amount of HexNAc: ")
+                        var = input("Type the minimum amount of HexNAc (default: 2): ")
+                        if var == '':
+                            lib_settings[4] = 2
                         try:
                             var = int(var)
                         except:
@@ -364,7 +374,9 @@ def interactive_terminal():
                         lib_settings[4] = var
                 if i == 5:
                     while lib_settings[5] == None:
-                        var = input("Type the maximum amount of HexNAc: ")
+                        var = input("Type the maximum amount of HexNAc (default: 8): ")
+                        if var == '':
+                            lib_settings[5] = 8
                         try:
                             var = int(var)
                         except:
@@ -372,7 +384,9 @@ def interactive_terminal():
                         lib_settings[5] = var
                 if i == 6:
                     while lib_settings[6] == None:
-                        var = input("Type the minimum amount of dHex: ")
+                        var = input("Type the minimum amount of dHex (default: 0): ")
+                        if var == '':
+                            lib_settings[6] = 0
                         try:
                             var = int(var)
                         except:
@@ -380,7 +394,9 @@ def interactive_terminal():
                         lib_settings[6] = var
                 if i == 7:
                     while lib_settings[7] == None:
-                        var = input("Type the maximum amount of dHex: ")
+                        var = input("Type the maximum amount of dHex (default: 2): ")
+                        if var == '':
+                            lib_settings[7] = 2
                         try:
                             var = int(var)
                         except:
@@ -388,7 +404,9 @@ def interactive_terminal():
                         lib_settings[7] = var
                 if i == 8:
                     while lib_settings[8] == None:
-                        var = input("Type the minimum amount of Neu5Ac: ")
+                        var = input("Type the minimum amount of Neu5Ac (default: 0): ")
+                        if var == '':
+                            lib_settings[8] = 0
                         try:
                             var = int(var)
                         except:
@@ -396,7 +414,9 @@ def interactive_terminal():
                         lib_settings[8] = var
                 if i == 9:
                     while lib_settings[9] == None:
-                        var = input("Type the maximum amount of Neu5Ac: ")
+                        var = input("Type the maximum amount of Neu5Ac (default: 4): ")
+                        if var == '':
+                            lib_settings[9] = 4
                         try:
                             var = int(var)
                         except:
@@ -404,7 +424,9 @@ def interactive_terminal():
                         lib_settings[9] = var
                 if i == 10:
                     while lib_settings[10] == None:
-                        var = input("Type the minimum amount of Neu5Gc: ")
+                        var = input("Type the minimum amount of Neu5Gc (default: 0): ")
+                        if var == '':
+                            lib_settings[10] = 0
                         try:
                             var = int(var)
                         except:
@@ -412,7 +434,9 @@ def interactive_terminal():
                         lib_settings[10] = var
                 if i == 11:
                     while lib_settings[11] == None:
-                        var = input("Type the maximum amount of Neu5Gc: ")
+                        var = input("Type the maximum amount of Neu5Gc (default: 0): ")
+                        if var == '':
+                            lib_settings[11] = 0
                         try:
                             var = int(var)
                         except:
@@ -420,7 +444,9 @@ def interactive_terminal():
                         lib_settings[11] = var
                 if i == 12:
                     while lib_settings[12] == None:
-                        var = input("Type the minimum amount of total sialic acids: ")
+                        var = input("Type the minimum amount of total sialic acids\n(default: 0): ")
+                        if var == '':
+                            lib_settings[12] = 0
                         try:
                             var = int(var)
                         except:
@@ -428,7 +454,9 @@ def interactive_terminal():
                         lib_settings[12] = var
                 if i == 13:
                     while lib_settings[13] == None:
-                        var = input("Type the maximum amount of total sialic acids: ")
+                        var = input("Type the maximum amount of total sialic acids\n(default: 4): ")
+                        if var == '':
+                            lib_settings[13] = 4
                         try:
                             var = int(var)
                         except:
@@ -436,7 +464,9 @@ def interactive_terminal():
                         lib_settings[13] = var
                 if i == 14:
                     while lib_settings[14] == None:
-                        var = input("Force compositions to N-glycans structure (y/n): ")
+                        var = input("Force compositions to N-glycans structure\n (default: yes) (y/n): ")
+                        if var == '':
+                            lib_settings[14] = True
                         if var == 'y':
                             lib_settings[14] = True
                         if var == 'n':
@@ -446,11 +476,13 @@ def interactive_terminal():
         print_sep()
         adducts = {}
         while True:
-            var = input("Type the first element to calculate as adduct\n(ie. Na or H). Leave blank to finish: ")
+            var = input("Type the first element to calculate as adduct\n(ie. Na or H). Leave blank to finish with default (H3): ")
             if var == '':
+                if  len(adducts) == 0:
+                    adducts = {'H' : 3}
                 print(adducts)
-                var2 = input("Proceed with these adducts? (y/n): ")
-                if var2 == 'y':
+                var2 = input("Proceed with these adducts? (default: yes) (y/n): ")
+                if var2 == 'y' or var2 == '':
                     break
                 if var2 == 'n':
                     print("Emptied adducts list.")
@@ -464,9 +496,11 @@ def interactive_terminal():
                 continue
             adducts[var] = var2
         print_sep()
-        max_charges = 0
+        max_charges = 3
         while True:
-            var = input("Type the maximum amount of charges: ")
+            var = input("Type the maximum amount of charges (default: 3): ")
+            if var == '':
+                break
             try:
                 var = int(var)
             except:
@@ -519,31 +553,31 @@ def interactive_terminal():
                     continue
         print_sep()
         fast_iso = True
-        while True:
-            var = input("Do you want to do a quick isotopic distribution\ncalculation? If 'n', then isotopic distribution\ncalculation may take several hours, depending on\nlibrary size (y/n): ")
-            if var == 'y':
-                break
-            if var == 'n':
-                fast_iso = False
-                break
-            else:
-                print('Wrong input')
-                continue
+#        while True:
+#            var = input("Do you want to do a quick isotopic distribution\ncalculation? If 'n', then isotopic distribution\ncalculation may take several hours, depending on\nlibrary size (y/n): ")
+#            if var == 'y':
+#                break
+#            if var == 'n':
+#                fast_iso = False
+#                break
+#            else:
+#                print('Wrong input')
+#                continue
         high_res = False
-        if not fast_iso:
-            print("")
-            while True:
-                var = input("Do you need a high resolution isotopic\ndistribution? It may be important for very high\naccuracy mass spectrometers, such as\nFT-ICR (y/n): ")
-                if var == 'y':
-                    high_res = True
-                    break
-                if var == 'n':
-                    break
-                else:
-                    print('Wrong input')
-                    continue
-            if input_order[0] != 1:
-                print("")
+#        if not fast_iso:
+#            print("")
+#            while True:
+#                var = input("Do you need a high resolution isotopic\ndistribution? It may be important for very high\naccuracy mass spectrometers, such as\nFT-ICR (y/n): ")
+#                if var == 'y':
+#                    high_res = True
+#                    break
+#                if var == 'n':
+#                    break
+#                else:
+#                    print('Wrong input')
+#                    continue
+#            if input_order[0] != 1:
+#                print("")
         if input_order[0] == 1: #Outputs of input_order == 1
             path = default_path
             while True:
@@ -554,7 +588,7 @@ def interactive_terminal():
                 var2 = input("Is this path correct? (y/n): ")
                 if var2 == 'n':
                     continue
-                if var2 == 'y':
+                if var2 == 'y' or var2 == '':
                     for i_i, i in enumerate(var):
                         if i == "\\":
                             var = var[:i_i]+"/"+var[i_i+1:]
@@ -592,13 +626,13 @@ def interactive_terminal():
                         print('Wrong input')
                         continue
                 print("")
-            accuracy_unit = "pw"
+            accuracy_unit = "mz"
             while True:
-                var = input("What is the accuracy unit you want to input for\nmz tolerance? (ppm/mz): ")
+                var = input("What is the accuracy unit you want to input for\nmz tolerance? (default: mz) (ppm/mz): ")
                 if var == 'ppm':
                     accuracy_unit = var
                     break
-                if var == 'mz':
+                if var == 'mz' or var == '':
                     break
                 else:
                     print('Wrong input')
@@ -617,7 +651,9 @@ def interactive_terminal():
             print("")
             rt_int = [0.0, 999]
             while True:
-                var = input("Insert the start of the retention time interval\nat which you want to analyze, in minutes: ")
+                var = input("Insert the start of the retention time interval\nat which you want to analyze, in minutes\n (default: 0 mins): ")
+                if var == '':
+                    break
                 try:
                     var = float(var)
                 except:
@@ -627,7 +663,9 @@ def interactive_terminal():
                 break
             print("")
             while True:
-                var = input("Insert the end of the retention time interval at\nwhich you want to analyze, in minutes: ")
+                var = input("Insert the end of the retention time interval at\nwhich you want to analyze, in minutes\n (default: 999 mins): ")
+                if var == '':
+                    break
                 try:
                     var = float(var)
                 except:
@@ -639,7 +677,9 @@ def interactive_terminal():
             min_isotop = 2
             max_ppm = 10
             while True:
-                var = input("Insert the maximum amount of PPM difference that\na detected glycan must have in order to show up\nin results' table: ")
+                var = input("Insert the maximum PPM error that a detected\nglycan must have in order to show up in\nresults' table (default: 10 ppm): ")
+                if var == '':
+                    break
                 try:
                     var = int(var)
                 except:
@@ -648,9 +688,11 @@ def interactive_terminal():
                 max_ppm = var
                 break
             print("")
-            iso_fit = 0.5
+            iso_fit = 0.9
             while True:
-                var = input("Insert the minimum isotopic fitting score for a\nglycan in order for it to show up in the\nresults' table (values between 0.0 and 1.0): ")
+                var = input("Insert the minimum isotopic fitting score for a\nglycan in order for it to show up in the\nresults' table (values between 0.0 and 1.0) (default: 0.9): ")
+                if var == '':
+                    break
                 try:
                     var = float(var)
                 except:
@@ -662,9 +704,11 @@ def interactive_terminal():
                 iso_fit = var
                 break
             print("")
-            curve_fit = 0.5
+            curve_fit = 0.9
             while True:
-                var = input("Insert the minimum curve fitting score for a\nglycan in order for it to show up in the\nresults' table (values between 0.0 and 1.0): ")
+                var = input("Insert the minimum curve fitting score for a\nglycan in order for it to show up in the\nresults' table (values between 0.0 and 1.0) (default: 0.9): ")
+                if var == '':
+                    break
                 try:
                     var = float(var)
                 except:
@@ -678,7 +722,9 @@ def interactive_terminal():
             print("")
             sn = 3
             while True:
-                var = input("Insert the minimum signal-to-noise ratio that a\ndetected glycan must have in order to show up in\nresults' table: ")
+                var = input("Insert the minimum signal-to-noise ratio that a\ndetected glycan must have in order to show up in\nresults' table (default: 3): ")
+                if var == '':
+                    break
                 try:
                     var = int(var)
                 except:
@@ -696,7 +742,7 @@ def interactive_terminal():
                 var2 = input("Is this path correct? (y/n): ")
                 if var2 == 'n':
                     continue
-                if var2 == 'y':
+                if var2 == 'y' or var2 == '':
                     for i_i, i in enumerate(var):
                         if i == "\\":
                             var = var[:i_i]+"/"+var[i_i+1:]
@@ -714,7 +760,7 @@ def interactive_terminal():
                 var2 = input("Is this path correct? (y/n): ")
                 if var2 == 'n':
                     continue
-                if var2 == 'y':
+                if var2 == 'y' or var2 == '':
                     for i_i, i in enumerate(var):
                         if i == "\\":
                             var = var[:i_i]+"/"+var[i_i+1:]
@@ -736,7 +782,7 @@ def interactive_terminal():
             var2 = input("Is this path correct? (y/n): ")
             if var2 == 'n':
                 continue
-            if var2 == 'y':
+            if var2 == 'y' or var2 == '':
                 for i_i, i in enumerate(var):
                     if i == "\\":
                         var = var[:i_i]+"/"+var[i_i+1:]
@@ -756,7 +802,7 @@ def interactive_terminal():
             max_ppm = var
             break
         print("")
-        iso_fit = 0.5
+        iso_fit = 0.9
         while True:
             var = input("Insert the minimum isotopic fitting score for a\nglycan in order for it to show up in the\nresults' table (values between 0.0 and 1.0): ")
             try:
@@ -770,7 +816,7 @@ def interactive_terminal():
             iso_fit = var
             break
         print("")
-        curve_fit = 0.5
+        curve_fit = 0.9
         while True:
             var = input("Insert the minimum curve fitting score for a\nglycan in order for it to show up in the\nresults' table (values between 0.0 and 1.0): ")
             try:
@@ -817,7 +863,7 @@ def interactive_terminal():
             var2 = input("Is this path correct? (y/n): ")
             if var2 == 'n':
                 continue
-            if var2 == 'y':
+            if var2 == 'y' or var2 == '':
                 for i_i, i in enumerate(var):
                     if i == "\\":
                         var = var[:i_i]+"/"+var[i_i+1:]
@@ -1390,9 +1436,9 @@ def imp_exp_gen_library(multithreaded_analysis,
         print("Check it in Glycans_Library.xlsx.")
         print("If you wish to analyze files,")
         print("set 'only_gen_lib' to False and input")
+        print("remaining parameters.")
         try:
-            input("remaining parameters.")
-            print("\nPress Enter to exit.")
+            input("\nPress Enter to exit.")
             os._exit(1)
         except:
             os._exit(1)
@@ -2016,6 +2062,26 @@ def output_filtered_data(curve_fit_score,
                 f.write(",".join(glycan_line)+"\n")
             f.close() #end of metaboanalyst plot
         print("Done!")
+    found_eic_raw_dataframes = [] #This creates a file with only the found glycan's EIC
+    found_eic_processed_dataframes = []
+    with open(save_path+'raw_data_5', 'rb') as f:
+        raw_eic_dataframes = dill.load(f)
+    with open(save_path+'raw_data_3', 'rb') as f:
+        smoothed_eic_dataframes = dill.load(f)
+    for i_i, i in enumerate(df1_refactor):
+        found_eic_raw_dataframes.append({})
+        found_eic_raw_dataframes[i_i]['RTs_'+str(i_i)] = raw_eic_dataframes[i_i]['RTs_'+str(i_i)]
+        found_eic_processed_dataframes.append({})
+        found_eic_processed_dataframes[i_i]['RTs_'+str(i_i)] = smoothed_eic_dataframes[i_i]['RTs_'+str(i_i)]
+        for j_j, j in enumerate(i['Glycan']):
+            query = j+"+"+i['Adduct'][j_j]+" - "+str(i['mz'][j_j])
+            try:
+                found_eic_raw_dataframes[i_i][query] = raw_eic_dataframes[i_i][query]
+                found_eic_processed_dataframes[i_i][query] = smoothed_eic_dataframes[i_i][query]
+            except:
+                pass
+    del raw_eic_dataframes
+    del smoothed_eic_dataframes
     df2 = DataFrame(df2) #start of excel data printing
     with ExcelWriter(save_path+begin_time+'_Results_'+str(max_ppm)+'_'+str(iso_fit_score)+'_'+str(curve_fit_score)+'_'+str(sn)+'.xlsx') as writer:
         print("Creating results file...", end="", flush=True)
@@ -2037,6 +2103,17 @@ def output_filtered_data(curve_fit_score,
         if len(fragments_dataframes[i_i]["Glycan"]) > 0:
             del fragments_df
         del fragments_dataframes
+    with ExcelWriter(save_path+begin_time+'_Found_Glycans_EICs.xlsx') as writer:
+        for i_i, i in enumerate(found_eic_raw_dataframes):
+            found_eic_raw_dataframes_df = DataFrame(i)
+            found_eic_processed_dataframes_df = DataFrame(found_eic_processed_dataframes[i_i])
+            found_eic_raw_dataframes_df.to_excel(writer, sheet_name="RAW_Sample_"+str(i_i), index = False)
+            found_eic_processed_dataframes_df.to_excel(writer, sheet_name="Processed_Sample_"+str(i_i), index = False)
+        df2.to_excel(writer, sheet_name="Index references", index = False)
+    del found_eic_processed_dataframes
+    del found_eic_processed_dataframes_df
+    del found_eic_raw_dataframes
+    del found_eic_raw_dataframes_df
     print("Done!")
     if (reanalysis[1] and reanalysis[0]) or not reanalysis[0]:
         print("Creating data plotting files...", end= "", flush=True)
