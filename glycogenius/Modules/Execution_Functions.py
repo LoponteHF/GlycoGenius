@@ -51,6 +51,7 @@ import datetime
 import traceback
 import pkg_resources
 import platform
+import copy
 
 try:
     version = pkg_resources.get_distribution("glycogenius").version
@@ -1443,6 +1444,86 @@ def imp_exp_gen_library(multithreaded_analysis,
         except:
             os._exit(1)
     return full_library
+    
+def align_assignments(df, df_type):
+    '''
+    '''
+    dataframe = copy.deepcopy(df)
+    if df_type == 'total_glycans':
+        biggest_df = inf
+        biggest_df_size = 0
+        for i_i, i in enumerate(dataframe): #this determines the dataframe with most peaks assigned, it will be used as reference
+            if len(i['Glycan']) > biggest_df_size:
+                biggest_df_size = len(i['Glycan'])
+                biggest_df = i_i
+        ids_per_sample = []
+        deltas_per_sample = [] #this is a list that will contain every delta of aligned glycans per sample, in a dictionary of 'rt : delta'
+        skips = 0
+        for i_i, i in enumerate(dataframe[biggest_df]['Glycan']): #goes through each glycan in the reference df to align the other samples with
+            if skips != 0:
+                skips -= 1
+                continue
+            peaks_number = dataframe[biggest_df]['Glycan'].count(i)
+            skips = peaks_number-1
+            rts_reference = dataframe[biggest_df]['RT'][i_i:i_i+peaks_number] #this collects the reference rts for the glycan in reference sample
+            aucs_reference = []
+            for j in range(i_i, i_i+peaks_number):
+                aucs_reference.append(dataframe[biggest_df]['AUC'][j]/max(dataframe[biggest_df]['AUC'][i_i:i_i+peaks_number]))
+            for j_j, j in enumerate(dataframe): #going through each target sample
+                if i_i == 0:
+                    ids_per_sample.append([])
+                    deltas_per_sample.append({})
+                if j_j == biggest_df:
+                    continue
+                peaks_number_target = j['Glycan'].count(i)
+                if peaks_number_target == 0: #glycan not available in target sample
+                    continue
+                first_glycan_id = 0
+                rts = []
+                aucs = []
+                for k_k, k in enumerate(j['Glycan']): #going through each glycan of target sample
+                    if k == i:
+                        for l in range(k_k, k_k+peaks_number_target):
+                            ids_per_sample[j_j].append(l)
+                            rts.append(j['RT'][l])
+                            aucs.append(j['AUC'][l])
+                        for l_l, l in enumerate(aucs):
+                            found = False
+                            for m_m, m in enumerate(aucs_reference):
+                                if abs(l-max(aucs)*aucs_reference[m_m]) <= 0.2:
+                                    found = True
+                                    deltas_per_sample[j_j][rts[l_l]] = rts_reference[m_m]-rts[l_l]
+                                    break
+                            if not found:
+                                deltas_per_sample[j_j][rts[l_l]] = inf
+                        break
+        for i_i, i in enumerate(deltas_per_sample): #going through each sample
+            for j in i: #going through each delta and checking if it's calculated, if it's not (inf) then it grabs the closest calculated
+                if i[j] == inf:
+                    smallest_rt = 0.0
+                    smallest_diff = inf
+                    for k in i:
+                        if k != j and abs(float(k)-float(j)) < smallest_diff:
+                            smallest_diff = abs(float(k)-float(j))
+                            smallest_rt = k
+                    i[j] = i[smallest_rt]
+        for i_i, i in enumerate(dataframe): #this will apply the alignment based on ids and deltas
+            if len(ids_per_sample[i_i]) == 0: #this is the reference sample or blank sample
+                continue
+            for j_j, j in enumerate(i['RT']):
+                if j_j in ids_per_sample[i_i]:
+                    i['RT'][j_j] = i['RT'][j_j] + deltas_per_sample[i_i][i['RT'][j_j]]
+                else:
+                    smallest_rt = 0.0
+                    smallest_diff = inf
+                    for k in deltas_per_sample[i_i]:
+                        if abs(float(k)-float(j)) < smallest_diff:
+                            smallest_diff = abs(float(k)-float(j))
+                            smallest_rt = k
+                    i['RT'][j_j] = i['RT'][j_j] + deltas_per_sample[i_i][smallest_rt]
+        for i_i, i in enumerate(deltas_per_sample):
+            deltas_per_sample[i_i] = dict(sorted(i.items()))
+        return dataframe, deltas_per_sample
         
 def output_filtered_data(curve_fit_score,
                          iso_fit_score,
@@ -1743,7 +1824,7 @@ def output_filtered_data(curve_fit_score,
                                     del fragments_dataframes[i_i]["Fragment_Intensity"][k]
                                     del fragments_dataframes[i_i]["RT"][k]
                                     del fragments_dataframes[i_i]["Precursor_mz"][k]
-                                    del fragments_dataframes[i_i]["Annotated_peaks/Total_peaks"][k]
+                                    del fragments_dataframes[i_i]["% TIC explained"][k]
             df1[i_i]["RT"][j_j] = str(temp_rt)[1:-1]
             df1[i_i]["AUC"][j_j] = str(temp_auc)[1:-1]
             df1[i_i]["PPM"][j_j] = str(temp_ppm)[1:-1]
@@ -1792,7 +1873,8 @@ def output_filtered_data(curve_fit_score,
                             del fragments_dataframes[j_j]["Fragment_Intensity"][k]
                             del fragments_dataframes[j_j]["RT"][k]
                             del fragments_dataframes[j_j]["Precursor_mz"][k]
-                            del fragments_dataframes[j_j]["Annotated_peaks/Total_peaks"][k] #QCs cutoff end
+                            del fragments_dataframes[j_j]["% TIC explained"][k] #QCs cutoff end
+                            
     for i_i, i in enumerate(df1): #final arrangement for standard results print
         for j_j, j in enumerate(df1[i_i]["Adduct"]):
             for k_k, k in enumerate(df1[i_i]["RT"][j_j].split(", ")):
@@ -1805,7 +1887,8 @@ def output_filtered_data(curve_fit_score,
                     df1_refactor[i_i]["PPM"].append(float(df1[i_i]["PPM"][j_j].split(", ")[k_k]))
                     df1_refactor[i_i]["S/N"].append(float(df1[i_i]["S/N"][j_j].split(", ")[k_k]))
                     df1_refactor[i_i]["Iso_Fitting_Score"].append(float(df1[i_i]["Iso_Fitting_Score"][j_j].split(", ")[k_k]))
-                    df1_refactor[i_i]["Curve_Fitting_Score"].append(float(df1[i_i]["Curve_Fitting_Score"][j_j].split(", ")[k_k]))
+                    df1_refactor[i_i]["Curve_Fitting_Score"].append(float(df1[i_i]["Curve_Fitting_Score"][j_j].split(", ")[k_k]))               
+                    
     if analyze_ms2:
         to_keep = []
         for j_j, j in enumerate(df1_refactor):
@@ -1821,6 +1904,7 @@ def output_filtered_data(curve_fit_score,
                     df1_refactor[j_j]["Detected_Fragments"].append("Yes")
                 else:
                     df1_refactor[j_j]["Detected_Fragments"].append("No")
+                    
         if not unrestricted_fragments:  #Filters fragments with RT outside the detected peaks range
             for i_i, i in enumerate(to_keep):
                 for k_k in range(len(fragments_dataframes[i_i]["Glycan"])-1, -1, -1):
@@ -1832,7 +1916,8 @@ def output_filtered_data(curve_fit_score,
                         del fragments_dataframes[i_i]["Fragment_Intensity"][k_k]
                         del fragments_dataframes[i_i]["RT"][k_k]
                         del fragments_dataframes[i_i]["Precursor_mz"][k_k]
-                        del fragments_dataframes[i_i]["Annotated_peaks/Total_peaks"][k_k]
+                        del fragments_dataframes[i_i]["% TIC explained"][k_k]
+                        
         if len(reporter_ions) != 0: #reporter_ions filtering
             for i_i, i in enumerate(fragments_dataframes):
                 to_remove = []
@@ -1883,23 +1968,50 @@ def output_filtered_data(curve_fit_score,
                         del fragments_dataframes[i_i]["Fragment_Intensity"][k_k]
                         del fragments_dataframes[i_i]["RT"][k_k]
                         del fragments_dataframes[i_i]["Precursor_mz"][k_k]
-                        del fragments_dataframes[i_i]["Annotated_peaks/Total_peaks"][k_k] #end of reporter ions filtering
-        for i_i, i in enumerate(fragments_dataframes): #annotated_peaks ratio calculation
-            temp_list_fragments = []
+                        del fragments_dataframes[i_i]["% TIC explained"][k_k] #end of reporter ions filtering
+                        
+        for i_i, i in enumerate(fragments_dataframes): #% TIC explained calculation
+            fragments_int_sum = 0
             current_checking = ""
             for j_j, j in enumerate(fragments_dataframes[i_i]["Glycan"]):
                 to_check = j+"_"+fragments_dataframes[i_i]["Adduct"][j_j]+"_"+str(fragments_dataframes[i_i]["RT"][j_j])
                 if to_check != current_checking:
                     current_checking = to_check
-                    temp_list_fragments = []
+                    fragments_int_sum = 0
                     for k in range(j_j, len(fragments_dataframes[i_i]["Glycan"])):
                         to_check_2 = fragments_dataframes[i_i]["Glycan"][k]+"_"+fragments_dataframes[i_i]["Adduct"][k]+"_"+str(fragments_dataframes[i_i]["RT"][k])
                         if to_check == to_check_2:
-                            temp_list_fragments.append(fragments_dataframes[i_i]["Fragment"][k])
+                            fragments_int_sum += fragments_dataframes[i_i]["Fragment_Intensity"][k]
                         else:
                             break
-                if current_checking == to_check and fragments_dataframes[i_i]["Annotated_peaks/Total_peaks"] != 0:
-                    fragments_dataframes[i_i]["Annotated_peaks/Total_peaks"][j_j] = float("%.3f" % round(len(temp_list_fragments)/fragments_dataframes[i_i]["Annotated_peaks/Total_peaks"][j_j], 3)) #end of annotated_peaks ratio calculation
+                if current_checking == to_check and fragments_dataframes[i_i]["% TIC explained"] != 0:
+                    fragments_dataframes[i_i]["% TIC explained"][j_j] = float("%.3f" % round(fragments_int_sum/fragments_dataframes[i_i]["% TIC explained"][j_j], 3)) #end of annotated_peaks ratio calculation
+                    
+        fragments_refactor_dataframes = [] #here it re-structures the fragments data to an updated format
+        for i_i, i in enumerate(fragments_dataframes): #moving through samples
+            fragments_refactor_dataframes.append({})
+            current_scan = ""
+            glycan_number = -1
+            for j_j, j in enumerate(i['Glycan']):
+                scan_name = j+"_"+i['Adduct'][j_j]+"_"+str(i['RT'][j_j])
+                if scan_name != current_scan:
+                    glycan_number+=1
+                    current_scan = scan_name
+                    fragments_refactor_dataframes[i_i]['Glycan_'+str(glycan_number)+':'] = [j, 'RT_'+str(glycan_number)+':', i['RT'][j_j], 'Fragment:']
+                    fragments_refactor_dataframes[i_i]['Adduct_'+str(glycan_number)+':'] = [i['Adduct'][j_j], '% TIC assigned_'+str(glycan_number)+':', i['% TIC explained'][j_j]*100, 'm/z:']
+                    fragments_refactor_dataframes[i_i]['m/z_'+str(glycan_number)+':'] = [i['Precursor_mz'][j_j], None, None, 'Intensity:']
+                    fragments_refactor_dataframes[i_i]['Glycan_'+str(glycan_number)+':'].append(i['Fragment'][j_j])
+                    fragments_refactor_dataframes[i_i]['Adduct_'+str(glycan_number)+':'].append(i['Fragment_mz'][j_j])
+                    fragments_refactor_dataframes[i_i]['m/z_'+str(glycan_number)+':'].append(i['Fragment_Intensity'][j_j])
+                else:
+                    fragments_refactor_dataframes[i_i]['Glycan_'+str(glycan_number)+':'].append(i['Fragment'][j_j])
+                    fragments_refactor_dataframes[i_i]['Adduct_'+str(glycan_number)+':'].append(i['Fragment_mz'][j_j])
+                    fragments_refactor_dataframes[i_i]['m/z_'+str(glycan_number)+':'].append(i['Fragment_Intensity'][j_j])
+        for i in fragments_refactor_dataframes: #makes all lists in the dataframe equal size so it can be ported to excel
+            for j in i:
+                while len(i[j]) < 1000:
+                    i[j].append(None)             
+            
     total_dataframes = [] #total glycans AUC dataframe
     for i_i, i in enumerate(df1_refactor):
         total_dataframes.append({"Glycan": [], "RT": [], "AUC": []})
@@ -1937,6 +2049,40 @@ def output_filtered_data(curve_fit_score,
                     total_dataframes[i_i]["AUC"].append(AUCs[k_k])
                 RTs = []
                 AUCs = [] #total glycans AUC dataframe
+    
+    arranged_total_dataframes = []
+    for i_i, i in enumerate(total_dataframes):
+        arranged_total_dataframes.append({'Glycan' : [], 'RT' : [], 'AUC' : []})
+        list_of_glycans = []
+        glycans_dict_rt = {}
+        glycans_dict_AUC = {}
+        current_glycan = ''
+        for j_j, j in enumerate(i['Glycan']):
+            if j != current_glycan:
+                current_glycan = j
+                list_of_glycans.append(j)
+                glycans_dict_rt[j] = []
+                glycans_dict_AUC[j] = []
+                glycans_dict_rt[j].append(i['RT'][j_j])
+                glycans_dict_AUC[j].append(i['AUC'][j_j])
+            else:
+                glycans_dict_rt[j].append(i['RT'][j_j])
+                glycans_dict_AUC[j].append(i['AUC'][j_j])
+        list_of_glycans = sorted(list_of_glycans)
+        for j_j, j in enumerate(list_of_glycans):
+            for k in range(len(glycans_dict_rt[j])):
+                arranged_total_dataframes[i_i]['Glycan'].append(j)
+            zipped = zip(glycans_dict_rt[j], glycans_dict_AUC[j])
+            zipped = sorted(zipped)
+            current_RTs, current_AUCs = zip(*zipped)
+            arranged_total_dataframes[i_i]['RT'] += list(current_RTs)
+            arranged_total_dataframes[i_i]['AUC'] += list(current_AUCs)
+    total_dataframes = arranged_total_dataframes
+    
+    aligned_results = align_assignments(total_dataframes, 'total_glycans')
+    total_dataframes = aligned_results[0]
+    #hook for alignment tool. it'll use the total_dataframes (total_glycans), df1_refactor (results) and fragments_refactor_dataframes  (fragments)            
+                
     glycans_count = [] #glycans composition counts
     last_glycan = ""
     found = False
@@ -1963,7 +2109,8 @@ def output_filtered_data(curve_fit_score,
                     glycans_count[i_i]+= 1
                     last_glycan = j
         df2["MS2_Glycans_Compositions"] = glycans_count #end of glycans counts
-    all_glycans_list = [] #here it makes a list of ALL the glycans found
+        
+    all_glycans_list = [] #here it makes a list of ALL the glycans found for use in other parts of the data arrangement workflow
     for i in total_dataframes:
         for j_j, j in enumerate(i["RT"]):
             if i["Glycan"][j_j] == "Internal Standard":
@@ -1981,6 +2128,7 @@ def output_filtered_data(curve_fit_score,
                 continue
             if not found:
                 all_glycans_list.append(i["Glycan"][j_j]+"_"+"%.2f" % j)
+                
     if plot_metaboanalyst[0]: #start of metaboanalyst plot
         print("Creating file for metaboanalyst plotting...", end="", flush=True)
         with open(save_path+begin_time+"_metaboanalyst_data.csv", "w") as f:
@@ -2060,8 +2208,10 @@ def output_filtered_data(curve_fit_score,
                         g.write(",".join(glycan_line_IS)+"\n")
                         g.close()
                 f.write(",".join(glycan_line)+"\n")
-            f.close() #end of metaboanalyst plot
-        print("Done!")
+            f.close()
+        print("Done!") #end of metaboanalyst plot
+        
+    #start of excel data printing
     found_eic_raw_dataframes = [] #This creates a file with only the found glycan's EIC
     found_eic_processed_dataframes = []
     with open(save_path+'raw_data_5', 'rb') as f:
@@ -2082,7 +2232,8 @@ def output_filtered_data(curve_fit_score,
                 pass
     del raw_eic_dataframes
     del smoothed_eic_dataframes
-    df2 = DataFrame(df2) #start of excel data printing
+    
+    df2 = DataFrame(df2) 
     with ExcelWriter(save_path+begin_time+'_Results_'+str(max_ppm)+'_'+str(iso_fit_score)+'_'+str(curve_fit_score)+'_'+str(sn)+'.xlsx') as writer:
         print("Creating results file...", end="", flush=True)
         for i_i, i in enumerate(df1_refactor):
@@ -2092,16 +2243,18 @@ def output_filtered_data(curve_fit_score,
             total_aucs_df.to_excel(writer, sheet_name="Sample_"+str(i_i)+"_Total_AUCs", index = False)
             if analyze_ms2:
                 if len(fragments_dataframes[i_i]["Glycan"]) > 0:
-                    fragments_df = DataFrame(fragments_dataframes[i_i])
+                    fragments_df = DataFrame(fragments_refactor_dataframes[i_i])
                     fragments_df.to_excel(writer, sheet_name="Sample_"+str(i_i)+"_Fragments", index = False)
         df2.to_excel(writer, sheet_name="Index references", index = False)
     del df1
     del result_df
     del total_dataframes
     del total_aucs_df
+    
     if analyze_ms2:
         if len(fragments_dataframes[i_i]["Glycan"]) > 0:
             del fragments_df
+        del fragments_refactor_dataframes
         del fragments_dataframes
     with ExcelWriter(save_path+begin_time+'_Found_Glycans_EICs.xlsx') as writer:
         for i_i, i in enumerate(found_eic_raw_dataframes):
@@ -2114,6 +2267,7 @@ def output_filtered_data(curve_fit_score,
     del found_eic_processed_dataframes_df
     del found_eic_raw_dataframes
     del found_eic_raw_dataframes_df
+    
     print("Done!")
     if (reanalysis[1] and reanalysis[0]) or not reanalysis[0]:
         print("Creating data plotting files...", end= "", flush=True)
@@ -2147,6 +2301,7 @@ def output_filtered_data(curve_fit_score,
             df2.to_excel(writer, sheet_name="Index references", index = False)
         del smoothed_eic_dataframes
         del smoothed_eic_df
+        
         if sneakpeek[0]:
             with open(save_path+'results5_'+str(sneakpeek[1]), 'rb') as f:
                 raw_eic_dataframes = dill.load(f)
@@ -2170,6 +2325,7 @@ def output_filtered_data(curve_fit_score,
             with open(save_path+'raw_data_4', 'rb') as f:
                 curve_fitting_dataframes = dill.load(f)
                 f.close()
+                
         with ExcelWriter(save_path+begin_time+'_curve_fitting_Plot_Data.xlsx') as writer:
             for i_i, i in enumerate(curve_fitting_dataframes):
                 if len(curve_fitting_dataframes[i_i]) > 16384:
@@ -2260,7 +2416,7 @@ def arrange_raw_data(analyzed_data,
         df2["Average_Noise_Level"].append(float("%.1f" % round(analyzed_data[2][i_i],1)))
         if analyze_ms2:
             df1.append({"Glycan" : [], "Adduct" : [], "mz" : [], "RT" : [], "AUC" : [], "PPM" : [], "S/N" : [], "Iso_Fitting_Score" : [], "Curve_Fitting_Score" : [], "Detected_Fragments" : []})
-            fragments_dataframes.append({"Glycan" : [], "Adduct" : [], "Precursor_mz" : [], "Fragment" : [], "Fragment_mz" : [], "Fragment_Intensity" : [], "RT" : [], "Annotated_peaks/Total_peaks" : []})
+            fragments_dataframes.append({"Glycan" : [], "Adduct" : [], "Precursor_mz" : [], "Fragment" : [], "Fragment_mz" : [], "Fragment_Intensity" : [], "RT" : [], "% TIC explained" : []})
         else:
             df1.append({"Glycan" : [], "Adduct" : [], "mz" : [], "RT" : [], "AUC" : [], "PPM" : [], "S/N" : [], "Iso_Fitting_Score" : [], "Curve_Fitting_Score" : []})
     for i_i, i in enumerate(analyzed_data[0]): #i = glycan (key)
@@ -2345,7 +2501,7 @@ def arrange_raw_data(analyzed_data,
                                 fragments_dataframes[k_k]["Fragment_Intensity"].append(float("%.2f" % round(m[4], 2)))
                                 fragments_dataframes[k_k]["RT"].append(float("%.2f" % round(m[5],2)))
                                 fragments_dataframes[k_k]["Precursor_mz"].append(float("%.4f" % round(m[6], 4)))
-                                fragments_dataframes[k_k]["Annotated_peaks/Total_peaks"].append(int(m[7]))
+                                fragments_dataframes[k_k]["% TIC explained"].append(float(m[7]))
                             df1[k_k]["Detected_Fragments"].append('Yes')
                         else:
                             df1[k_k]["Detected_Fragments"].append('No')
@@ -2645,7 +2801,10 @@ def analyze_files(library,
         for j_j, j in enumerate(ms1_index[i_i]):
             rt_array_report[i_i].append(i[j]['retentionTime'])
             mz_ints = [i[j]['m/z array'], i[j]['intensity array']]
-            noise_avg_level = percentile(mz_ints[1], 95)
+            if len(mz_ints[1]) > 0:
+                noise_avg_level = percentile(mz_ints[1], 95)
+            else:
+                noise_avg_level = 0.0
             if i[j]['retentionTime'] < ret_time_interval[0] or i[j]['retentionTime'] > ret_time_interval[1]:
                 noise_level = (0.0, 0.0, 0.0)
             else:
@@ -2906,10 +3065,17 @@ def analyze_ms2(ms2_index,
                             continue
                     if abs((k[l]['precursorMz'][0]['precursorMz']) - analyzed_data[0][i]['Adducts_mz'][j]) <= (1.0074/General_Functions.form_to_charge(j))+General_Functions.tolerance_calc(tolerance[0], tolerance[1], analyzed_data[0][i]['Adducts_mz'][j]): #checks if precursor matches adduct mz
                         found_count = 0
-                        total = len(k[l]['m/z array'])
+                        total = sum(k[l]['intensity array'])
                         for m_m, m in enumerate(k[l]['m/z array']):
                             found = False
                             for n_n, n in enumerate(fragments):
+                                if 'Monos_Composition' in list(n.keys()):
+                                    if (n['Monos_Composition']['H'] == analyzed_data[0][i]['Monos_Composition']['H']
+                                        and n['Monos_Composition']['N'] == analyzed_data[0][i]['Monos_Composition']['N']
+                                        and n['Monos_Composition']['S'] == analyzed_data[0][i]['Monos_Composition']['S']
+                                        and n['Monos_Composition']['F'] == analyzed_data[0][i]['Monos_Composition']['F']
+                                        and n['Monos_Composition']['G'] == analyzed_data[0][i]['Monos_Composition']['G']):
+                                        continue
                                 if found:
                                     break
                                 combo = False
@@ -2966,14 +3132,13 @@ def analyze_ms2(ms2_index,
                                 for o in n['Adducts_mz']:
                                     if abs(n['Adducts_mz'][o]-m) <= General_Functions.tolerance_calc(tolerance[0], tolerance[1], n['Adducts_mz'][o]): #fragments data outputted in the form of (Glycan, Adduct, Fragment, Fragment mz, intensity, retention time, precursor)
                                         if len(n['Formula']) > 3 and n['Formula'][-3] != "_":
-                                            fragments_data[i][j][k_k].append((i, j, n['Formula']+'_'+o, n['Adducts_mz'][o], k[l]['intensity array'][m_m], k[l]['retentionTime'], k[l]['precursorMz'][0]['precursorMz'], len(k[l]['m/z array'])))
+                                            fragments_data[i][j][k_k].append((i, j, n['Formula']+'_'+o, n['Adducts_mz'][o], k[l]['intensity array'][m_m], k[l]['retentionTime'], k[l]['precursorMz'][0]['precursorMz'], total))
                                         elif len(n['Formula']) > 3 and n['Formula'][-3] == "_" and combo:
-                                            fragments_data[i][j][k_k].append((i, j, new_formula, n['Adducts_mz'][o], k[l]['intensity array'][m_m], k[l]['retentionTime'], k[l]['precursorMz'][0]['precursorMz'], len(k[l]['m/z array'])))
+                                            fragments_data[i][j][k_k].append((i, j, new_formula, n['Adducts_mz'][o], k[l]['intensity array'][m_m], k[l]['retentionTime'], k[l]['precursorMz'][0]['precursorMz'], total))
                                         else:
-                                            fragments_data[i][j][k_k].append((i, j, n['Formula'], n['Adducts_mz'][o], k[l]['intensity array'][m_m], k[l]['retentionTime'], k[l]['precursorMz'][0]['precursorMz'], len(k[l]['m/z array'])))
+                                            fragments_data[i][j][k_k].append((i, j, n['Formula'], n['Adducts_mz'][o], k[l]['intensity array'][m_m], k[l]['retentionTime'], k[l]['precursorMz'][0]['precursorMz'], total))
                                         found = True
+                                        found_count += k[l]['intensity array'][m_m]
                                         break
-                            if found:
-                                found_count += 1
     print('Sample MS2 analysis done in '+str(datetime.datetime.now() - begin_time)+'!')
     return analyzed_data[0], analyzed_data[1], analyzed_data[2], fragments_data

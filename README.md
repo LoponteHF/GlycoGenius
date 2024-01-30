@@ -2,9 +2,9 @@
 
 # GlycoGenius - Glycomics Data Analysis Tool
 
-GlycoGenius is a python script that aims to be an all-in-one solution for data analysis of glycomics data.
+GlycoGenius is a python script that aims to be an all-in-one solution for data analysis of N- and O-glycomics full scan or DDA data.
 
-Glycobiologists analyzing glycans' mass spectrometer data usually rely on several different tools to perform different tasks on different parts of their workflow and, in between the use of all those different tools, there's usually a lot of manual work that has to be done at least for data curating, which could also be considered cherry-picking in the research milieu.
+Glycobiologists analyzing glycans' mass spectrometer data usually rely on several different tools to perform different tasks on different parts of their workflow and, in between the use of all those different tools, there's usually a lot of manual work that has to be done at least for data curating.
 
 With that in mind, this tool aims to put all the usual workflow for glycomics in a single place.
 
@@ -16,7 +16,8 @@ In order to do that, this tool is able to do several different tasks:
 - Provides scorings of isotopic distribution peaks and chromatogram peak curve fitting based on relation and correlation;
 - Identify PPM differences between theoretical mass and identified mz;
 - Calculates signal-to-noise ratio;
-- Identifies MS2 glycans' fragments and assign them to its respective precursor.
+- Identifies MS2 glycans' fragments and assign them to its respective precursor;
+- Many other features.
 
 ## Installation
 ~~~
@@ -58,6 +59,12 @@ Numpy:
 SciPy:
 
 > Pauli Virtanen, Ralf Gommers, Travis E. Oliphant, Matt Haberland, Tyler Reddy, David Cournapeau, Evgeni Burovski, Pearu Peterson, Warren Weckesser, Jonathan Bright, Stéfan J. van der Walt, Matthew Brett, Joshua Wilson, K. Jarrod Millman, Nikolay Mayorov, Andrew R. J. Nelson, Eric Jones, Robert Kern, Eric Larson, CJ Carey, İlhan Polat, Yu Feng, Eric W. Moore, Jake VanderPlas, Denis Laxalde, Josef Perktold, Robert Cimrman, Ian Henriksen, E.A. Quintero, Charles R Harris, Anne M. Archibald, Antônio H. Ribeiro, Fabian Pedregosa, Paul van Mulbregt, and SciPy 1.0 Contributors. (2020) SciPy 1.0: Fundamental Algorithms for Scientific Computing in Python. Nature Methods, 17(3), 261-272.
+
+Whittaker-Eilers smoothing implementation:
+
+> P. H. C. Eilers, "A perfect smoother", Anal. Chem. 2003, 75, 3631-3636
+
+> J. Midelet, A. H. El-Sagheer, T. Brown, A. G. Kanaras, A. Débarre, M. H. V. Werts, "Spectroscopic and Hydrodynamic Characterisation of DNA-Linked Gold Nanoparticle Dimers in Solution using Two-Photon Photoluminescence", ChemPhysChem 2018, 19, 827.
 
 Pandas:
 

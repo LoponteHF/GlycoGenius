@@ -423,7 +423,6 @@ def fragments_library(min_max_mono,
     for i_i, i in enumerate(glycans):
         if ((i['T'] > 1) 
             or (i['T'] == 1 and i['N'] < 1) 
-            or (i['T'] == 1 and sum(i.values()) < 8 and i['S']+i['G'] > 0 and nglycan) 
             or (sum(i.values()) < 6 and nglycan and i['S'] >= 1 and i['N'] > 1)
             or (i['H'] > min_max_hex[1])
             or (i['N'] > min_max_hexnac[1])
@@ -432,6 +431,16 @@ def fragments_library(min_max_mono,
             or (i['S'] > min_max_ac[1])
             or (i['G'] > min_max_gc[1])):
             to_be_removed.append(i_i)
+        if nglycan and i_i not in to_be_removed: #some rules and hardcoded exceptions for N-Glycans
+            if ((i['T'] == 1 and sum(i.values()) < 8 and i['S']+i['G'] > 0)
+                or (sum(i.values()) < 6 and i['S'] >= 1 and i['N'] > 1)
+                or (i['H'] == 2 and i['N'] == 1 and i['S'] == 0 and i['F'] == 0 and i['G'] == 0 and i['T'] == 1)
+                or (i['H'] == 0 and i['N'] == 1 and (i['S'] == 1 or i['G'] == 0) and i['F'] == 0 and i['T'] == 0)
+                or (i['H'] == 1 and i['N'] == 3 and i['S'] == 0 and i['F'] == 0 and i['G'] == 0 and i['T'] == 1)
+                or (i['H'] == 3 and i['N'] == 0 and (i['S'] == 1 or i['G'] == 1) and i['F'] == 0 and i['T'] == 0)
+                or (i['H'] == 1 and i['N'] == 1 and i['S'] == 0 and i['F'] == 0 and i['G'] == 0 and i['T'] == 1)
+                or (i['H'] == 3 and i['N'] == 1 and i['S'] == 0 and i['F'] == 0 and i['G'] == 0 and i['T'] == 1)):
+                to_be_removed.append(i_i)
     for i in sorted(to_be_removed, reverse = True):
         del glycans[i]
     if tag_mass != 0:

@@ -31,6 +31,8 @@ spec1.loader.exec_module(General_Functions)
 from pyteomics import mzxml, mzml, mass, auxiliary
 from itertools import combinations_with_replacement
 from scipy.signal import savgol_filter
+from scipy.sparse.linalg import splu
+from scipy import sparse
 from statistics import mean
 from re import split
 from math import inf
@@ -417,38 +419,40 @@ def eic_from_glycan(files,
                     data[i][j_j][1].append(intensity)
     return data, ppm_info, iso_fitting_quality, verbose_info, raw_data
     
-def eic_smoothing(rt_int):
-    '''Smoothes the EIC using the Savitsky Golay algorithm. Smoothed EIC may be
-    used for peak-picking and curve-fitting scoring afterwards.
+def eic_smoothing(y, lmbd = 100, d = 2):
+    '''Implementation of the Whittaker smoothing algorithm,
+    based on the work by Eilers [1].
+
+    [1] P. H. C. Eilers, "A perfect smoother", Anal. Chem. 2003, (75), 3631-3636
+    
+    The larger 'lmbd', the smoother the data.
+    For smoothing of a complete data series, sampled at equal intervals
+
+    This implementation uses sparse matrices enabling high-speed processing
+    of large input vectors
     
     Parameters
-    ----------
-    rt_int : list
-        A list containing two lists: the first one has all the retention times, the
-        second one has all the intensities.
-        
-    Uses
-    ----
-    scipy.savgol_filter : array
-        Apply a Savitzky-Golay filter to an array.
-        
+    ----------    
+    y       : vector containing raw data
+    lmbd    : parameter for the smoothing algorithm (roughness penalty)
+    d       : order of the smoothing 
+
     Returns
     -------
-    rt_int[0] : list
-        A list of each retention time.
-        
-    filtered_ints : list
-        A list containing the processed intensities.
+    z : vector of the smoothed data.
     '''
-    points = 21
-    polynomial_degree = 3
-    while polynomial_degree >= points:
-        points+=1
-    filtered_ints = list(savgol_filter(rt_int[1], points, polynomial_degree))
-    for i_i, i in enumerate(filtered_ints):
-        if i < 0:
-            filtered_ints[i_i] = 0.0
-    return rt_int[0], filtered_ints
+    if y[0][len(y[0])//2]-y[0][(len(y[0])//2)-1] > 0.1: #this means that there are less than 10 data points per minute
+        return y[0], y[1]
+    array = numpy.array(y[1])
+    m = len(array)
+    E = sparse.eye(m, format='csc')
+    D = General_Functions.speyediff(m, d, format='csc')
+    coefmat = E + lmbd * D.conj().T.dot(D)
+    z = splu(coefmat).solve(array)
+    for i_i, i in enumerate(z):
+        if i < 1:
+            z[i_i] = 0.0
+    return y[0], list(z)
     
 def peak_curve_fit(rt_int, 
                    peak):
@@ -481,7 +485,7 @@ def peak_curve_fit(rt_int,
     '''
     x = rt_int[0][peak['peak_interval_id'][0]:peak['peak_interval_id'][1]+1]
     y = rt_int[1][peak['peak_interval_id'][0]:peak['peak_interval_id'][1]+1]
-    interval = x[-1]-x[-2]
+    interval = x[len(x)//2]-x[(len(x)//2)-1]
     fits_list = []
     for j in range(int(0.2/interval)):
         before = []

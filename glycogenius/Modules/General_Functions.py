@@ -18,10 +18,11 @@
 
 from pyteomics import mzxml, mzml, mass, auxiliary
 from itertools import combinations_with_replacement
-from numpy import percentile
+from numpy import percentile, arange, zeros
 from re import split
 from math import inf, exp, pi
 from statistics import stdev, mean
+from scipy import sparse
 import sys
 import datetime
 
@@ -96,6 +97,47 @@ def tolerance_calc(unit,
         return value
     else:
         return("Unit for tolerance not 'ppm' or 'mz'.")
+        
+def speyediff(N, d, format='csc'):
+    '''Construct a d-th order sparse difference matrix based on an initial 
+    N x N identity matrix. Obtained from https://github.com/mhvwerts/whittaker-eilers-smoother, 
+    applied as is.
+    
+    Parameters
+    ----------
+    N : int
+        Length of vector containing raw data
+    
+    d : int
+        Order of smoothing
+        
+    format : string
+        To be used by scipy.sparse.diags
+        
+    Uses
+    ----
+    np.zeros
+    
+    np.arange
+    
+    scipy.sparse.diags
+    
+    Returns
+    -------
+    spmat
+        Final matrix (N-d) x N
+    '''
+    
+    assert not (d < 0), "d must be non negative"
+    shape     = (N-d, N)
+    diagonals = zeros(2*d + 1)
+    diagonals[d] = 1.
+    for i in range(d):
+        diff = diagonals[:-1] - diagonals[1:]
+        diagonals = diff
+    offsets = arange(d+1)
+    spmat = sparse.diags(diagonals, offsets, shape, format=format)
+    return spmat        
     
 def rt_noise_level_parameters_set(mz_int):
     '''Gathers the int at the 95th percentile of the mz/int array (which is 
