@@ -422,8 +422,7 @@ def fragments_library(min_max_mono,
     to_be_removed = []
     for i_i, i in enumerate(glycans):
         if ((i['T'] > 1) 
-            or (i['T'] == 1 and i['N'] < 1) 
-            or (sum(i.values()) < 6 and nglycan and i['S'] >= 1 and i['N'] > 1)
+            or (i['T'] == 1 and i['N'] == 0)
             or (i['H'] > min_max_hex[1])
             or (i['N'] > min_max_hexnac[1])
             or (i['S']+i['G'] > min_max_sialics[1])
@@ -434,10 +433,11 @@ def fragments_library(min_max_mono,
         if nglycan and i_i not in to_be_removed: #some rules and hardcoded exceptions for N-Glycans
             if ((i['T'] == 1 and sum(i.values()) < 8 and i['S']+i['G'] > 0)
                 or (sum(i.values()) < 6 and i['S'] >= 1 and i['N'] > 1)
+                or (i['H'] > 0 and i['T'] == 1 and i['N'] < 2)
                 or (i['H'] == 2 and i['N'] == 1 and i['S'] == 0 and i['F'] == 0 and i['G'] == 0 and i['T'] == 1)
-                or (i['H'] == 0 and i['N'] == 1 and (i['S'] == 1 or i['G'] == 0) and i['F'] == 0 and i['T'] == 0)
+                or (i['H'] == 0 and i['N'] == 1 and (i['S'] == 1 or i['G'] == 1) and i['F'] == 0 and i['T'] == 0)
                 or (i['H'] == 1 and i['N'] == 3 and i['S'] == 0 and i['F'] == 0 and i['G'] == 0 and i['T'] == 1)
-                or (i['H'] == 3 and i['N'] == 0 and (i['S'] == 1 or i['G'] == 1) and i['F'] == 0 and i['T'] == 0)
+                or (i['H'] > 1 and i['N'] == 0 and (i['S'] == 1 or i['G'] == 1) and i['F'] == 0 and i['T'] == 0)
                 or (i['H'] == 1 and i['N'] == 1 and i['S'] == 0 and i['F'] == 0 and i['G'] == 0 and i['T'] == 1)
                 or (i['H'] == 3 and i['N'] == 1 and i['S'] == 0 and i['F'] == 0 and i['G'] == 0 and i['T'] == 1)):
                 to_be_removed.append(i_i)
@@ -451,7 +451,6 @@ def fragments_library(min_max_mono,
     frag_library = []
     combo_frags_lib = []
     adducts_mz = [[], [], []]
-    removed = [[], [], []]
     for i_i, i in enumerate(glycans):
         for j_j, j in enumerate(range(-1, 2)):
             if j < 0:
@@ -464,7 +463,7 @@ def fragments_library(min_max_mono,
             glycan_atoms['H'] += j*2
             glycan_atoms['O'] += j*1
             i_atoms = glycan_atoms
-            if tag[1] == 0.0: #have to fix this part for permethylatted glycans
+            if tag[1] == 0.0:
                 if permethylated:
                     i_atoms = General_Functions.sum_atoms(i_atoms, {'C': 2, 'H': 4})
                     if reduced:

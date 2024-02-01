@@ -365,7 +365,7 @@ def eic_from_glycan(files,
                                     break
                             if not_good:
                                 break
-                        if sliced_int[l_l] < General_Functions.local_noise_calc(noise[j_j][k_k], l, avg_noise[j_j]): #Everything from here is dependent on noise level
+                        if sliced_int[l_l] < General_Functions.local_noise_calc(noise[j_j][k_k], l, avg_noise[j_j]): #Everything from here is dependent on noise level (currently: monoisotopic peak detection only)
                             continue
                         if l >= target_mz - General_Functions.tolerance_calc(tolerance[0], tolerance[1], l) and abs(l-target_mz) <= General_Functions.tolerance_calc(tolerance[0], tolerance[1], l):
                             mono_ppm.append(General_Functions.calculate_ppm_diff(l, target_mz))
@@ -419,7 +419,7 @@ def eic_from_glycan(files,
                     data[i][j_j][1].append(intensity)
     return data, ppm_info, iso_fitting_quality, verbose_info, raw_data
     
-def eic_smoothing(y, lmbd = 100, d = 2):
+def eic_smoothing(y, lmbd = 10, d = 2):
     '''Implementation of the Whittaker smoothing algorithm,
     based on the work by Eilers [1].
 

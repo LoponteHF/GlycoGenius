@@ -1445,11 +1445,11 @@ def imp_exp_gen_library(multithreaded_analysis,
             os._exit(1)
     return full_library
     
-def align_assignments(df, df_type):
+def align_assignments(df, df_type, deltas = None):
     '''
     '''
     dataframe = copy.deepcopy(df)
-    if df_type == 'total_glycans':
+    if df_type == 'total_glycans': #this is for alignment of total_glycans dataframes... it generates delta values to be used for other alignments
         biggest_df = inf
         biggest_df_size = 0
         for i_i, i in enumerate(dataframe): #this determines the dataframe with most peaks assigned, it will be used as reference
@@ -1487,43 +1487,80 @@ def align_assignments(df, df_type):
                             ids_per_sample[j_j].append(l)
                             rts.append(j['RT'][l])
                             aucs.append(j['AUC'][l])
+                        used_peaks = []
                         for l_l, l in enumerate(aucs):
                             found = False
                             for m_m, m in enumerate(aucs_reference):
-                                if abs(l-max(aucs)*aucs_reference[m_m]) <= 0.2:
+                                if m_m not in used_peaks and abs(l-max(aucs)*aucs_reference[m_m]) <= 0.3*l:
                                     found = True
-                                    deltas_per_sample[j_j][rts[l_l]] = rts_reference[m_m]-rts[l_l]
+                                    used_peaks.append(m_m)
+                                    deltas_per_sample[j_j][rts[l_l]] = [rts_reference[m_m]-rts[l_l], k]
                                     break
                             if not found:
-                                deltas_per_sample[j_j][rts[l_l]] = inf
+                                deltas_per_sample[j_j][rts[l_l]] = [inf, k]
                         break
         for i_i, i in enumerate(deltas_per_sample): #going through each sample
-            for j in i: #going through each delta and checking if it's calculated, if it's not (inf) then it grabs the closest calculated
-                if i[j] == inf:
-                    smallest_rt = 0.0
-                    smallest_diff = inf
-                    for k in i:
-                        if k != j and abs(float(k)-float(j)) < smallest_diff:
-                            smallest_diff = abs(float(k)-float(j))
-                            smallest_rt = k
-                    i[j] = i[smallest_rt]
+            for j in i: #going through each delta and checking if it's calculated, if it's not (inf) then it grabs the average delta
+                if i[j][0] == inf:
+                    temp_list = []
+                    for k_k, k in enumerate(i):
+                        if i[k][0] != inf:
+                            temp_list.append(i[k][0])
+                    i[j][0] = float("%.2f" % round(sum(temp_list)/len(temp_list), 2))
         for i_i, i in enumerate(dataframe): #this will apply the alignment based on ids and deltas
             if len(ids_per_sample[i_i]) == 0: #this is the reference sample or blank sample
                 continue
             for j_j, j in enumerate(i['RT']):
-                if j_j in ids_per_sample[i_i]:
-                    i['RT'][j_j] = i['RT'][j_j] + deltas_per_sample[i_i][i['RT'][j_j]]
-                else:
-                    smallest_rt = 0.0
-                    smallest_diff = inf
-                    for k in deltas_per_sample[i_i]:
-                        if abs(float(k)-float(j)) < smallest_diff:
-                            smallest_diff = abs(float(k)-float(j))
-                            smallest_rt = k
-                    i['RT'][j_j] = i['RT'][j_j] + deltas_per_sample[i_i][smallest_rt]
+                found = False
+                for k_k, k in enumerate(deltas_per_sample[i_i]):
+                    if i['RT'][j_j] == k and i['Glycan'][j_j] == deltas_per_sample[i_i][k][1]:
+                        i['RT'][j_j] = i['RT'][j_j] + deltas_per_sample[i_i][i['RT'][j_j]][0]
+                        found = True
+                        break
+                if not found:
+                    temp_list = []
+                    for l_l, l in enumerate(deltas_per_sample[i_i]):
+                        temp_list.append(deltas_per_sample[i_i][l][0])
+                    i['RT'][j_j] = i['RT'][j_j]+ float("%.2f" % round(sum(temp_list)/len(temp_list), 2))
         for i_i, i in enumerate(deltas_per_sample):
             deltas_per_sample[i_i] = dict(sorted(i.items()))
-        return dataframe, deltas_per_sample
+        return dataframe, deltas_per_sample, biggest_df
+        
+    if df_type == "chromatograms": #for when you want to align chromatograms based on existing deltas calculated previously
+        for i_i, i in enumerate(dataframe): #sample by sample
+            if type(deltas[i_i]) != float or deltas[i_i] == 0.0:
+                continue
+            else:
+                id_to_trim = []
+                chromatogram_length_rt = i['RTs_'+str(i_i)][-1]
+                chromatogram_length = len(i['RTs_'+str(i_i)])
+                chromatogram_interval_beggining = i['RTs_'+str(i_i)][1]-i['RTs_'+str(i_i)][0]
+                chromatogram_interval_end = i['RTs_'+str(i_i)][-1]-i['RTs_'+str(i_i)][-2]
+                for j_j, j in enumerate(i['RTs_'+str(i_i)]):
+                    i['RTs_'+str(i_i)][j_j] = j+deltas[i_i]
+                    if i['RTs_'+str(i_i)][j_j] < 0.0 or i['RTs_'+str(i_i)][j_j] > chromatogram_length_rt:
+                        id_to_trim.append(j_j)
+                if len(id_to_trim) > 0:
+                    for j_j, j in enumerate(sorted(id_to_trim, reverse = True)):
+                        for k_k, k in enumerate(i):
+                            del i[k][j]
+                    if id_to_trim[0] == 0:
+                        for j_j, j in enumerate(i):
+                            if j == 'RTs_'+str(i_i):
+                                for k_k, k in enumerate(id_to_trim):
+                                    i[j].append(float("%.4f" % round(i[j][-1]+(chromatogram_interval_end),4)))
+                            else:
+                                for k_k, k in enumerate(id_to_trim):
+                                    i[j].append(0.0)
+                    else:
+                        for j_j, j in enumerate(i):
+                            if j == 'RTs_'+str(i_i):
+                                for k_k, k in enumerate(id_to_trim):
+                                    i[j] = [float("%.4f" % round(i[j][0]-chromatogram_interval_beggining, 4))]+i[j]
+                            else:
+                                for k_k, k in enumerate(id_to_trim):
+                                    i[j] = [0.0]+i[j]
+        return dataframe
         
 def output_filtered_data(curve_fit_score,
                          iso_fit_score,
@@ -2079,9 +2116,25 @@ def output_filtered_data(curve_fit_score,
             arranged_total_dataframes[i_i]['AUC'] += list(current_AUCs)
     total_dataframes = arranged_total_dataframes
     
-    aligned_results = align_assignments(total_dataframes, 'total_glycans')
-    total_dataframes = aligned_results[0]
-    #hook for alignment tool. it'll use the total_dataframes (total_glycans), df1_refactor (results) and fragments_refactor_dataframes  (fragments)            
+    
+    #hook for alignment tool. it'll use the total_dataframes (total_glycans)      
+    if len(total_dataframes) > 1:
+        aligned_total_glycans = align_assignments(total_dataframes, 'total_glycans')
+        total_dataframes = aligned_total_glycans[0]
+        df2["Average Delta t"] = []
+        for i_i, i in enumerate(aligned_total_glycans[1]):
+            temp_list = []
+            for k_k, k in enumerate(i):
+                temp_list.append(i[k][0])
+            if len(temp_list) != 0:
+                average_delta = float("%.2f" % round(sum(temp_list)/len(temp_list), 2))
+                df2["Average Delta t"].append(average_delta)
+            else:
+                if i_i == aligned_total_glycans[2]:
+                    df2["Average Delta t"].append("Reference Sample")
+                else:
+                    df2["Average Delta t"].append("No peaks to align")
+    #hook for alignment tool. it'll use the total_dataframes (total_glycans)         
                 
     glycans_count = [] #glycans composition counts
     last_glycan = ""
@@ -2212,12 +2265,56 @@ def output_filtered_data(curve_fit_score,
         print("Done!") #end of metaboanalyst plot
         
     #start of excel data printing
+    df2 = DataFrame(df2) 
+    
+    with ExcelWriter(save_path+begin_time+'_Results_'+str(max_ppm)+'_'+str(iso_fit_score)+'_'+str(curve_fit_score)+'_'+str(sn)+'.xlsx') as writer:
+        print("Creating results file...", end="", flush=True)
+        df2.to_excel(writer, sheet_name="Index references", index = False)
+        for i_i, i in enumerate(df1_refactor):
+            result_df = DataFrame(i)
+            result_df.to_excel(writer, sheet_name="Sample_"+str(i_i), index = False)
+            total_aucs_df = DataFrame(total_dataframes[i_i])
+            total_aucs_df.to_excel(writer, sheet_name="Sample_"+str(i_i)+"_Total_AUCs", index = False)
+            if analyze_ms2:
+                if len(fragments_dataframes[i_i]["Glycan"]) > 0:
+                    fragments_df = DataFrame(fragments_refactor_dataframes[i_i])
+                    fragments_df.to_excel(writer, sheet_name="Sample_"+str(i_i)+"_Fragments", index = False)
+    del df1
+    del result_df
+    del total_dataframes
+    del total_aucs_df
+    
+    if analyze_ms2:
+        if len(fragments_dataframes[i_i]["Glycan"]) > 0:
+            del fragments_df
+        del fragments_refactor_dataframes
+        del fragments_dataframes
+    print("Done!")
+    
     found_eic_raw_dataframes = [] #This creates a file with only the found glycan's EIC
     found_eic_processed_dataframes = []
-    with open(save_path+'raw_data_5', 'rb') as f:
-        raw_eic_dataframes = dill.load(f)
-    with open(save_path+'raw_data_3', 'rb') as f:
-        smoothed_eic_dataframes = dill.load(f)
+    if sneakpeek[0]:
+        with open(save_path+'results5_'+str(sneakpeek[1]), 'rb') as f:
+            raw_eic_dataframes = dill.load(f)
+            f.close()
+    else:
+        with open(save_path+'raw_data_5', 'rb') as f:
+            raw_eic_dataframes = dill.load(f)
+            f.close()
+    if sneakpeek[0]:
+        with open(save_path+'results3_'+str(sneakpeek[1]), 'rb') as f:
+            smoothed_eic_dataframes = dill.load(f)
+            f.close()
+    else:
+        with open(save_path+'raw_data_3', 'rb') as f:
+            smoothed_eic_dataframes = dill.load(f)
+            f.close()
+            
+    if len(df2['Sample_Number']) > 1: #aligns the chromatograms, may take some time (around 1 minute per sameple, depending on run length)
+        print("Aligning chromatograms... ", end='', flush=True)
+        smoothed_eic_dataframes = align_assignments(smoothed_eic_dataframes, 'chromatograms', df2["Average Delta t"])
+        print("Done!")
+        
     for i_i, i in enumerate(df1_refactor):
         found_eic_raw_dataframes.append({})
         found_eic_raw_dataframes[i_i]['RTs_'+str(i_i)] = raw_eic_dataframes[i_i]['RTs_'+str(i_i)]
@@ -2230,32 +2327,8 @@ def output_filtered_data(curve_fit_score,
                 found_eic_processed_dataframes[i_i][query] = smoothed_eic_dataframes[i_i][query]
             except:
                 pass
-    del raw_eic_dataframes
-    del smoothed_eic_dataframes
     
-    df2 = DataFrame(df2) 
-    with ExcelWriter(save_path+begin_time+'_Results_'+str(max_ppm)+'_'+str(iso_fit_score)+'_'+str(curve_fit_score)+'_'+str(sn)+'.xlsx') as writer:
-        print("Creating results file...", end="", flush=True)
-        for i_i, i in enumerate(df1_refactor):
-            result_df = DataFrame(i)
-            result_df.to_excel(writer, sheet_name="Sample_"+str(i_i), index = False)
-            total_aucs_df = DataFrame(total_dataframes[i_i])
-            total_aucs_df.to_excel(writer, sheet_name="Sample_"+str(i_i)+"_Total_AUCs", index = False)
-            if analyze_ms2:
-                if len(fragments_dataframes[i_i]["Glycan"]) > 0:
-                    fragments_df = DataFrame(fragments_refactor_dataframes[i_i])
-                    fragments_df.to_excel(writer, sheet_name="Sample_"+str(i_i)+"_Fragments", index = False)
-        df2.to_excel(writer, sheet_name="Index references", index = False)
-    del df1
-    del result_df
-    del total_dataframes
-    del total_aucs_df
-    
-    if analyze_ms2:
-        if len(fragments_dataframes[i_i]["Glycan"]) > 0:
-            del fragments_df
-        del fragments_refactor_dataframes
-        del fragments_dataframes
+    print("Creating data plotting files...", end='', flush=True)
     with ExcelWriter(save_path+begin_time+'_Found_Glycans_EICs.xlsx') as writer:
         for i_i, i in enumerate(found_eic_raw_dataframes):
             found_eic_raw_dataframes_df = DataFrame(i)
@@ -2268,33 +2341,23 @@ def output_filtered_data(curve_fit_score,
     del found_eic_raw_dataframes
     del found_eic_raw_dataframes_df
     
-    print("Done!")
     if (reanalysis[1] and reanalysis[0]) or not reanalysis[0]:
-        print("Creating data plotting files...", end= "", flush=True)
-        if sneakpeek[0]:
-            with open(save_path+'results2_'+str(sneakpeek[1]), 'rb') as f:
-                eic_dataframes = dill.load(f)
-                f.close()
-        else:
-            with open(save_path+'raw_data_2', 'rb') as f:
-                eic_dataframes = dill.load(f)
-                f.close()
-        with ExcelWriter(save_path+begin_time+'_processed_EIC_Plot_Data.xlsx') as writer:
-            for i_i, i in enumerate(eic_dataframes):
-                eic_df = DataFrame(i)
-                eic_df.to_excel(writer, sheet_name="Sample_"+str(i_i), index = False)
-            df2.to_excel(writer, sheet_name="Index references", index = False)
-        del eic_dataframes
-        del eic_df
-        if sneakpeek[0]:
-            with open(save_path+'results3_'+str(sneakpeek[1]), 'rb') as f:
-                smoothed_eic_dataframes = dill.load(f)
-                f.close()
-        else:
-            with open(save_path+'raw_data_3', 'rb') as f:
-                smoothed_eic_dataframes = dill.load(f)
-                f.close()
-        with ExcelWriter(save_path+begin_time+'_smoothed_EIC_Plot_Data.xlsx') as writer:
+        # if sneakpeek[0]: #commented for now, it's just too much redundant information... smoothed eic will output as processed now
+            # with open(save_path+'results2_'+str(sneakpeek[1]), 'rb') as f:
+                # eic_dataframes = dill.load(f)
+                # f.close()
+        # else:
+            # with open(save_path+'raw_data_2', 'rb') as f:
+                # eic_dataframes = dill.load(f)
+                # f.close()
+        # with ExcelWriter(save_path+begin_time+'_processed_EIC_Plot_Data.xlsx') as writer:
+            # for i_i, i in enumerate(eic_dataframes):
+                # eic_df = DataFrame(i)
+                # eic_df.to_excel(writer, sheet_name="Sample_"+str(i_i), index = False)
+            # df2.to_excel(writer, sheet_name="Index references", index = False)
+        # del eic_dataframes
+        # del eic_df
+        with ExcelWriter(save_path+begin_time+'_processed_EIC_Plot_Data.xlsx') as writer: #smoothed eic, now changed to processed to avoid TMI
             for i_i, i in enumerate(smoothed_eic_dataframes):
                 smoothed_eic_df = DataFrame(i)
                 smoothed_eic_df.to_excel(writer, sheet_name="Sample_"+str(i_i), index = False)
@@ -2302,14 +2365,6 @@ def output_filtered_data(curve_fit_score,
         del smoothed_eic_dataframes
         del smoothed_eic_df
         
-        if sneakpeek[0]:
-            with open(save_path+'results5_'+str(sneakpeek[1]), 'rb') as f:
-                raw_eic_dataframes = dill.load(f)
-                f.close()
-        else:
-            with open(save_path+'raw_data_5', 'rb') as f:
-                raw_eic_dataframes = dill.load(f)
-                f.close()
         with ExcelWriter(save_path+begin_time+'_raw_EIC_Plot_Data.xlsx') as writer:
             for i_i, i in enumerate(raw_eic_dataframes):
                 raw_eic_df = DataFrame(i)
@@ -2317,6 +2372,7 @@ def output_filtered_data(curve_fit_score,
             df2.to_excel(writer, sheet_name="Index references", index = False)
         del raw_eic_dataframes
         del raw_eic_df
+        
         if sneakpeek[0]:
             with open(save_path+'results4_'+str(sneakpeek[1]), 'rb') as f:
                 curve_fitting_dataframes = dill.load(f)
@@ -2325,7 +2381,6 @@ def output_filtered_data(curve_fit_score,
             with open(save_path+'raw_data_4', 'rb') as f:
                 curve_fitting_dataframes = dill.load(f)
                 f.close()
-                
         with ExcelWriter(save_path+begin_time+'_curve_fitting_Plot_Data.xlsx') as writer:
             for i_i, i in enumerate(curve_fitting_dataframes):
                 if len(curve_fitting_dataframes[i_i]) > 16384:
@@ -2346,6 +2401,10 @@ def output_filtered_data(curve_fit_score,
             df2.to_excel(writer, sheet_name="Index references", index = False)
         del curve_fitting_dataframes
         del curve_df
+        print("Done!")
+    elif reanalysis[0] and not reanalysis[1]:
+        del smoothed_eic_dataframes
+        del raw_eic_dataframes
         print("Done!")
 
 def arrange_raw_data(analyzed_data,
@@ -3131,9 +3190,9 @@ def analyze_ms2(ms2_index,
                                             continue
                                 for o in n['Adducts_mz']:
                                     if abs(n['Adducts_mz'][o]-m) <= General_Functions.tolerance_calc(tolerance[0], tolerance[1], n['Adducts_mz'][o]): #fragments data outputted in the form of (Glycan, Adduct, Fragment, Fragment mz, intensity, retention time, precursor)
-                                        if len(n['Formula']) > 3 and n['Formula'][-3] != "_":
+                                        if "_" not in n['Formula']:
                                             fragments_data[i][j][k_k].append((i, j, n['Formula']+'_'+o, n['Adducts_mz'][o], k[l]['intensity array'][m_m], k[l]['retentionTime'], k[l]['precursorMz'][0]['precursorMz'], total))
-                                        elif len(n['Formula']) > 3 and n['Formula'][-3] == "_" and combo:
+                                        elif "_" in n['Formula'] and combo:
                                             fragments_data[i][j][k_k].append((i, j, new_formula, n['Adducts_mz'][o], k[l]['intensity array'][m_m], k[l]['retentionTime'], k[l]['precursorMz'][0]['precursorMz'], total))
                                         else:
                                             fragments_data[i][j][k_k].append((i, j, n['Formula'], n['Adducts_mz'][o], k[l]['intensity array'][m_m], k[l]['retentionTime'], k[l]['precursorMz'][0]['precursorMz'], total))
