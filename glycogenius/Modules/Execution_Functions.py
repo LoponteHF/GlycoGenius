@@ -1486,58 +1486,101 @@ def align_assignments(df, df_type, deltas = None):
                         for l in range(k_k, k_k+peaks_number_target):
                             ids_per_sample[j_j].append(l)
                             rts.append(j['RT'][l])
-                            aucs.append(j['AUC'][l])
+                            aucs.append(j['AUC'][l]/max(j['AUC'][k_k:k_k+peaks_number_target]))
                         used_peaks = []
+                        last_assigned_rt_id = 0
                         for l_l, l in enumerate(aucs):
                             found = False
-                            for m_m, m in enumerate(aucs_reference):
-                                if m_m not in used_peaks and abs(l-max(aucs)*aucs_reference[m_m]) <= 0.3*l:
-                                    found = True
-                                    used_peaks.append(m_m)
-                                    deltas_per_sample[j_j][rts[l_l]] = [rts_reference[m_m]-rts[l_l], k]
-                                    break
+                            if len(aucs_reference[last_assigned_rt_id:]) != 0: 
+                                for m_m in range(last_assigned_rt_id, len(aucs_reference)):
+                                    m = aucs_reference[m_m]
+                                    if m_m not in used_peaks and abs(l-m) <= 0.5*m:
+                                        if m_m > aucs_reference.index(1.0) and l_l < aucs.index(1.0):
+                                            break
+                                        found = True
+                                        last_assigned_rt_id = m_m+1
+                                        deltas_per_sample[j_j][rts[l_l]] = [rts_reference[m_m]-rts[l_l], k]
+                                        break
                             if not found:
                                 deltas_per_sample[j_j][rts[l_l]] = [inf, k]
                         break
-        for i_i, i in enumerate(deltas_per_sample): #going through each sample
-            for j in i: #going through each delta and checking if it's calculated, if it's not (inf) then it grabs the average delta
-                if i[j][0] == inf:
-                    temp_list = []
-                    for k_k, k in enumerate(i):
-                        if i[k][0] != inf:
-                            temp_list.append(i[k][0])
-                    i[j][0] = float("%.2f" % round(sum(temp_list)/len(temp_list), 2))
         for i_i, i in enumerate(dataframe): #this will apply the alignment based on ids and deltas
             if len(ids_per_sample[i_i]) == 0: #this is the reference sample or blank sample
                 continue
+            to_fix = []
             for j_j, j in enumerate(i['RT']):
                 found = False
                 for k_k, k in enumerate(deltas_per_sample[i_i]):
-                    if i['RT'][j_j] == k and i['Glycan'][j_j] == deltas_per_sample[i_i][k][1]:
+                    if i['RT'][j_j] == k and i['Glycan'][j_j] == deltas_per_sample[i_i][k][1] and deltas_per_sample[i_i][k][0] != inf:
                         i['RT'][j_j] = i['RT'][j_j] + deltas_per_sample[i_i][i['RT'][j_j]][0]
                         found = True
                         break
                 if not found:
-                    temp_list = []
-                    for l_l, l in enumerate(deltas_per_sample[i_i]):
-                        temp_list.append(deltas_per_sample[i_i][l][0])
-                    i['RT'][j_j] = i['RT'][j_j]+ float("%.2f" % round(sum(temp_list)/len(temp_list), 2))
+                    to_fix.append(j_j)
+            if len(to_fix) > 0:
+                for j_j, j in enumerate(i['RT']):
+                    if j_j in to_fix:
+                        before_j_j = None
+                        after_j_j = None
+                        if df[i_i]['Glycan'][j_j-1] == df[i_i]['Glycan'][j_j] and j_j-1 not in to_fix:
+                            before_j_j = df[i_i]['RT'][j_j-1]
+                        if df[i_i]['Glycan'][j_j+1] == df[i_i]['Glycan'][j_j] and j_j+1 not in to_fix:
+                            after_j_j = df[i_i]['RT'][j_j+1]
+                        x = []
+                        y = []
+                        for k_k, k in enumerate(deltas_per_sample[i_i]):
+                            if deltas_per_sample[i_i][k][0] != inf:
+                                x.append(float(k))
+                                y.append(deltas_per_sample[i_i][k][0])
+                        linear_equation = General_Functions.linear_regression(x, y)
+                        fixed_RT = float("%.2f" % round(i['RT'][j_j] + (i['RT'][j_j]*linear_equation[0]) + linear_equation[1], 2))
+                        if before_j_j != None and after_j_j != None:
+                            scaling_factor = (i['RT'][j_j]-before_j_j)/(after_j_j-before_j_j)
+                            fixed_RT = float("%.2f" % round(i['RT'][j_j-1]+(scaling_factor*(i['RT'][j_j+1]-i['RT'][j_j-1])), 2))
+                        elif before_j_j == None and after_j_j != None:
+                            scaling_factor = i['RT'][j_j]/after_j_j
+                            fixed_RT = float("%.2f" % round(i['RT'][j_j+1]*scaling_factor, 2))
+                        elif before_j_j != None and after_j_j == None:
+                            scaling_factor = i['RT'][j_j]/before_j_j
+                            fixed_RT = float("%.2f" % round(i['RT'][j_j-1]*scaling_factor, 2))
+                        deltas_per_sample[i_i][j][0] = i['RT'][j_j] - fixed_RT    
+                        i['RT'][j_j] = fixed_RT
         for i_i, i in enumerate(deltas_per_sample):
             deltas_per_sample[i_i] = dict(sorted(i.items()))
+        for i_i, i in enumerate(deltas_per_sample): #cleanup
+            positive = []
+            negative = []
+            for j_j, j in enumerate(i):
+                if i[j][0] > 0:
+                    positive.append(j)
+                if i[j][0] < 0:
+                    negative.append(j)
+            if len(positive) < len(negative):
+                for j in positive:
+                    del deltas_per_sample[i_i][j]
+            if len(positive) > len(negative):
+                for j in negative:
+                    del deltas_per_sample[i_i][j]
         return dataframe, deltas_per_sample, biggest_df
         
     if df_type == "chromatograms": #for when you want to align chromatograms based on existing deltas calculated previously
         for i_i, i in enumerate(dataframe): #sample by sample
-            if type(deltas[i_i]) != float or deltas[i_i] == 0.0:
-                continue
-            else:
+            if len(deltas[i_i]) > 0:
+                x = []
+                y = []
+                for k_k, k in enumerate(deltas[i_i]):
+                    x.append(float(k))
+                    y.append(deltas[i_i][k][0])
+                linear_equation = General_Functions.linear_regression(x, y)
+                
                 id_to_trim = []
                 chromatogram_length_rt = i['RTs_'+str(i_i)][-1]
                 chromatogram_length = len(i['RTs_'+str(i_i)])
                 chromatogram_interval_beggining = i['RTs_'+str(i_i)][1]-i['RTs_'+str(i_i)][0]
                 chromatogram_interval_end = i['RTs_'+str(i_i)][-1]-i['RTs_'+str(i_i)][-2]
                 for j_j, j in enumerate(i['RTs_'+str(i_i)]):
-                    i['RTs_'+str(i_i)][j_j] = j+deltas[i_i]
+                    # i['RTs_'+str(i_i)][j_j] = j+deltas[i_i]
+                    i['RTs_'+str(i_i)][j_j] = i['RTs_'+str(i_i)][j_j] + (i['RTs_'+str(i_i)][j_j]*linear_equation[0])+linear_equation[1]
                     if i['RTs_'+str(i_i)][j_j] < 0.0 or i['RTs_'+str(i_i)][j_j] > chromatogram_length_rt:
                         id_to_trim.append(j_j)
                 if len(id_to_trim) > 0:
@@ -2232,6 +2275,7 @@ def output_filtered_data(curve_fit_score,
                 glycan_line.append(i)
                 for j_j, j in enumerate(total_dataframes): #moving through samples
                     found = False
+                    temp_AUC = 0
                     for k_k, k in enumerate(j["Glycan"]):
                         if k == "Internal Standard":
                             continue
@@ -2242,10 +2286,9 @@ def output_filtered_data(curve_fit_score,
                                     temp_AUC_IS = j["AUC"][k_k]/is_areas[j_j]
                                 else:
                                     temp_AUC_IS = 0.0
-                                temp_AUC = j["AUC"][k_k]
+                                temp_AUC+= j["AUC"][k_k]
                             else:
-                                temp_AUC = j["AUC"][k_k]
-                            break
+                                temp_AUC += j["AUC"][k_k]
                     if found:
                         if "Internal Standard" in j["Glycan"]:
                             glycan_line_IS.append(str(temp_AUC_IS))
@@ -2310,9 +2353,9 @@ def output_filtered_data(curve_fit_score,
             smoothed_eic_dataframes = dill.load(f)
             f.close()
             
-    if len(df2['Sample_Number']) > 1: #aligns the chromatograms, may take some time (around 1 minute per sameple, depending on run length)
-        print("Aligning chromatograms... ", end='', flush=True)
-        smoothed_eic_dataframes = align_assignments(smoothed_eic_dataframes, 'chromatograms', df2["Average Delta t"])
+    if len(df2['Sample_Number']) > 1: #aligns the chromatograms, may take some time (around 1 minute per sample, depending on run length)
+        print("Aligning chromatograms...", end='', flush=True)
+        smoothed_eic_dataframes = align_assignments(smoothed_eic_dataframes, 'chromatograms', aligned_total_glycans[1])
         print("Done!")
         
     for i_i, i in enumerate(df1_refactor):
@@ -2849,7 +2892,7 @@ def analyze_files(library,
     noise_avg = {}
     rt_array_report = {}
     if not custom_noise[0]:
-        print('Analyzing noise level of samples... ', end='', flush = True)
+        print('Analyzing noise level of samples...', end='', flush = True)
     for i_i, i in enumerate(data):
         rt_array_report[i_i] = []
         temp_noise = []

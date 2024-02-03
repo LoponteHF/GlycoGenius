@@ -49,6 +49,24 @@ times during a run.
 ##---------------------------------------------------------------------------------------
 ##General functions (these functions use only external libraries, such as itertools and
 ##pyteomics).
+import numpy as np
+
+def linear_regression(x, y):
+    '''
+    '''
+    # Ensure x and y have the same length
+    if len(x) != len(y):
+        raise ValueError("Input arrays x and y must have the same length.")
+
+    # Convert input data to numpy arrays
+    x = np.array(x)
+    y = np.array(y)
+
+    # Calculate the slope (m) and y-intercept (b) using numpy's polyfit function
+    m, b = np.polyfit(x, y, 1)
+    # Final equation is used as (y = mx + b)
+
+    return m, b
 
 def calculate_ppm_diff(mz, target):
     '''Calculates the PPM difference between a mz and a target mz.

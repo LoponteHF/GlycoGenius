@@ -35,7 +35,7 @@ from scipy.sparse.linalg import splu
 from scipy import sparse
 from statistics import mean
 from re import split
-from math import inf
+from math import inf, atan, pi
 import numpy
 import sys
 import datetime
@@ -419,7 +419,7 @@ def eic_from_glycan(files,
                     data[i][j_j][1].append(intensity)
     return data, ppm_info, iso_fitting_quality, verbose_info, raw_data
     
-def eic_smoothing(y, lmbd = 10, d = 2):
+def eic_smoothing(y, lmbd = 100, d = 2):
     '''Implementation of the Whittaker smoothing algorithm,
     based on the work by Eilers [1].
 
@@ -441,7 +441,7 @@ def eic_smoothing(y, lmbd = 10, d = 2):
     -------
     z : vector of the smoothed data.
     '''
-    if y[0][len(y[0])//2]-y[0][(len(y[0])//2)-1] > 0.1: #this means that there are less than 10 data points per minute
+    if y[0][len(y[0])//2]-y[0][(len(y[0])//2)-1] > 0.07: #this means that there are less than 15 data points per minute
         return y[0], y[1]
     array = numpy.array(y[1])
     m = len(array)
@@ -651,42 +651,48 @@ def peaks_from_eic(rt_int,
     temp_max_id_iu = 0
     going_up = False
     going_down = False
-    counter = 0
-    max_counter = int(0.1/(rt_int[0][-1]-rt_int[0][-2]))
+    # counter = 0
+    # max_counter = int(0.1/(rt_int[0][-1]-rt_int[0][-2]))
+    slope_threshold = 30 #this number indicates the minimum angle to consider a peak
     for i_i, i in enumerate(rt_int_smoothed[1]):
-#        print("RT:", "%.2f" % round(rt_int[0][i_i], 2),"INT:", "%.2f" % round(rt_int[1][i_i], 2), "TEMP_MAX:", temp_max,"TEMP_MAX_ID:", temp_max_id_iu, going_up, going_down, counter)
-        if (rt_int[0][i_i] >= rt_interval[1] or rt_int[0][i_i] == rt_int[0][-1]):
-            break
-        if rt_int[0][i_i] >= rt_interval[0]:
+        if (rt_int[0][i_i] >= rt_interval[1] or rt_int[0][i_i] == rt_int[0][-2]):
+            break    
+        if i > 0 and rt_int[0][i_i] >= rt_interval[0]:
+            arc_tan_slope = atan(rt_int_smoothed[1][i_i+1]/i)*(180/pi) #arctan of slope
+            if rt_int_smoothed[1][i_i+1] < i:
+                arc_tan_slope = -arc_tan_slope
             if (going_up or going_down) and rt_int[1][i_i] > temp_max:
                 temp_max = rt_int[1][i_i]
                 temp_max_id_iu = i_i
-            if (going_up and (i < rt_int_smoothed[1][i_i-1] or rt_int_smoothed[1][i_i] == 0)):
-                counter+=1
-                if counter <= max_counter:
-                    continue
-                elif counter > max_counter:
-                    counter = 0
-                    going_up = False
-                    going_down = True
-            if (going_down and (i > rt_int_smoothed[1][i_i-1] or rt_int_smoothed[1][i_i] == 0.0)):
-                temp_peak_width = (rt_int[0][i_i]-rt_int[0][temp_start])
+            if (going_up and (arc_tan_slope < 0 or rt_int_smoothed[1][i_i] == 0)):
+                # counter+=1
+                # if counter <= max_counter:
+                    # continue
+                # elif counter > max_counter:
+                    # counter = 0
+                going_up = False
+                going_down = True
+            if (going_down and (arc_tan_slope >= 0 or rt_int_smoothed[1][i_i] == 0.0)):
+                min_id = i_i
+                if rt_int_smoothed[1][i_i+1] < i:
+                    min_id = i_i+1
+                temp_peak_width = (rt_int[0][min_id]-rt_int[0][temp_start])
                 going_down = False
                 good = False
                 if min_ppp[0]:
                     if i_i-temp_start >= min_ppp[1] or glycan == "Internal Standard":
                         good = True
                 else:
-                    if i_i-temp_start >= int(0.2/(rt_int[0][-1]-rt_int[0][-2])) or glycan == "Internal Standard":
+                    if min_id-temp_start >= int(0.2/(rt_int[0][-1]-rt_int[0][-2])) or glycan == "Internal Standard":
                         good = True
                 if good:
-                    peaks.append({'id': temp_max_id_iu, 'rt': rt_int[0][temp_max_id_iu], 'int': temp_max, 'peak_width': temp_peak_width, 'peak_interval': (rt_int[0][temp_start], rt_int[0][i_i]), 'peak_interval_id': (temp_start, i_i)})
+                    peaks.append({'id': temp_max_id_iu, 'rt': rt_int[0][temp_max_id_iu], 'int': temp_max, 'peak_width': temp_peak_width, 'peak_interval': (rt_int[0][temp_start], rt_int[0][min_id]), 'peak_interval_id': (temp_start, min_id)})
                     temp_max = 0
                     temp_max_id_iu = 0
                 if not good:
                     temp_max = 0
                     temp_max_id_iu = 0
-            if (i_i != 0 and i > rt_int_smoothed[1][i_i-1] and not going_up and not going_down):
+            if (i_i != 0 and arc_tan_slope >= slope_threshold and not going_up and not going_down):
                 temp_start = i_i-1
                 going_up = True
     if close_peaks[0] or glycan == "Internal Standard":
