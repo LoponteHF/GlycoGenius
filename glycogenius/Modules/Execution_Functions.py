@@ -1522,9 +1522,9 @@ def align_assignments(df, df_type, deltas = None):
                     if j_j in to_fix:
                         before_j_j = None
                         after_j_j = None
-                        if df[i_i]['Glycan'][j_j-1] == df[i_i]['Glycan'][j_j] and j_j-1 not in to_fix:
+                        if j_j-1 >= 0 and df[i_i]['Glycan'][j_j-1] == df[i_i]['Glycan'][j_j] and j_j-1 not in to_fix:
                             before_j_j = df[i_i]['RT'][j_j-1]
-                        if df[i_i]['Glycan'][j_j+1] == df[i_i]['Glycan'][j_j] and j_j+1 not in to_fix:
+                        if j_j+1 < len(df[i_i]['Glycan']) and df[i_i]['Glycan'][j_j+1] == df[i_i]['Glycan'][j_j] and j_j+1 not in to_fix:
                             after_j_j = df[i_i]['RT'][j_j+1]
                         x = []
                         y = []
@@ -1543,7 +1543,10 @@ def align_assignments(df, df_type, deltas = None):
                         elif before_j_j != None and after_j_j == None:
                             scaling_factor = i['RT'][j_j]/before_j_j
                             fixed_RT = float("%.2f" % round(i['RT'][j_j-1]*scaling_factor, 2))
-                        deltas_per_sample[i_i][j][0] = i['RT'][j_j] - fixed_RT    
+                        if j in list(deltas_per_sample[i_i].keys()):
+                            deltas_per_sample[i_i][j][0] = i['RT'][j_j] - fixed_RT
+                        else:
+                            deltas_per_sample[i_i][j] = [i['RT'][j_j] - fixed_RT, i['Glycan'][j_j]]
                         i['RT'][j_j] = fixed_RT
         for i_i, i in enumerate(deltas_per_sample):
             deltas_per_sample[i_i] = dict(sorted(i.items()))
