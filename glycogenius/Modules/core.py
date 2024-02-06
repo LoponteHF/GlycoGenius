@@ -100,7 +100,11 @@ def main():
         reduced = config['library_building'].getboolean('reduced')
         fast_iso = config['library_building'].getboolean('fast_iso')
         high_res = config['library_building'].getboolean('high_resolution_isotopic_dist')
-        internal_standard = float(config['library_building']['internal_standard_mass'])
+        internal_standard = config['library_building']['internal_standard_mass']
+        if len(internal_standard.strip()) == 0:
+            internal_standard = 0.0
+        else:
+            internal_standard = float(internal_standard)
         imp_exp_library = (config['library_building'].getboolean('imp_library'), config['library_building'].getboolean('exp_library'))
         only_gen_lib = config['library_building'].getboolean('only_gen_lib')
         multithreaded_analysis = (config['analysis_parameters'].getboolean('multithreaded_analysis'), int(config['analysis_parameters']['threads_number']))

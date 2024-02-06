@@ -114,7 +114,7 @@ def tolerance_calc(unit,
 def speyediff(N, d, format='csc'):
     '''Construct a d-th order sparse difference matrix based on an initial 
     N x N identity matrix. Obtained from https://github.com/mhvwerts/whittaker-eilers-smoother, 
-    applied as is.
+    applied as is. Due credits given.
     
     Parameters
     ----------

@@ -2271,32 +2271,25 @@ def output_filtered_data(curve_fit_score,
     #hook for alignment tool. it'll use the total_dataframes (total_glycans)         
                 
     glycans_count = [] #glycans composition counts
-    last_glycan = ""
-    found = False
     for i_i, i in enumerate(df1_refactor):
+        current_glycan = ""
         glycans_count.append(0)
         for j_j, j in enumerate(i["Glycan"]):
             if j == 'Internal Standard':
                 continue
-            if j_j == 0:
-                last_glycan = j
-            if j != last_glycan:
+            if j != current_glycan:
                 glycans_count[i_i]+= 1
-                last_glycan = j
-            if j_j == len(i["Glycan"])-1:
-                glycans_count[i_i]+= 1
+                current_glycan = j
     df2["MS1_Glycans_Compositions"] = glycans_count
     if analyze_ms2:
         glycans_count = []
-        last_glycan = ""
         for i_i, i in enumerate(fragments_dataframes):
+            current_glycan = ""
             glycans_count.append(0)
             for j_j, j in enumerate(i["Glycan"]):
-                if j_j == 0:
-                    last_glycan = j
-                if j != last_glycan or j_j == len(i["Glycan"])-1:
+                if j != current_glycan:
                     glycans_count[i_i]+= 1
-                    last_glycan = j
+                    current_glycan = j
         df2["MS2_Glycans_Compositions"] = glycans_count #end of glycans counts
         
     df2["Ambiguities"] = ambiguity_count
@@ -2780,7 +2773,7 @@ def arrange_raw_data(analyzed_data,
                         for n in temp_curve_data_total[m_m][2]:
                             temp_array.append(int(n))
                         curve_fitting_dataframes[k_k][str(i)+"+"+str(j)+"_"+str(m)+"_Ideal_ints"] = temp_array
-    biggest_len = 1000
+    biggest_len = 10000
     for i in curve_fitting_dataframes:
         for j in i:
             if len(i[j]) < biggest_len:

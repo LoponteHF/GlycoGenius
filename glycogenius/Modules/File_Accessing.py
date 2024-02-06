@@ -441,7 +441,7 @@ def eic_smoothing(y, lmbd = 100, d = 2):
     z : vector of the smoothed data.
     '''
     datapoints_per_min = 1/(y[0][y[1].index(max(y[1]))]-y[0][y[1].index(max(y[1]))-1])
-    lmbd = exp(datapoints_per_min/25)
+    lmbd = exp(datapoints_per_min/20)
     array = numpy.array(y[1])
     m = len(array)
     E = sparse.eye(m, format='csc')
@@ -650,19 +650,21 @@ def peaks_from_eic(rt_int,
     temp_max_id_iu = 0
     going_up = False
     going_down = False
-    slope_threshold = 30 #this number indicates the minimum angle to consider a peak
+    datapoints_per_time = int(0.2/(rt_int[0][rt_int[1].index(max(rt_int[1]))]-rt_int[0][rt_int[1].index(max(rt_int[1]))-1]))
+    slope_threshold = 5*datapoints_per_time #this number indicates the minimum angle to consider a peak
     for i_i, i in enumerate(rt_int_smoothed[1]):
         if (rt_int[0][i_i] >= rt_interval[1] or rt_int[0][i_i] == rt_int[0][-2]):
             break    
         if rt_int[0][i_i] >= rt_interval[0]:
             if i > 0 and rt_int_smoothed[1][i_i+1] > 0:
-                arc_tan_slope = atan((rt_int_smoothed[1][i_i+1]/i)-1)*(180/pi)
+                arc_tan_slope = atan(((rt_int_smoothed[1][i_i+1]/i)-1)/(1/datapoints_per_time))*(180/pi)
             elif i > 0 and rt_int_smoothed[1][i_i+1] == 0:
-                arc_tan_slope = atan((1/(i+1))-1)*(180/pi)
+                arc_tan_slope = atan(((1/(i+1))-1)/(1/datapoints_per_time))*(180/pi)
             elif i == 0 and rt_int_smoothed[1][i_i+1] > 0:
-                arc_tan_slope = atan((rt_int_smoothed[1][i_i+1]+1)-1)*(180/pi)
+                arc_tan_slope = atan((rt_int_smoothed[1][i_i+1])/(1/datapoints_per_time))*(180/pi)
             elif i == 0 and rt_int_smoothed[1][i_i+1] == 0:
                 arc_tan_slope = 0.0
+            # print(rt_int[0][i_i], i, rt_int_smoothed[1][i_i+1], arc_tan_slope, going_up, going_down, datapoints_per_time, slope_threshold)
             if (going_up or going_down) and rt_int[1][i_i] > temp_max:
                 temp_max = rt_int[1][i_i]
                 temp_max_id_iu = i_i
@@ -680,7 +682,7 @@ def peaks_from_eic(rt_int,
                     if i_i-temp_start >= min_ppp[1] or glycan == "Internal Standard":
                         good = True
                 else:
-                    if min_id-temp_start >= int(0.2/(rt_int[0][rt_int[1].index(max(rt_int[1]))]-rt_int[0][rt_int[1].index(max(rt_int[1]))-1])) or glycan == "Internal Standard":
+                    if min_id-temp_start >= datapoints_per_time or glycan == "Internal Standard":
                         good = True
                 if good:
                     peaks.append({'id': temp_max_id_iu, 'rt': rt_int[0][temp_max_id_iu], 'int': temp_max, 'peak_width': temp_peak_width, 'peak_interval': (rt_int[0][temp_start], rt_int[0][min_id]), 'peak_interval_id': (temp_start, min_id)})
