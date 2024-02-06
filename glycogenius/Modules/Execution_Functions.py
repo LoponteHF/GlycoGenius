@@ -2227,7 +2227,7 @@ def output_filtered_data(curve_fit_score,
         glycan_class = {}
         for i_i, i in enumerate(total_dataframes):
             for j_j, j in enumerate(i['Glycan']):
-                if j not in glycan_class.keys():
+                if j != 'Internal Standard' and j not in glycan_class.keys():
                     comp = General_Functions.form_to_comp(j)
                     if comp['N'] == 2 and comp['H'] <= 3:
                         glycan_class[j] = 'Paucimannose'
@@ -2240,6 +2240,8 @@ def output_filtered_data(curve_fit_score,
                         continue
                     else:
                         glycan_class[j] = 'Complex'
+                if j == 'Internal Standard':
+                    glycan_class[j] = j
         for i_i, i in enumerate(total_dataframes):
             total_dataframes[i_i]['Class'] = []
             for j_j, j in enumerate(i['Glycan']):
