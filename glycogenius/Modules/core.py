@@ -65,6 +65,7 @@ def main():
     samples_path = ''
     save_path = ''
     plot_metaboanalyst = (False, [])
+    compositions = False
     reanalysis = (False, False)
 
     multithreaded_execution = (False, 0, 0) #editted by multithreaded 1
@@ -149,6 +150,7 @@ def main():
             if len(metaboanalyst_groups[i_i]) == 0:
                 del metaboanalyst_groups[i_i]
         plot_metaboanalyst = (config['analysis_parameters'].getboolean('plot_metaboanalyst'), metaboanalyst_groups)
+        compositions = config['analysis_parameters'].getboolean('analyze_compositions')
         reanalysis = (config['analysis_parameters'].getboolean('reanalysis'), config['analysis_parameters'].getboolean('output_plot_data'))
     else: #If no parameters file pipelines, run CLI
         parameters = Execution_Functions.interactive_terminal()
@@ -248,6 +250,8 @@ def main():
                                                  analyze_ms2[2],
                                                  reporter_ions,
                                                  plot_metaboanalyst,
+                                                 compositions,
+                                                 force_nglycan,
                                                  ret_time_interval[2],
                                                  rt_tolerance_frag,
                                                  sneakpeek)
@@ -355,6 +359,8 @@ def main():
                                                  analyze_ms2[2],
                                                  reporter_ions,
                                                  plot_metaboanalyst,
+                                                 compositions,
+                                                 force_nglycan,
                                                  ret_time_interval[2],
                                                  rt_tolerance_frag,
                                                  sneakpeek)

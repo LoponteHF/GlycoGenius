@@ -18,7 +18,7 @@
 
 from pyteomics import mzxml, mzml, mass, auxiliary
 from itertools import combinations_with_replacement
-from numpy import percentile, arange, zeros
+from numpy import percentile, arange, zeros, array, polyfit
 from re import split
 from math import inf, exp, pi
 from statistics import stdev, mean
@@ -49,23 +49,18 @@ times during a run.
 ##---------------------------------------------------------------------------------------
 ##General functions (these functions use only external libraries, such as itertools and
 ##pyteomics).
-import numpy as np
 
 def linear_regression(x, y):
     '''
     '''
-    # Ensure x and y have the same length
-    if len(x) != len(y):
+    if len(x) != len(y): # Ensure x and y have the same length
         raise ValueError("Input arrays x and y must have the same length.")
-
-    # Convert input data to numpy arrays
-    x = np.array(x)
-    y = np.array(y)
-
-    # Calculate the slope (m) and y-intercept (b) using numpy's polyfit function
-    m, b = np.polyfit(x, y, 1)
+    if len(x) == 1:
+        return 1, 0
+    x = array(x) # Convert input data to numpy arrays
+    y = array(y) # Convert input data to numpy arrays
+    m, b = polyfit(x, y, 1) # Calculate the slope (m) and y-intercept (b) using numpy's polyfit function
     # Final equation is used as (y = mx + b)
-
     return m, b
 
 def calculate_ppm_diff(mz, target):

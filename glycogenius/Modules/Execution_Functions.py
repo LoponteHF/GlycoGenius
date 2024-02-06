@@ -1579,10 +1579,7 @@ def align_assignments(df, df_type, deltas = None):
                 id_to_trim = []
                 chromatogram_length_rt = i['RTs_'+str(i_i)][-1]
                 chromatogram_length = len(i['RTs_'+str(i_i)])
-                chromatogram_interval_beggining = i['RTs_'+str(i_i)][1]-i['RTs_'+str(i_i)][0]
-                chromatogram_interval_end = i['RTs_'+str(i_i)][-1]-i['RTs_'+str(i_i)][-2]
                 for j_j, j in enumerate(i['RTs_'+str(i_i)]):
-                    # i['RTs_'+str(i_i)][j_j] = j+deltas[i_i]
                     i['RTs_'+str(i_i)][j_j] = i['RTs_'+str(i_i)][j_j] + (i['RTs_'+str(i_i)][j_j]*linear_equation[0])+linear_equation[1]
                     if i['RTs_'+str(i_i)][j_j] < 0.0 or i['RTs_'+str(i_i)][j_j] > chromatogram_length_rt:
                         id_to_trim.append(j_j)
@@ -1590,6 +1587,8 @@ def align_assignments(df, df_type, deltas = None):
                     for j_j, j in enumerate(sorted(id_to_trim, reverse = True)):
                         for k_k, k in enumerate(i):
                             del i[k][j]
+                    chromatogram_interval_beggining = i['RTs_'+str(i_i)][1]-i['RTs_'+str(i_i)][0]
+                    chromatogram_interval_end = i['RTs_'+str(i_i)][-1]-i['RTs_'+str(i_i)][-2]
                     if id_to_trim[0] == 0:
                         for j_j, j in enumerate(i):
                             if j == 'RTs_'+str(i_i):
@@ -1598,7 +1597,7 @@ def align_assignments(df, df_type, deltas = None):
                             else:
                                 for k_k, k in enumerate(id_to_trim):
                                     i[j].append(0.0)
-                    else:
+                    if id_to_trim[-1] == chromatogram_length-1:
                         for j_j, j in enumerate(i):
                             if j == 'RTs_'+str(i_i):
                                 for k_k, k in enumerate(id_to_trim):
@@ -1620,6 +1619,8 @@ def output_filtered_data(curve_fit_score,
                          unrestricted_fragments,
                          reporter_ions,
                          plot_metaboanalyst,
+                         compositions,
+                         nglycan,
                          rt_tolerance,
                          rt_tolerance_frag,
                          sneakpeek):
@@ -1670,6 +1671,12 @@ def output_filtered_data(curve_fit_score,
         A tuple with two indexes: The first one indicates whether or not to output a file to be
         used in metaboanalyst and the second one indicates the groups for the samples to be separated
         in.
+        
+    compositions : boolean
+        If set to True, also outputs the compositions analysis.
+        
+    nglycan : boolean
+        Determines whether you're analyzing N-Glycans or not.
     
     rt_tolerance : float
         Tolerance of retention time (in minutes) at which an MS2 feature can be attributed to a 
@@ -1823,20 +1830,12 @@ def output_filtered_data(curve_fit_score,
                     analyze_ms2 = True
                     fragments_dataframes = file[2]
                     if reanalysis[0] and ".".join(version.split('.')[:2]) != ".".join(file[3].split('.')[:2]):
-                        try:
-                            input("Raw data files version incompatible with\ncurrent version (Current version: "+version+";\nRaw data version: "+file[3]+")")
-                            os._exit(1)
-                        except:
-                            print("Raw data files version incompatible with\ncurrent version (Current version: "+version+";\nRaw data version: "+file[3]+")")
-                            os._exit(1)
+                        print("Raw data files version incompatible with\ncurrent version (Current version: "+version+";\nRaw data version: "+file[3]+")")
+                        return
                 else:
                     if reanalysis[0] and ".".join(version.split('.')[:2]) != ".".join(file[2].split('.')[:2]):
-                        try:
-                            input("Raw data files version incompatible with\ncurrent version (Current version: "+version+";\nRaw data version: "+file[3]+")")
-                            os._exit(1)
-                        except:
-                            print("Raw data files version incompatible with\ncurrent version (Current version: "+version+";\nRaw data version: "+file[3]+")")
-                            os._exit(1)
+                        print("Raw data files version incompatible with\ncurrent version (Current version: "+version+";\nRaw data version: "+file[3]+")")
+                        return
                 f.close()
     except:
         if reanalysis[0]:
@@ -1977,6 +1976,9 @@ def output_filtered_data(curve_fit_score,
         for j_j, j in enumerate(df1_refactor):
             to_keep.append([])
             for k_k, k in enumerate(df1_refactor[j_j]["RT"]):
+                if k_k == 0:
+                    df1_refactor[j_j]["%_TIC_explained"] = []
+                df1_refactor[j_j]["%_TIC_explained"].append(None)
                 found = False
                 for l_l, l in enumerate(fragments_dataframes[j_j]["Glycan"]):
                     if l == df1_refactor[j_j]["Glycan"][k_k] and fragments_dataframes[j_j]["Adduct"][l_l] == df1_refactor[j_j]["Adduct"][k_k]:
@@ -2070,6 +2072,22 @@ def output_filtered_data(curve_fit_score,
                 if current_checking == to_check and fragments_dataframes[i_i]["% TIC explained"] != 0:
                     fragments_dataframes[i_i]["% TIC explained"][j_j] = float("%.3f" % round(fragments_int_sum/fragments_dataframes[i_i]["% TIC explained"][j_j], 3)) #end of annotated_peaks ratio calculation
                     
+        for i_i, i in enumerate(df1_refactor): #start of ms2 score calculation (at the moment its just % TIC explained)
+            for j_j, j in enumerate(i['Glycan']):
+                if i['Detected_Fragments'][j_j] == 'Yes':
+                    glycan = j
+                    adduct = i['Adduct'][j_j]
+                    rt = i['RT'][j_j]
+                    list_tics_explained = []
+                    for k_k, k in enumerate(fragments_dataframes):
+                        for l_l, l in enumerate(k['Glycan']):
+                            if glycan == l and adduct == k['Adduct'][l_l] and abs(rt-k['RT'][l_l]) <= rt_tolerance_frag:
+                                list_tics_explained.append(k['% TIC explained'][l_l])
+                    if len(list_tics_explained) > 0:
+                        i['%_TIC_explained'][j_j] = float('%.2f' % round(max(list_tics_explained), 2))
+                else:
+                    i['%_TIC_explained'][j_j] = 0.0
+                    
         fragments_refactor_dataframes = [] #here it re-structures the fragments data to an updated format
         for i_i, i in enumerate(fragments_dataframes): #moving through samples
             fragments_refactor_dataframes.append({})
@@ -2093,7 +2111,28 @@ def output_filtered_data(curve_fit_score,
         for i in fragments_refactor_dataframes: #makes all lists in the dataframe equal size so it can be ported to excel
             for j in i:
                 while len(i[j]) < 1000:
-                    i[j].append(None)             
+                    i[j].append(None)
+                    
+    ambiguity_count = [] #ambiguity indicator
+    for i_i, i in enumerate(df1_refactor):
+        ambiguity_count.append(0)
+        i['Ambiguity'] = []
+        for j in i['Glycan']:
+            i['Ambiguity'].append([])
+        for j_j, j in enumerate(i['Glycan']):
+            glycan_j = j+'_'+i['Adduct'][j_j]
+            for k_k, k in enumerate(i['Glycan'][j_j+1:]):
+                k_k = j_j+k_k+1
+                glycan_k = k+'_'+i['Adduct'][k_k]
+                if j != k and i['mz'][j_j] == i['mz'][k_k]:
+                    ambiguity_count[i_i] += 1
+                    i['Ambiguity'][j_j].append(i['Glycan'][k_k]+'_'+i['Adduct'][k_k])
+                    i['Ambiguity'][k_k].append(i['Glycan'][j_j]+'_'+i['Adduct'][j_j])
+        for j_j, j in enumerate(i['Ambiguity']):
+            if len(j) > 0:
+                i['Ambiguity'][j_j] = ', '.join(j)
+            else:
+                i['Ambiguity'][j_j] = 'No'
             
     total_dataframes = [] #total glycans AUC dataframe
     for i_i, i in enumerate(df1_refactor):
@@ -2151,6 +2190,15 @@ def output_filtered_data(curve_fit_score,
             else:
                 glycans_dict_rt[j].append(i['RT'][j_j])
                 glycans_dict_AUC[j].append(i['AUC'][j_j])
+        if "Internal Standard" in list_of_glycans:
+            highest = glycans_dict_AUC["Internal Standard"].index(max(glycans_dict_AUC["Internal Standard"]))
+            to_remove = []
+            for j_j, j in enumerate(glycans_dict_AUC["Internal Standard"]):
+                if j_j != highest:
+                    to_remove.append(j_j)
+            for j in sorted(to_remove, reverse = True):
+                del glycans_dict_rt["Internal Standard"][j]
+                del glycans_dict_AUC["Internal Standard"][j]
         list_of_glycans = sorted(list_of_glycans)
         for j_j, j in enumerate(list_of_glycans):
             for k in range(len(glycans_dict_rt[j])):
@@ -2162,6 +2210,44 @@ def output_filtered_data(curve_fit_score,
             arranged_total_dataframes[i_i]['AUC'] += list(current_AUCs)
     total_dataframes = arranged_total_dataframes
     
+    compositions_dataframes = [] #compositions_dataframes
+    for i_i, i in enumerate(total_dataframes):
+        compositions_dataframes.append({'Glycan' : [], 'AUC' : []})
+        glycans_lib = {}
+        for j_j, j in enumerate(i['Glycan']):
+            if j not in glycans_lib.keys():
+                glycans_lib[j] = i['AUC'][j_j]
+            else:
+                glycans_lib[j] += i['AUC'][j_j]
+        for j_j, j in enumerate(glycans_lib):
+            compositions_dataframes[i_i]['Glycan'].append(j)
+            compositions_dataframes[i_i]['AUC'].append(glycans_lib[j])
+    
+    if nglycan: #if N-Glycans, determines its class
+        glycan_class = {}
+        for i_i, i in enumerate(total_dataframes):
+            for j_j, j in enumerate(i['Glycan']):
+                if j not in glycan_class.keys():
+                    comp = General_Functions.form_to_comp(j)
+                    if comp['N'] == 2 and comp['H'] <= 3:
+                        glycan_class[j] = 'Paucimannose'
+                        continue
+                    if comp['H'] > comp['N']+1 and comp['N'] > 2:
+                        glycan_class[j] = 'Hybrid'
+                        continue
+                    if comp['N'] == 2 and comp['H'] > 3:
+                        glycan_class[j] = 'High-Mannose'
+                        continue
+                    else:
+                        glycan_class[j] = 'Complex'
+        for i_i, i in enumerate(total_dataframes):
+            total_dataframes[i_i]['Class'] = []
+            for j_j, j in enumerate(i['Glycan']):
+                i['Class'].append(glycan_class[j])
+        for i_i, i in enumerate(compositions_dataframes):
+            compositions_dataframes[i_i]['Class'] = []
+            for j_j, j in enumerate(i['Glycan']):
+                i['Class'].append(glycan_class[j])
     
     #hook for alignment tool. it'll use the total_dataframes (total_glycans)      
     if len(total_dataframes) > 1:
@@ -2188,6 +2274,8 @@ def output_filtered_data(curve_fit_score,
     for i_i, i in enumerate(df1_refactor):
         glycans_count.append(0)
         for j_j, j in enumerate(i["Glycan"]):
+            if j == 'Internal Standard':
+                continue
             if j_j == 0:
                 last_glycan = j
             if j != last_glycan:
@@ -2208,6 +2296,8 @@ def output_filtered_data(curve_fit_score,
                     glycans_count[i_i]+= 1
                     last_glycan = j
         df2["MS2_Glycans_Compositions"] = glycans_count #end of glycans counts
+        
+    df2["Ambiguities"] = ambiguity_count
         
     all_glycans_list = [] #here it makes a list of ALL the glycans found for use in other parts of the data arrangement workflow
     for i in total_dataframes:
@@ -2308,6 +2398,43 @@ def output_filtered_data(curve_fit_score,
                         g.close()
                 f.write(",".join(glycan_line)+"\n")
             f.close()
+        if compositions:
+            total_glycans_compositions = []
+            with open(save_path+begin_time+"_metaboanalyst_data_compositions.csv", "w") as f:
+                found_int_std = False
+                for i in compositions_dataframes:
+                    if "Internal Standard" in i["Glycan"]:
+                        found_int_std = True
+                        break
+                if found_int_std:
+                    with open(save_path+begin_time+"_metaboanalyst_data_compositions_normalized.csv", "w") as g:
+                        g.write(",".join(samples_line)+"\n")
+                        g.write(",".join(groups_line)+"\n")
+                        g.close()
+                f.write(",".join(samples_line)+"\n")
+                f.write(",".join(groups_line)+"\n")
+                for i_i, i in enumerate(compositions_dataframes):
+                    for j_j, j in enumerate(i['Glycan']):
+                        if j not in total_glycans_compositions and j != 'Internal Standard':
+                            total_glycans_compositions.append(j)
+                for i_i, i in enumerate(sorted(total_glycans_compositions)):
+                    glycan_line = [i]
+                    glycan_line_IS = [i]
+                    for j_j, j in enumerate(compositions_dataframes):
+                        if i in j['Glycan']:
+                            glycan_line.append(str(j['AUC'][j['Glycan'].index(i)]))
+                            if 'Internal Standard' in j['Glycan']:
+                                glycan_line_IS.append(str(j['AUC'][j['Glycan'].index(i)]/j['AUC'][j['Glycan'].index('Internal Standard')]))
+                        else:
+                            glycan_line.append('0.0')
+                            glycan_line_IS.append('0.0')
+                    f.write(",".join(glycan_line)+"\n")
+                    if found_int_std:
+                        with open(save_path+begin_time+"_metaboanalyst_data_compositions_normalized.csv", "a") as g:
+                            g.write(",".join(glycan_line_IS)+"\n")
+                            g.close()
+                f.close()
+                
         print("Done!") #end of metaboanalyst plot
         
     #start of excel data printing
@@ -2321,6 +2448,9 @@ def output_filtered_data(curve_fit_score,
             result_df.to_excel(writer, sheet_name="Sample_"+str(i_i), index = False)
             total_aucs_df = DataFrame(total_dataframes[i_i])
             total_aucs_df.to_excel(writer, sheet_name="Sample_"+str(i_i)+"_Total_AUCs", index = False)
+            if compositions:
+                compositions_df = DataFrame(compositions_dataframes[i_i])
+                compositions_df.to_excel(writer, sheet_name="Sample_"+str(i_i)+"_Compositions_AUCs", index = False)
             if analyze_ms2:
                 if len(fragments_dataframes[i_i]["Glycan"]) > 0:
                     fragments_df = DataFrame(fragments_refactor_dataframes[i_i])
@@ -2329,6 +2459,9 @@ def output_filtered_data(curve_fit_score,
     del result_df
     del total_dataframes
     del total_aucs_df
+    if compositions:
+        del compositions_dataframes
+        del compositions_df
     
     if analyze_ms2:
         if len(fragments_dataframes[i_i]["Glycan"]) > 0:
@@ -2361,7 +2494,7 @@ def output_filtered_data(curve_fit_score,
         smoothed_eic_dataframes = align_assignments(smoothed_eic_dataframes, 'chromatograms', aligned_total_glycans[1])
         print("Done!")
         
-    for i_i, i in enumerate(df1_refactor):
+    for i_i, i in enumerate(df1_refactor): #this selects only the found glycans to draw their EIC
         found_eic_raw_dataframes.append({})
         found_eic_raw_dataframes[i_i]['RTs_'+str(i_i)] = raw_eic_dataframes[i_i]['RTs_'+str(i_i)]
         found_eic_processed_dataframes.append({})
@@ -2373,6 +2506,28 @@ def output_filtered_data(curve_fit_score,
                 found_eic_processed_dataframes[i_i][query] = smoothed_eic_dataframes[i_i][query]
             except:
                 pass
+    found_eic_processed_dataframes_simplified = [] #combines adducts EICs
+    for i_i, i in enumerate(found_eic_processed_dataframes):
+        glycans = []
+        found_eic_processed_dataframes_simplified.append({})
+        for j_j, j in enumerate(i):
+            if j_j == 0:
+                found_eic_processed_dataframes_simplified[i_i][j] = i[j]
+            else:
+                glycan = j.split("+")[0]
+                if glycan not in glycans:
+                    glycans.append(glycan)
+                    adduct_no = 1
+                    for k_k, k in enumerate(i):
+                        if k.split("+")[0] == glycan:
+                            if adduct_no == 1:
+                                found_eic_processed_dataframes_simplified[i_i][glycan] = i[k]
+                                adduct_no += 1
+                            else:
+                                for l_l, l in enumerate(i[k]):
+                                    found_eic_processed_dataframes_simplified[i_i][glycan][l_l] += l
+                                adduct_no += 1
+    found_eic_processed_dataframes = found_eic_processed_dataframes_simplified
     
     print("Creating data plotting files...", end='', flush=True)
     with ExcelWriter(save_path+begin_time+'_Found_Glycans_EICs.xlsx') as writer:

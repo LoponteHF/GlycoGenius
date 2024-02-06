@@ -30,12 +30,11 @@ spec1.loader.exec_module(General_Functions)
 
 from pyteomics import mzxml, mzml, mass, auxiliary
 from itertools import combinations_with_replacement
-from scipy.signal import savgol_filter
 from scipy.sparse.linalg import splu
 from scipy import sparse
 from statistics import mean
 from re import split
-from math import inf, atan, pi
+from math import inf, atan, pi, exp
 import numpy
 import sys
 import datetime
@@ -441,8 +440,8 @@ def eic_smoothing(y, lmbd = 100, d = 2):
     -------
     z : vector of the smoothed data.
     '''
-    if y[0][len(y[0])//2]-y[0][(len(y[0])//2)-1] > 0.07: #this means that there are less than 15 data points per minute
-        return y[0], y[1]
+    datapoints_per_min = 1/(y[0][y[1].index(max(y[1]))]-y[0][y[1].index(max(y[1]))-1])
+    lmbd = exp(datapoints_per_min/25)
     array = numpy.array(y[1])
     m = len(array)
     E = sparse.eye(m, format='csc')
@@ -450,7 +449,7 @@ def eic_smoothing(y, lmbd = 100, d = 2):
     coefmat = E + lmbd * D.conj().T.dot(D)
     z = splu(coefmat).solve(array)
     for i_i, i in enumerate(z):
-        if i < 1:
+        if i < 0:
             z[i_i] = 0.0
     return y[0], list(z)
     
@@ -651,25 +650,23 @@ def peaks_from_eic(rt_int,
     temp_max_id_iu = 0
     going_up = False
     going_down = False
-    # counter = 0
-    # max_counter = int(0.1/(rt_int[0][-1]-rt_int[0][-2]))
     slope_threshold = 30 #this number indicates the minimum angle to consider a peak
     for i_i, i in enumerate(rt_int_smoothed[1]):
         if (rt_int[0][i_i] >= rt_interval[1] or rt_int[0][i_i] == rt_int[0][-2]):
             break    
-        if i > 0 and rt_int[0][i_i] >= rt_interval[0]:
-            arc_tan_slope = atan(rt_int_smoothed[1][i_i+1]/i)*(180/pi) #arctan of slope
-            if rt_int_smoothed[1][i_i+1] < i:
-                arc_tan_slope = -arc_tan_slope
+        if rt_int[0][i_i] >= rt_interval[0]:
+            if i > 0 and rt_int_smoothed[1][i_i+1] > 0:
+                arc_tan_slope = atan((rt_int_smoothed[1][i_i+1]/i)-1)*(180/pi)
+            elif i > 0 and rt_int_smoothed[1][i_i+1] == 0:
+                arc_tan_slope = atan((1/(i+1))-1)*(180/pi)
+            elif i == 0 and rt_int_smoothed[1][i_i+1] > 0:
+                arc_tan_slope = atan((rt_int_smoothed[1][i_i+1]+1)-1)*(180/pi)
+            elif i == 0 and rt_int_smoothed[1][i_i+1] == 0:
+                arc_tan_slope = 0.0
             if (going_up or going_down) and rt_int[1][i_i] > temp_max:
                 temp_max = rt_int[1][i_i]
                 temp_max_id_iu = i_i
             if (going_up and (arc_tan_slope < 0 or rt_int_smoothed[1][i_i] == 0)):
-                # counter+=1
-                # if counter <= max_counter:
-                    # continue
-                # elif counter > max_counter:
-                    # counter = 0
                 going_up = False
                 going_down = True
             if (going_down and (arc_tan_slope >= 0 or rt_int_smoothed[1][i_i] == 0.0)):
@@ -683,7 +680,7 @@ def peaks_from_eic(rt_int,
                     if i_i-temp_start >= min_ppp[1] or glycan == "Internal Standard":
                         good = True
                 else:
-                    if min_id-temp_start >= int(0.2/(rt_int[0][-1]-rt_int[0][-2])) or glycan == "Internal Standard":
+                    if min_id-temp_start >= int(0.2/(rt_int[0][rt_int[1].index(max(rt_int[1]))]-rt_int[0][rt_int[1].index(max(rt_int[1]))-1])) or glycan == "Internal Standard":
                         good = True
                 if good:
                     peaks.append({'id': temp_max_id_iu, 'rt': rt_int[0][temp_max_id_iu], 'int': temp_max, 'peak_width': temp_peak_width, 'peak_interval': (rt_int[0][temp_start], rt_int[0][min_id]), 'peak_interval_id': (temp_start, min_id)})

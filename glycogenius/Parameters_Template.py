@@ -68,9 +68,9 @@ max_number_peaks = 5
 ; If used, picks only the most intense peak on the EIC and up to [max_number_peaks]-1 other peaks closest to it. Warning: This may reduce the range of your results.
 max_ppm = 10
 ; Maximum PPM for data curation. If value is greater than equivalent accuracy_value, data won't be filtered by this criteria, as it was already filtered during processing by accuracy_value. Can be reapplied on raw data reanalysis.
-isotopic_fitting_score = 0.95
+isotopic_fitting_score = 0.9
 ; Minimum score of the isotopic distribution fitting in order to consider a mz peak viable. Can be reapplied on raw data reanalysis.
-curve_fitting_score = 0.95
+curve_fitting_score = 0.9
 ; Minimum score for the chromatogram peak curve fitting to a gaussian to consider a viable peak. Can be reapplied on raw data reanalysis.
 signal_to_noise = 3
 ; Minimum signal-to-noise ratio to consider a chromatogram peak viable. Can be reapplied on raw data reanalysis.
@@ -84,6 +84,8 @@ working_path =
 plot_metaboanalyst = no
 metaboanalyst_groups = CONTROL, TREATED
 ; Here you set up whether or not you want to output a .csv file to be used for plotting data using metaboanalyst. If you want that, you must specify your sample groups, comma separated. Sample groups specified must be present in sample filenames for proper identification. If none is set, samples are defaulted to "ungrouped". Case sensitive. 
+analyze_compositions = no
+; If used, also plots data related to the whole composition of each identified glycan in the analysis, in addition to the peak-separated data.
 reanalysis = no
 output_plot_data = no
 ; Reanalyzes raw data with new max_ppm, isotopic_fitting_score, curve_fitting_score and signal_to_noise criteria. Overrides any other setting besides these mentioned. First parameter  produces a new Results file, second parameter also produces a new Plotting Data file (in case you deleted your original one. The data in it will not be any different than the former one). Warning: If setting a stricter max_ppm criteria on reanalysis without remaking the whole execution with a new accuracy_value, data may still contain false positives.
