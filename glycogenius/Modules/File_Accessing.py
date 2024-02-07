@@ -218,6 +218,7 @@ def eic_from_glycan(files,
     data = {}
     ppm_info = {}
     iso_fitting_quality = {}
+    isotopic_fits = {}
     verbose_info = []
     raw_data = {}
     for i in glycan_info['Adducts_mz']:
@@ -230,6 +231,7 @@ def eic_from_glycan(files,
         iso_fitting_quality[i] = {}
         data[i] = {}
         raw_data[i] = {}
+        isotopic_fits[i] = {}
         for j_j, j in enumerate(files):
             if verbose:
                 print("--Drawing EIC for Sample: "+str(j_j))
@@ -238,6 +240,7 @@ def eic_from_glycan(files,
             iso_fitting_quality[i][j_j] = []
             data[i][j_j] = [[], []]
             raw_data[i][j_j] = [[], []]
+            isotopic_fits[i][j_j] = {}
             for k_k, k in enumerate(ms1_indexes[j_j]):
                 iso_fitting_quality[i][j_j].append(0.0)
                 ppm_info[i][j_j].append(inf)
@@ -268,6 +271,7 @@ def eic_from_glycan(files,
                     no_iso_peaks = len(glycan_info['Isotopic_Distribution_Masses'])
                     before_target = glycan_info['Adducts_mz'][i]-General_Functions.h_mass-General_Functions.tolerance_calc(tolerance[0], tolerance[1], glycan_info['Adducts_mz'][i])
                     mono_ppm = []
+                    mz_isos = []
                     iso_actual = []
                     iso_target = []
                     bad_peaks_before_target = []
@@ -284,6 +288,7 @@ def eic_from_glycan(files,
                             else:
                                 iso_actual.append(sum(current_iso_peak1))
                                 iso_target.append(sum(current_iso_peak2))
+                            mz_isos.append(l)
                             current_iso_peak1 = []
                             current_iso_peak2 = []
                             iso_distro += 1
@@ -393,30 +398,23 @@ def eic_from_glycan(files,
                         for l in range(len(iso_actual)):
                             if iso_actual[l] >= iso_target[l]:
                                 relation = iso_target[l]/iso_actual[l]
-                                if relation >= 0.7:
-                                    temp_relation.append(((relation)+9)/10)
-                                if relation < 0.7 and relation >= 0.5:
-                                    temp_relation.append(((relation)+6)/7)
-                                if relation < 0.5 and relation >= 0.3:
-                                    temp_relation.append(((relation)+3)/4)
-                                if relation < 0.3:
-                                    temp_relation.append(relation)
                             else:
                                 relation = iso_actual[l]/iso_target[l]
-                                if relation >= 0.7:
-                                    temp_relation.append(((relation)+9)/10)
-                                if relation < 0.70 and relation >= 0.5:
-                                    temp_relation.append(((relation)+6)/7)
-                                if relation < 0.5 and relation >= 0.3:
-                                    temp_relation.append(((relation)+3)/4)
-                                if relation < 0.3:
-                                    temp_relation.append(relation)
+                            if relation >= 0.7:
+                                temp_relation.append(((relation)+8)/9)
+                            if relation < 0.7 and relation >= 0.5:
+                                temp_relation.append(((relation)+4)/5)
+                            if relation < 0.5 and relation >= 0.3:
+                                temp_relation.append(((relation)+2)/3)
+                            if relation < 0.3:
+                                temp_relation.append(relation)
                         R_sq = numpy.average(temp_relation, weights = weights[:len(temp_relation)])
+                        isotopic_fits[i][j_j][j[k]['retentionTime']] = [mz_isos, iso_target, iso_actual, R_sq]
                     if len(iso_actual) == 0:
                         R_sq = 0.0
                     iso_fitting_quality[i][j_j][-1] = R_sq
                     data[i][j_j][1].append(intensity)
-    return data, ppm_info, iso_fitting_quality, verbose_info, raw_data
+    return data, ppm_info, iso_fitting_quality, verbose_info, raw_data, isotopic_fits
     
 def eic_smoothing(y, lmbd = 100, d = 2):
     '''Implementation of the Whittaker smoothing algorithm,

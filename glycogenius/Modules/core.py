@@ -67,6 +67,7 @@ def main():
     save_path = ''
     plot_metaboanalyst = (False, [])
     compositions = False
+    iso_fittings = False
     reanalysis = (False, False)
 
     multithreaded_execution = (False, 0, 0) #editted by multithreaded 1
@@ -179,6 +180,7 @@ def main():
                 del metaboanalyst_groups[i_i]
         plot_metaboanalyst = (config['analysis_parameters'].getboolean('plot_metaboanalyst'), metaboanalyst_groups)
         compositions = config['analysis_parameters'].getboolean('analyze_compositions')
+        iso_fittings = config['analysis_parameters'].getboolean('output_isotopic_fittings')
         reanalysis = (config['analysis_parameters'].getboolean('reanalysis'), config['analysis_parameters'].getboolean('output_plot_data'))
         
     else: #If no parameters file pipelines, run CLI
@@ -192,6 +194,7 @@ def main():
                 for line in f:
                     configs+=line
             config.read_string(configs)
+            force_nglycan = config['library_building'].getboolean('force_nglycan')
             max_ppm = int(config['analysis_parameters']['max_ppm'])
             iso_fit_score = float(config['analysis_parameters']['isotopic_fitting_score'])
             curve_fit_score = float(config['analysis_parameters']['curve_fitting_score'])
@@ -284,6 +287,7 @@ def main():
                                                  force_nglycan,
                                                  ret_time_interval[2],
                                                  rt_tolerance_frag,
+                                                 iso_fittings,
                                                  sneakpeek)
 
     else:
@@ -394,6 +398,7 @@ def main():
                                                  force_nglycan,
                                                  ret_time_interval[2],
                                                  rt_tolerance_frag,
+                                                 iso_fittings,
                                                  sneakpeek)
                                                  
     if not os.isatty(0):

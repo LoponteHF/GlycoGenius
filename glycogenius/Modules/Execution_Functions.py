@@ -1665,6 +1665,7 @@ def output_filtered_data(curve_fit_score,
                          nglycan,
                          rt_tolerance,
                          rt_tolerance_frag,
+                         output_isotopic_fittings,
                          sneakpeek):
     '''This function filters and converts raw results data into human readable
     excel files.
@@ -1760,12 +1761,14 @@ def output_filtered_data(curve_fit_score,
         results3_list = []
         results4_list = []
         results5_list = []
+        results6_list = []
         for i in range(multithreaded_analysis[1]):
             results1_list.append(save_path+'results1_'+str(i))
             results2_list.append(save_path+'results2_'+str(i))
             results3_list.append(save_path+'results3_'+str(i))
             results4_list.append(save_path+'results4_'+str(i))
             results5_list.append(save_path+'results5_'+str(i))
+            results6_list.append(save_path+'results6_'+str(i))
         try:
             for i_i, i in enumerate(results1_list):
                 with open(i, 'rb') as f:
@@ -1781,14 +1784,17 @@ def output_filtered_data(curve_fit_score,
                 with open(results2_list[i_i], 'rb') as f:
                     eic_dataframes_import = dill.load(f)
                     f.close()
-                with open(results5_list[i_i], 'rb') as f:
-                    raw_eic_dataframes_import = dill.load(f)
-                    f.close()
                 with open(results3_list[i_i], 'rb') as f:
                     smoothed_eic_dataframes_import = dill.load(f)
                     f.close()
                 with open(results4_list[i_i], 'rb') as f:
                     curve_fitting_dataframes_import = dill.load(f)
+                    f.close()
+                with open(results5_list[i_i], 'rb') as f:
+                    raw_eic_dataframes_import = dill.load(f)
+                    f.close()
+                with open(results6_list[i_i], 'rb') as f:
+                    isotopic_fits_dataframes_import = dill.load(f)
                     f.close()
                 if i_i == 0:
                     df1 = df1_import
@@ -1797,6 +1803,7 @@ def output_filtered_data(curve_fit_score,
                     eic_dataframes = eic_dataframes_import
                     smoothed_eic_dataframes = smoothed_eic_dataframes_import
                     curve_fitting_dataframes = curve_fitting_dataframes_import
+                    isotopic_fits_dataframes = isotopic_fits_dataframes_import
                     if analyze_ms2:
                         fragments_dataframes = fragments_dataframes_import
                 else:
@@ -1812,6 +1819,9 @@ def output_filtered_data(curve_fit_score,
                     for j_j, j in enumerate(curve_fitting_dataframes_import):
                         for k in j:
                             curve_fitting_dataframes[j_j][k] = curve_fitting_dataframes_import[j_j][k]
+                    for j_j, j in enumerate(isotopic_fits_dataframes_import):
+                        for k in j:
+                            isotopic_fits_dataframes[j_j][k] = j[k]
                     if analyze_ms2:
                         for j_j, j in enumerate(fragments_dataframes_import):
                             for k in j:
@@ -1836,17 +1846,22 @@ def output_filtered_data(curve_fit_score,
             with open(save_path+'raw_data_5', 'wb') as f:
                 dill.dump(raw_eic_dataframes, f)
                 f.close()
+            with open(save_path+'raw_data_6', 'wb') as f:
+                dill.dump(isotopic_fits_dataframes, f)
+                f.close()
             for i in range(multithreaded_analysis[1]):
-                p3 = pathlib.Path(save_path+'results1_'+str(i))
-                p4 = pathlib.Path(save_path+'results2_'+str(i))
-                p5 = pathlib.Path(save_path+'results3_'+str(i))
-                p6 = pathlib.Path(save_path+'results4_'+str(i))
-                p7 = pathlib.Path(save_path+'results5_'+str(i))
+                p1 = pathlib.Path(save_path+'results1_'+str(i))
+                p2 = pathlib.Path(save_path+'results2_'+str(i))
+                p3 = pathlib.Path(save_path+'results3_'+str(i))
+                p4 = pathlib.Path(save_path+'results4_'+str(i))
+                p5 = pathlib.Path(save_path+'results5_'+str(i))
+                p6 = pathlib.Path(save_path+'results6_'+str(i))
+                p1.unlink(missing_ok=True)
+                p2.unlink(missing_ok=True)
                 p3.unlink(missing_ok=True)
                 p4.unlink(missing_ok=True)
                 p5.unlink(missing_ok=True)
                 p6.unlink(missing_ok=True)
-                p7.unlink(missing_ok=True)
         except:
             pass
     if not sneakpeek[0]:
@@ -2474,7 +2489,7 @@ def output_filtered_data(curve_fit_score,
                 f.close()
                 
         print("Done!") #end of metaboanalyst plot
-        
+    
     #start of excel data printing
     df2 = DataFrame(df2) 
     
@@ -2580,6 +2595,42 @@ def output_filtered_data(curve_fit_score,
     del found_eic_processed_dataframes_df
     del found_eic_raw_dataframes
     del found_eic_raw_dataframes_df
+    
+    if output_isotopic_fittings:
+        with open(save_path+'raw_data_6', 'rb') as f: #start of isotopic fits output
+            isotopic_fits_dataframes = dill.load(f)
+            f.close()
+        isotopic_fits_dataframes_arranged = []
+        for i_i, i in enumerate(isotopic_fits_dataframes): #sample
+            temp_fits_dataframes = {}
+            for j_j, j in enumerate(i): #glycan
+                temp_fits_dataframes[j] = {}
+                for k_k, k in enumerate(i[j]): #peaks of glycan
+                    temp_fits_dataframes[j]['RT_'+str(k_k)+':'] = []
+                    temp_fits_dataframes[j]['Score_'+str(k_k)+':'] = []
+                    temp_fits_dataframes[j]['fit_'+str(k_k)] = []
+                    temp_fits_dataframes[j]['RT_'+str(k_k)+':'].append(k)
+                    temp_fits_dataframes[j]['Score_'+str(k_k)+':'].append(isotopic_fits_dataframes[i_i][j][k][3])
+                    temp_fits_dataframes[j]['fit_'+str(k_k)].append(None)
+                    temp_fits_dataframes[j]['RT_'+str(k_k)+':'].append('mz:')
+                    temp_fits_dataframes[j]['Score_'+str(k_k)+':'].append('Ideal:')
+                    temp_fits_dataframes[j]['fit_'+str(k_k)].append('Actual:')
+                    temp_fits_dataframes[j]['RT_'+str(k_k)+':'] = temp_fits_dataframes[j]['RT_'+str(k_k)+':']+isotopic_fits_dataframes[i_i][j][k][0]
+                    temp_fits_dataframes[j]['Score_'+str(k_k)+':'] = temp_fits_dataframes[j]['Score_'+str(k_k)+':']+isotopic_fits_dataframes[i_i][j][k][1]
+                    temp_fits_dataframes[j]['fit_'+str(k_k)] = temp_fits_dataframes[j]['fit_'+str(k_k)]+isotopic_fits_dataframes[i_i][j][k][2]
+                    while len(temp_fits_dataframes[j]['RT_'+str(k_k)+':']) < 1000:
+                        temp_fits_dataframes[j]['RT_'+str(k_k)+':'].append(None)
+                        temp_fits_dataframes[j]['Score_'+str(k_k)+':'].append(None)
+                        temp_fits_dataframes[j]['fit_'+str(k_k)].append(None)
+            isotopic_fits_dataframes_arranged.append(temp_fits_dataframes)
+        for i_i, i in enumerate(isotopic_fits_dataframes_arranged):
+            with ExcelWriter(save_path+begin_time+'_Isotopic_Fits_Sample_'+str(i_i)+'.xlsx') as writer:
+                for j_j, j in enumerate(i): #navigating glycans
+                    isotopic_fits_df = DataFrame(isotopic_fits_dataframes_arranged[i_i][j])
+                    isotopic_fits_df.to_excel(writer, sheet_name=j, index = False)
+        del isotopic_fits_dataframes
+        del isotopic_fits_dataframes_arranged
+        del isotopic_fits_df
     
     if (reanalysis[1] and reanalysis[0]) or not reanalysis[0]:
         # if sneakpeek[0]: #commented for now, it's just too much redundant information... smoothed eic will output as processed now
@@ -2697,9 +2748,11 @@ def arrange_raw_data(analyzed_data,
     eic_dataframes = []
     smoothed_eic_dataframes = []
     curve_fitting_dataframes = []
+    isotopic_fits_dataframes = []
     if analyze_ms2:
         fragments_dataframes = []
     for i_i, i in enumerate(samples_names):
+        isotopic_fits_dataframes.append({})
         raw_eic_dataframes.append({})
         eic_dataframes.append({})
         smoothed_eic_dataframes.append({})
@@ -2720,7 +2773,8 @@ def arrange_raw_data(analyzed_data,
             df1.append({"Glycan" : [], "Adduct" : [], "mz" : [], "RT" : [], "AUC" : [], "PPM" : [], "S/N" : [], "Iso_Fitting_Score" : [], "Curve_Fitting_Score" : []})
     for i_i, i in enumerate(analyzed_data[0]): #i = glycan (key)
         for j_j, j in enumerate(analyzed_data[0][i]['Adducts_mz_data']): #j = adduct (key)
-            for k_k, k in enumerate(analyzed_data[0][i]['Adducts_mz_data'][j]):
+            for k_k, k in enumerate(analyzed_data[0][i]['Adducts_mz_data'][j]): #k = sample number (key)
+                isotopic_fits_dataframes[k_k][i+'_'+j] = analyzed_data[0][i]['Adducts_mz_data'][j][k][4]
                 temp_eic_int = []
                 for l in analyzed_data[0][i]['Adducts_mz_data'][j][k][3]:
                     temp_eic_int.append(int(l))
@@ -2843,6 +2897,9 @@ def arrange_raw_data(analyzed_data,
         with open(save_path+'results5_'+str(multithreaded_execution[1]), 'wb') as f:
             dill.dump(raw_eic_dataframes, f)
             f.close()
+        with open(save_path+'results6_'+str(multithreaded_execution[1]), 'wb') as f:
+            dill.dump(isotopic_fits_dataframes, f)
+            f.close()
         p1 = pathlib.Path(save_path+'glycogenius_'+str(multithreaded_execution[1])+'.py')
         p1.unlink(missing_ok=True)
         results1_list = []
@@ -2850,12 +2907,14 @@ def arrange_raw_data(analyzed_data,
         results3_list = []
         results4_list = []
         results5_list = []
+        results6_list = []
         for i in range(multithreaded_execution[2]):
             results1_list.append('results1_'+str(i))
             results2_list.append('results2_'+str(i))
             results3_list.append('results3_'+str(i))
             results4_list.append('results4_'+str(i))
             results5_list.append('results5_'+str(i))
+            results6_list.append('results6_'+str(i))
         dir_list = os.listdir(save_path)
         last = True
         for i in results1_list:
@@ -2873,14 +2932,17 @@ def arrange_raw_data(analyzed_data,
                 with open(results2_list[i_i], 'rb') as f:
                     eic_dataframes_import = dill.load(f)
                     f.close()
-                with open(results5_list[i_i], 'rb') as f:
-                    raw_eic_dataframes_import = dill.load(f)
-                    f.close()
                 with open(results3_list[i_i], 'rb') as f:
                     smoothed_eic_dataframes_import = dill.load(f)
                     f.close()
                 with open(results4_list[i_i], 'rb') as f:
                     curve_fitting_dataframes_import = dill.load(f)
+                    f.close()
+                with open(results5_list[i_i], 'rb') as f:
+                    raw_eic_dataframes_import = dill.load(f)
+                    f.close()
+                with open(results6_list[i_i], 'rb') as f:
+                    isotopic_fits_dataframes_import = dill.load(f)
                     f.close()
                 if i_i == 0:
                     df1 = df1_import
@@ -2889,6 +2951,7 @@ def arrange_raw_data(analyzed_data,
                     eic_dataframes = eic_dataframes_import
                     smoothed_eic_dataframes = smoothed_eic_dataframes_import
                     curve_fitting_dataframes = curve_fitting_dataframes_import
+                    isotopic_fits_dataframes = isotopic_fits_dataframes_import
                     if analyze_ms2:
                         fragments_dataframes = fragments_dataframes_import
                 else:
@@ -2904,6 +2967,9 @@ def arrange_raw_data(analyzed_data,
                     for j_j, j in enumerate(curve_fitting_dataframes_import):
                         for k in j:
                             curve_fitting_dataframes[j_j][k] = curve_fitting_dataframes_import[j_j][k]
+                    for j_j, j in enumerate(isotopic_fits_dataframes_import):
+                        for k in j:
+                            isotopic_fits_dataframes[j_j][k] = j[k]
                     if analyze_ms2:
                         for j_j, j in enumerate(fragments_dataframes_import):
                             for k in j:
@@ -2926,17 +2992,22 @@ def arrange_raw_data(analyzed_data,
             with open(save_path+'raw_data_5', 'wb') as f:
                 dill.dump(raw_eic_dataframes, f)
                 f.close()
+            with open(save_path+'raw_data_6', 'wb') as f:
+                dill.dump(isotopic_fits_dataframes, f)
+                f.close()
             for i in range(multithreaded_analysis[1]):
-                p3 = pathlib.Path(save_path+'results1_'+str(i))
-                p4 = pathlib.Path(save_path+'results2_'+str(i))
-                p5 = pathlib.Path(save_path+'results3_'+str(i))
-                p6 = pathlib.Path(save_path+'results4_'+str(i))
-                p7 = pathlib.Path(save_path+'results5_'+str(i))
+                p1 = pathlib.Path(save_path+'results1_'+str(i))
+                p2 = pathlib.Path(save_path+'results2_'+str(i))
+                p3 = pathlib.Path(save_path+'results3_'+str(i))
+                p4 = pathlib.Path(save_path+'results4_'+str(i))
+                p5 = pathlib.Path(save_path+'results5_'+str(i))
+                p6 = pathlib.Path(save_path+'results6_'+str(i))
+                p1.unlink(missing_ok=True)
+                p2.unlink(missing_ok=True)
                 p3.unlink(missing_ok=True)
                 p4.unlink(missing_ok=True)
                 p5.unlink(missing_ok=True)
                 p6.unlink(missing_ok=True)
-                p7.unlink(missing_ok=True)
     else:
         with open(save_path+'raw_data_1', 'wb') as f:
             if analyze_ms2:
@@ -2964,6 +3035,10 @@ def arrange_raw_data(analyzed_data,
         with open(save_path+'raw_data_5', 'wb') as f:
             dill.dump(raw_eic_dataframes, f)
             del raw_eic_dataframes
+            f.close()
+        with open(save_path+'raw_data_6', 'wb') as f:
+            dill.dump(isotopic_fits_dataframes, f)
+            del isotopic_fits_dataframes
             f.close()
     print("Done!")
 
@@ -3159,6 +3234,7 @@ def analyze_files(library,
                 glycan_data['Adducts_mz_data'][j][k].append([])
                 glycan_data['Adducts_mz_data'][j][k].append(temp_eic_smoothed[1])
                 glycan_data['Adducts_mz_data'][j][k].append(temp_eic[4][j][k][1])
+                glycan_data['Adducts_mz_data'][j][k].append(temp_eic[5][j][k]) #all the isotopic fits, have to link them using arrange raw data
                 if verbose:
                     verbose_info.append('Smoothed EIC INT Array: '+str(temp_eic_smoothed[1]))
                     verbose_info.append('Raw PPM error: '+str(temp_eic[1][j][k])+'\nRaw Isotopic Fitting Score: '+str(temp_eic[2][j][k]))
