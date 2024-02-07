@@ -477,7 +477,7 @@ def interactive_terminal():
         print_sep()
         adducts = {}
         while True:
-            var = input("Type the first element to calculate as adduct\n(ie. Na or H). Leave blank to finish with default (H3): ")
+            var = input("Type an element to calculate as adduct\n(ie. Na or H). Leave blank to finish with default (H3): ")
             if var == '':
                 if  len(adducts) == 0:
                     adducts = {'H' : 3}
@@ -521,12 +521,11 @@ def interactive_terminal():
         print("")
         if var == 'y':
             while True:
-                var2 = input("Insert the tag added mass\n(ie. 133.0644 for GirP or 219.1735 for ProA): ")
+                var2 = input("Insert the tag added mass\nor molecular formula (ie. 133.0644 or C7H7N3\nfor GirP or 219.1735 or C13H21N3 for ProA): ")
                 try:
                     var2 = float(var2)
                 except:
-                    print('Wrong input')
-                    continue
+                    pass
                 tag_mass = var2
                 break
         permethylated = False
@@ -1432,6 +1431,19 @@ def imp_exp_gen_library(multithreaded_analysis,
         df = DataFrame(df)
         with ExcelWriter(save_path+'Glycans_Library.xlsx') as writer:
             df.to_excel(writer, index = False)
+        with open(save_path+'skyline_transitions.csv', 'w') as f:
+            f.write('Precursor Name, Precursor Formula, Precursor Adduct, Precursor Charge\n')
+            for i_i, i in enumerate(full_library):
+                for j_j, j in enumerate(full_library[i]['Adducts_mz']):
+                    adduct_comp = General_Functions.form_to_comp(j)
+                    if len(adduct_comp) > 1: #can't seem to make skyline work with mixed adducts, so have this in place for now
+                        continue
+                    adduct = str(adduct_comp[list(adduct_comp.keys())[0]])+str(list(adduct_comp.keys())[0]) #only first adduct
+                    del adduct_comp[list(adduct_comp.keys())[0]]
+                    formula = General_Functions.comp_to_formula(General_Functions.sum_atoms(full_library[i]['Atoms_Glycan+Tag'], adduct_comp))
+                    list_form = [i, str(formula), '[M+'+adduct+']', str(General_Functions.form_to_charge(j))]
+                    f.write(",".join(list_form)+'\n')
+            f.close()
     if only_gen_lib:
         print('Library length: '+str(len(full_library)))
         print("Check it in Glycans_Library.xlsx.")
@@ -1569,42 +1581,71 @@ def align_assignments(df, df_type, deltas = None):
     if df_type == "chromatograms": #for when you want to align chromatograms based on existing deltas calculated previously
         for i_i, i in enumerate(dataframe): #sample by sample
             if len(deltas[i_i]) > 0:
-                x = []
-                y = []
-                for k_k, k in enumerate(deltas[i_i]):
-                    x.append(float(k))
-                    y.append(deltas[i_i][k][0])
-                linear_equation = General_Functions.linear_regression(x, y)
-                
-                id_to_trim = []
                 chromatogram_length_rt = i['RTs_'+str(i_i)][-1]
+                chromatogram_beg_rt = i['RTs_'+str(i_i)][0]
                 chromatogram_length = len(i['RTs_'+str(i_i)])
-                for j_j, j in enumerate(i['RTs_'+str(i_i)]):
-                    i['RTs_'+str(i_i)][j_j] = i['RTs_'+str(i_i)][j_j] + (i['RTs_'+str(i_i)][j_j]*linear_equation[0])+linear_equation[1]
-                    if i['RTs_'+str(i_i)][j_j] < 0.0 or i['RTs_'+str(i_i)][j_j] > chromatogram_length_rt:
-                        id_to_trim.append(j_j)
-                if len(id_to_trim) > 0:
-                    for j_j, j in enumerate(sorted(id_to_trim, reverse = True)):
-                        for k_k, k in enumerate(i):
-                            del i[k][j]
-                    chromatogram_interval_beggining = i['RTs_'+str(i_i)][1]-i['RTs_'+str(i_i)][0]
-                    chromatogram_interval_end = i['RTs_'+str(i_i)][-1]-i['RTs_'+str(i_i)][-2]
-                    if id_to_trim[0] == 0:
-                        for j_j, j in enumerate(i):
-                            if j == 'RTs_'+str(i_i):
-                                for k_k, k in enumerate(id_to_trim):
-                                    i[j].append(float("%.4f" % round(i[j][-1]+(chromatogram_interval_end),4)))
-                            else:
-                                for k_k, k in enumerate(id_to_trim):
-                                    i[j].append(0.0)
-                    if id_to_trim[-1] == chromatogram_length-1:
-                        for j_j, j in enumerate(i):
-                            if j == 'RTs_'+str(i_i):
-                                for k_k, k in enumerate(id_to_trim):
-                                    i[j] = [float("%.4f" % round(i[j][0]-chromatogram_interval_beggining, 4))]+i[j]
-                            else:
-                                for k_k, k in enumerate(id_to_trim):
-                                    i[j] = [0.0]+i[j]
+                chromatogram_interval = i['RTs_'+str(i_i)][-1]/len(i['RTs_'+str(i_i)])
+                points_per_minute = int(1/chromatogram_interval)
+                interval_list = []
+                current = 0.0
+                minutes_interval = 5
+                for j in deltas[i_i]: #rules here still to be discussed
+                    if j > current+minutes_interval:
+                        current = j
+                        closest = 0
+                        distance = inf
+                        for k_k, k in enumerate(i['RTs_'+str(i_i)]):
+                            if abs(k-j) < distance:
+                                closest = k_k
+                                distance = abs(k-j)
+                        interval_list.append(closest-int(points_per_minute*(minutes_interval/5)))
+                interval_list.append(interval_list[-1] + points_per_minute*minutes_interval)
+                for j_j, j in enumerate(interval_list):
+                    x = []
+                    y = []
+                    if j_j == len(interval_list)-1:
+                        last_range = len(i['RTs_'+str(i_i)])-1
+                    else:
+                        last_range = interval_list[j_j+1]
+                    for k_k, k in enumerate(deltas[i_i]):
+                        if k > i['RTs_'+str(i_i)][j] and k < i['RTs_'+str(i_i)][last_range]:
+                            x.append(float(k))
+                            y.append(deltas[i_i][k][0])
+                    if len(x) == 0:
+                        continue
+                    linear_equation = General_Functions.linear_regression(x, y)
+                    lower_boundary = i['RTs_'+str(i_i)][j-1]
+                    upper_boundary = i['RTs_'+str(i_i)][last_range]
+                    lowest = inf
+                    lowest_id = 0
+                    highest = 0
+                    highest_id = inf
+                    for k in range(j, last_range):
+                        i['RTs_'+str(i_i)][k] = i['RTs_'+str(i_i)][k] + (i['RTs_'+str(i_i)][k]*linear_equation[0])+linear_equation[1]
+                        if i['RTs_'+str(i_i)][k] < lowest:
+                            lowest = i['RTs_'+str(i_i)][k]
+                            lowest_id = k
+                        if i['RTs_'+str(i_i)][k] > highest:
+                            highest = i['RTs_'+str(i_i)][k]
+                            highest_id = k
+                    if lowest != inf and lowest < lower_boundary:
+                        if j_j > 0:
+                            interval = (lowest-i['RTs_'+str(i_i)][interval_list[j_j-1]])/(lowest_id+1-interval_list[j_j-1])
+                            for l_l, l in enumerate(range(lowest_id-1, interval_list[j_j-1], -1)):
+                                i['RTs_'+str(i_i)][l] = float("%.4f" % round(lowest-(interval*(l_l+1)), 4))
+                        else:
+                            interval = (lowest)/(lowest_id+1)   
+                            for l_l, l in enumerate(range(lowest_id-1, -1, -1)):
+                                i['RTs_'+str(i_i)][l] = float("%.4f" % round(lowest-(interval*(l_l+1)), 4))
+                    if highest != 0 and highest > upper_boundary:
+                        if j_j != len(interval_list)-2:
+                            interval = (i['RTs_'+str(i_i)][interval_list[j_j+2]]-highest)/(interval_list[j_j+2]-highest_id)
+                            for l_l, l in enumerate(range(highest_id+1, interval_list[j_j+1])):
+                                i['RTs_'+str(i_i)][l] = float("%.4f" % round(highest+(interval*(l_l+1)), 4))
+                        else:
+                            interval = (chromatogram_length_rt-highest)/(chromatogram_length-1-highest_id)
+                            for l_l, l in enumerate(range(highest_id+1, chromatogram_length)):
+                                i['RTs_'+str(i_i)][l] = float("%.4f" % round(highest+(interval*(l_l+1)), 4))
         return dataframe
         
 def output_filtered_data(curve_fit_score,
@@ -1620,6 +1661,7 @@ def output_filtered_data(curve_fit_score,
                          reporter_ions,
                          plot_metaboanalyst,
                          compositions,
+                         align_chromatograms,
                          nglycan,
                          rt_tolerance,
                          rt_tolerance_frag,
@@ -2251,23 +2293,24 @@ def output_filtered_data(curve_fit_score,
             for j_j, j in enumerate(i['Glycan']):
                 i['Class'].append(glycan_class[j])
     
-    #hook for alignment tool. it'll use the total_dataframes (total_glycans)      
-    if len(total_dataframes) > 1:
-        aligned_total_glycans = align_assignments(total_dataframes, 'total_glycans')
-        total_dataframes = aligned_total_glycans[0]
-        df2["Average Delta t"] = []
-        for i_i, i in enumerate(aligned_total_glycans[1]):
-            temp_list = []
-            for k_k, k in enumerate(i):
-                temp_list.append(i[k][0])
-            if len(temp_list) != 0:
-                average_delta = float("%.2f" % round(sum(temp_list)/len(temp_list), 2))
-                df2["Average Delta t"].append(average_delta)
-            else:
-                if i_i == aligned_total_glycans[2]:
-                    df2["Average Delta t"].append("Reference Sample")
+    #hook for alignment tool. it'll use the total_dataframes (total_glycans) 
+    if align_chromatograms:
+        if len(total_dataframes) > 1:
+            aligned_total_glycans = align_assignments(total_dataframes, 'total_glycans')
+            total_dataframes = aligned_total_glycans[0]
+            df2["Average Delta t"] = []
+            for i_i, i in enumerate(aligned_total_glycans[1]):
+                temp_list = []
+                for k_k, k in enumerate(i):
+                    temp_list.append(i[k][0])
+                if len(temp_list) != 0:
+                    average_delta = float("%.2f" % round(sum(temp_list)/len(temp_list), 2))
+                    df2["Average Delta t"].append(average_delta)
                 else:
-                    df2["Average Delta t"].append("No peaks to align")
+                    if i_i == aligned_total_glycans[2]:
+                        df2["Average Delta t"].append("Reference Sample")
+                    else:
+                        df2["Average Delta t"].append("No peaks to align")
     #hook for alignment tool. it'll use the total_dataframes (total_glycans)         
                 
     glycans_count = [] #glycans composition counts
@@ -2484,10 +2527,11 @@ def output_filtered_data(curve_fit_score,
             smoothed_eic_dataframes = dill.load(f)
             f.close()
             
-    if len(df2['Sample_Number']) > 1: #aligns the chromatograms, may take some time (around 1 minute per sample, depending on run length)
-        print("Aligning chromatograms...", end='', flush=True)
-        smoothed_eic_dataframes = align_assignments(smoothed_eic_dataframes, 'chromatograms', aligned_total_glycans[1])
-        print("Done!")
+    if align_chromatograms:        
+        if len(df2['Sample_Number']) > 1: #aligns the chromatograms, may take some time (around 1 minute per sample, depending on run length)
+            print("Aligning chromatograms...", end='', flush=True)
+            smoothed_eic_dataframes = align_assignments(smoothed_eic_dataframes, 'chromatograms', aligned_total_glycans[1])
+            print("Done!")
         
     for i_i, i in enumerate(df1_refactor): #this selects only the found glycans to draw their EIC
         found_eic_raw_dataframes.append({})

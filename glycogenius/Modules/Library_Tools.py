@@ -225,7 +225,12 @@ def full_glycans_library(library,
     '''
     full_library = {}
     if tag_mass != 0:
-        tag = General_Functions.calculate_comp_from_mass(tag_mass)
+        if type(tag_mass) == float:
+            tag = General_Functions.calculate_comp_from_mass(tag_mass)
+        else:
+            comp_tag = General_Functions.form_to_comp(tag_mass)
+            tag = (comp_tag, mass.calculate_mass(comp_tag))
+            tag_mass = tag[1]
     else:
         tag = ({"C": 0, "O": 0, "N": 0, "H": 0}, 0.0)
     adducts_combo = General_Functions.gen_adducts_combo(max_adducts, max_charges)
@@ -444,7 +449,12 @@ def fragments_library(min_max_mono,
     for i in sorted(to_be_removed, reverse = True):
         del glycans[i]
     if tag_mass != 0:
-        tag = General_Functions.calculate_comp_from_mass(tag_mass)
+        if type(tag_mass) == float:
+            tag = General_Functions.calculate_comp_from_mass(tag_mass)
+        else:
+            comp_tag = General_Functions.form_to_comp(tag_mass)
+            tag = (comp_tag, mass.calculate_mass(comp_tag))
+            tag_mass = tag[1]
     else:
         tag = ({"C": 0, "O": 0, "N": 0, "H": 0}, 0.0)
     adducts_combo = General_Functions.gen_adducts_combo({'H' : 2}, max_charges)

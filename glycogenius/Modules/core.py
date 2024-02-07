@@ -38,7 +38,7 @@ def main():
     force_nglycan = False
     max_adducts = {}
     max_charges = 0
-    tag_mass = 0.0
+    reducing_end_tag = 0.0
     permethylated = False
     reduced = False
     fast_iso = True
@@ -57,6 +57,7 @@ def main():
     min_isotopologue_peaks = 2
     min_ppp = (False, 0)
     close_peaks = (False, 3)
+    align_chromatograms = True
     max_ppm = 10
     iso_fit_score = 0.9
     curve_fit_score = 0.9
@@ -79,11 +80,30 @@ def main():
         for line in sys.stdin:              #editted by multithreaded 2
             configs+=line                   #editted by multithreaded 3
         config.read_string(configs)
-        custom_glycans = config['library_building']['custom_glycans_list'].split(",")
-        for i_i, i in enumerate(custom_glycans):
-            custom_glycans[i_i] = i.strip()
-            if len(i) == 0:
-                custom_glycans = custom_glycans[:i_i]+custom_glycans[i_i+1:]
+        try:
+            temp_path_custom_glycans = config['library_building']['custom_glycans_list']
+            for i_i, i in enumerate(temp_path_custom_glycans):
+                if i == "\\":
+                    temp_path_custom_glycans = temp_path_custom_glycans[:i_i]+"/"+temp_path_custom_glycans[i_i+1:]
+            temp_custom_glycans_list = ""
+            with open(temp_path_custom_glycans.strip("\""), 'r') as f:
+                for i in f:
+                    temp_custom_glycans_list += i
+            f.close()
+            custom_glycans = temp_custom_glycans_list.split(",")
+            if len(custom_glycans) == 1:
+                custom_glycans = temp_custom_glycans_list.split("\n")
+            if len(custom_glycans) > 1:
+                for i_i, i in enumerate(custom_glycans):
+                    custom_glycans[i_i] = i.strip()
+                    if len(i) == 0:
+                        custom_glycans = custom_glycans[:i_i]+custom_glycans[i_i+1:]
+        except:
+            custom_glycans = config['library_building']['custom_glycans_list'].split(",")
+            for i_i, i in enumerate(custom_glycans):
+                custom_glycans[i_i] = i.strip()
+                if len(i) == 0:
+                    custom_glycans = custom_glycans[:i_i]+custom_glycans[i_i+1:]
         custom_glycans_list = (config['library_building'].getboolean('use_custom_glycans_list'), custom_glycans)
         min_max_monos = (int(config['library_building']['min_monos']), int(config['library_building']['max_monos']))
         min_max_hex = (int(config['library_building']['min_hex']), int(config['library_building']['max_hex']))
@@ -95,7 +115,10 @@ def main():
         force_nglycan = config['library_building'].getboolean('force_nglycan')
         max_adducts = General_Functions.form_to_comp(config['library_building']['max_adducts'])
         max_charges = int(config['library_building']['max_charges'])
-        tag_mass = float(config['library_building']['tag_mass'])
+        try:
+            reducing_end_tag = float(config['library_building']['reducing_end_tag'])
+        except:
+            reducing_end_tag = config['library_building']['reducing_end_tag']
         permethylated = config['library_building'].getboolean('permethylated')
         reduced = config['library_building'].getboolean('reduced')
         fast_iso = config['library_building'].getboolean('fast_iso')
@@ -120,6 +143,7 @@ def main():
         ret_time_interval = (float(config['analysis_parameters']['ret_time_begin']), float(config['analysis_parameters']['ret_time_end']), float(config['analysis_parameters']['ret_time_tolerance']))
         min_ppp = (config['analysis_parameters'].getboolean('custom_min_points_per_peak'), int(config['analysis_parameters']['number_points_per_peak']))
         close_peaks = (config['analysis_parameters'].getboolean('limit_peaks_picked'), int(config['analysis_parameters']['max_number_peaks']))
+        align_chromatograms = config['analysis_parameters'].getboolean('align_chromatograms')
         max_ppm = int(config['analysis_parameters']['max_ppm'])
         iso_fit_score = float(config['analysis_parameters']['isotopic_fitting_score'])
         curve_fit_score = float(config['analysis_parameters']['curve_fitting_score'])
@@ -156,6 +180,7 @@ def main():
         plot_metaboanalyst = (config['analysis_parameters'].getboolean('plot_metaboanalyst'), metaboanalyst_groups)
         compositions = config['analysis_parameters'].getboolean('analyze_compositions')
         reanalysis = (config['analysis_parameters'].getboolean('reanalysis'), config['analysis_parameters'].getboolean('output_plot_data'))
+        
     else: #If no parameters file pipelines, run CLI
         parameters = Execution_Functions.interactive_terminal()
         Execution_Functions.print_sep()
@@ -179,7 +204,7 @@ def main():
                 custom_glycans_list = (True, parameters[1])
                 max_adducts = parameters[2]
                 max_charges = parameters[3]
-                tag_mass = parameters[4]
+                reducing_end_tag = parameters[4]
                 fast_iso = parameters[5]
                 high_res = parameters[6]
                 permethylated = parameters[8]
@@ -195,7 +220,7 @@ def main():
                 force_nglycan = parameters[1][14]
                 max_adducts = parameters[2]
                 max_charges = parameters[3]
-                tag_mass = parameters[4]
+                reducing_end_tag = parameters[4]
                 fast_iso = parameters[5]
                 high_res = parameters[6]
                 permethylated = parameters[8]
@@ -255,6 +280,7 @@ def main():
                                                  reporter_ions,
                                                  plot_metaboanalyst,
                                                  compositions,
+                                                 align_chromatograms,
                                                  force_nglycan,
                                                  ret_time_interval[2],
                                                  rt_tolerance_frag,
@@ -283,7 +309,7 @@ def main():
                                                           force_nglycan,
                                                           max_adducts,
                                                           max_charges,
-                                                          tag_mass,
+                                                          reducing_end_tag,
                                                           fast_iso,
                                                           high_res,
                                                           imp_exp_library,
@@ -336,7 +362,7 @@ def main():
                                                             min_max_ac,
                                                             min_max_gc,
                                                             max_charges,
-                                                            tag_mass,
+                                                            reducing_end_tag,
                                                             force_nglycan,
                                                             permethylated,
                                                             reduced,
@@ -364,6 +390,7 @@ def main():
                                                  reporter_ions,
                                                  plot_metaboanalyst,
                                                  compositions,
+                                                 align_chromatograms,
                                                  force_nglycan,
                                                  ret_time_interval[2],
                                                  rt_tolerance_frag,

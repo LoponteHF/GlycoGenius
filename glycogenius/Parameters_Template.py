@@ -1,7 +1,7 @@
 [library_building]
 use_custom_glycans_list = no
 custom_glycans_list = H3N2, H5N2, H5N4S2F1
-; Allows you to only search for target glycans by inputing them in the "custom_glycans_list", as formulas. If True, overrides imp_library. Monosaccharides accepted: Hexoses (H), HexNAc (N), Acetyl Sialic Acid (S), Glycolyl Sialic Acid (G), Deoxyhexose (F). Case sensitive.
+; Allows you to only search for target glycans by inputing them in the "custom_glycans_list", as formulas. If True, overrides imp_library. Monosaccharides accepted: Hexoses (H), HexNAc (N), Acetyl Sialic Acid (S), Glycolyl Sialic Acid (G), Deoxyhexose (F). Case sensitive. Can also be the path to a text file containing the list (line or comma separated).
 min_monos = 5
 max_monos = 18
 min_hex = 3
@@ -23,8 +23,8 @@ max_adducts = H3Na1
 ; Indicates the desired adducts and their maximum amount. H3Na1 means a maximum of 3 Hydrogens and a maximum of 1 Sodium per adduct combination. Case sensitive.
 max_charges = 3
 ; Limits the maximum amount of calculated charges for each glycan. Set to a negative value if you want to do negative mode analysis.
-tag_mass = 133.0644
-; If a reducing end tag is added to the glycans, insert its added mass here. If no reducing end tag is added to the glycans, set this value to 0. Procainamide: 219.1735; Girard Reagent P: 133.0644 (deprotonated, neutral)
+reducing_end_tag = 133.0644
+; If a reducing end tag is added to the glycans, insert its added mass or molecular formula here here. If no reducing end tag is added to the glycans, set this value to 0. Procainamide: 219.1735 or C13H21N3; Girard Reagent P: 133.0644 or C7H7N3 (deprotonated, neutral)
 permethylated = no
 ; If the sample was permethylated, set this parameter to "yes". Doesn't take into account partial permethylations.
 reduced = no
@@ -40,7 +40,7 @@ imp_library = no
 exp_library = no
 ; Export the library you generate to use in future analysis without having to build a new library. Also creates an excel file containing a human-readable version of the library generated.
 only_gen_lib = no
-; Determines if the script should stop after generating library or proceed with data analysis. 
+; Determines if the script should stop after generating library or proceed with data analysis. If used, will also make a file compatible with Skyline's transition list model.
 
 [analysis_parameters]
 multithreaded_analysis = no
@@ -60,12 +60,16 @@ ret_time_begin = 1
 ret_time_end = 80
 ret_time_tolerance = 0.2
 ; The minimum and maximum retention time, in minutes, used for various portions of the script. A shorter interval of ret_time makes the script run faster, so try to trim your sample as much as possible, if you know when your analytes are leaving the column. Set the retention time tolerance used for and same peak identification. ret_time_tolerance can be reapplied on raw data reanalysis.
+align_chromatograms = yes
+; If enabled, will align the assignments and drawn processed EICs of the different samples. The alignment is highly dependent on the features identified and their inherent quality, so things will change with different quality thresholds. Is processed on the output, so can be changed on reanalysis and the resulting alignment will also change when changing thresholds during reanalysis.
 custom_min_points_per_peak = no
 number_points_per_peak = 5
 ; If used, set the minimum number of datapoints to consider a chromatogram peak part of the raw dataset. If left on False it calculates automatically.
 limit_peaks_picked = no
 max_number_peaks = 5
 ; If used, picks only the most intense peak on the EIC and up to [max_number_peaks]-1 other peaks closest to it. Warning: This may reduce the range of your results.
+align_chromatograms = yes
+; If enabled, will align the assignments and drawn processed EICs of the different samples. The alignment is highly dependent on the features identified and their inherent quality, so things will change with different quality thresholds. Is processed on the output, so can be changed on reanalysis and the resulting alignment will also change when changing thresholds during reanalysis.
 max_ppm = 10
 ; Maximum PPM for data curation. If value is greater than equivalent accuracy_value, data won't be filtered by this criteria, as it was already filtered during processing by accuracy_value. Can be reapplied on raw data reanalysis.
 isotopic_fitting_score = 0.9

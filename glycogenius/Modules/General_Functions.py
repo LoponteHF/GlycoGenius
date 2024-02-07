@@ -56,7 +56,7 @@ def linear_regression(x, y):
     if len(x) != len(y): # Ensure x and y have the same length
         raise ValueError("Input arrays x and y must have the same length.")
     if len(x) == 1:
-        return 1, 0
+        return 0, y[0]
     x = array(x) # Convert input data to numpy arrays
     y = array(y) # Convert input data to numpy arrays
     m, b = polyfit(x, y, 1) # Calculate the slope (m) and y-intercept (b) using numpy's polyfit function
@@ -394,7 +394,10 @@ def sum_atoms(*compositions):
     summed_comp = {"C": 0, "O": 0, "N": 0, "H": 0}
     for i in compositions:
         for j in i:
-            summed_comp[j]+=i[j]
+            if j not in list(summed_comp.keys()):
+                summed_comp[j] = i[j]
+            else:
+                summed_comp[j]+=i[j]
     return summed_comp
 
 def sum_monos(*compositions):
