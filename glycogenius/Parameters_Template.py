@@ -91,7 +91,7 @@ metaboanalyst_groups = CONTROL, TREATED
 analyze_compositions = no
 ; If used, also plots data related to the whole composition of each identified glycan in the analysis, in addition to the peak-separated data.
 output_isotopic_fittings = no
-; Allows to output files with the isotopic fittings to check scoring criterias.
+; Allows to output files with the isotopic fittings to check scoring criterias. Defaultted to 'no' as these files will be big. Only use it if you really need. Can be reapplied on reanalysis.
 reanalysis = no
 output_plot_data = no
 ; Reanalyzes raw data with new max_ppm, isotopic_fitting_score, curve_fitting_score and signal_to_noise criteria. Overrides any other setting besides these mentioned. First parameter  produces a new Results file, second parameter also produces a new Plotting Data file (in case you deleted your original one. The data in it will not be any different than the former one). Warning: If setting a stricter max_ppm criteria on reanalysis without remaking the whole execution with a new accuracy_value, data may still contain false positives.

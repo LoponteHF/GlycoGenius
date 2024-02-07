@@ -280,6 +280,7 @@ def eic_from_glycan(files,
                     iso_found = False
                     current_iso_peak1 = []
                     current_iso_peak2 = []
+                    current_mz = []
                     for l_l, l in enumerate(sliced_mz):
                         if iso_found and l > ((glycan_info['Isotopic_Distribution_Masses'][iso_distro]+adduct_mass)/adduct_charge) + General_Functions.tolerance_calc(tolerance[0], tolerance[1], l):
                             if len(current_iso_peak1) > 5: #here data is profile
@@ -288,9 +289,10 @@ def eic_from_glycan(files,
                             else:
                                 iso_actual.append(sum(current_iso_peak1))
                                 iso_target.append(sum(current_iso_peak2))
-                            mz_isos.append(l)
+                            mz_isos.append(sum(current_mz)/len(current_mz))
                             current_iso_peak1 = []
                             current_iso_peak2 = []
+                            current_mz = []
                             iso_distro += 1
                             iso_found = False
                         if not_good: #Here are checks for quick skips
@@ -353,6 +355,7 @@ def eic_from_glycan(files,
                                 intensity += mono_int*glycan_info['Isotopic_Distribution'][iso_distro]
                             if sliced_int[l_l] <= mono_int*glycan_info['Isotopic_Distribution'][iso_distro]:
                                 intensity += sliced_int[l_l]
+                            current_mz.append(l)
                             current_iso_peak1.append(sliced_int[l_l])
                             current_iso_peak2.append(mono_int*glycan_info['Isotopic_Distribution'][iso_distro])
                             iso_found = True
