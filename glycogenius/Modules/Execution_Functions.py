@@ -1666,6 +1666,7 @@ def output_filtered_data(curve_fit_score,
                          rt_tolerance,
                          rt_tolerance_frag,
                          output_isotopic_fittings,
+                         output_plot_data,
                          sneakpeek):
     '''This function filters and converts raw results data into human readable
     excel files.
@@ -1754,7 +1755,7 @@ def output_filtered_data(curve_fit_score,
     '''
     date = datetime.datetime.now()
     begin_time = str(date)[2:4]+str(date)[5:7]+str(date)[8:10]+"_"+str(date)[11:13]+str(date)[14:16]+str(date)[17:19]
-    if reanalysis[0] and not sneakpeek[0]:
+    if reanalysis and not sneakpeek[0]:
         print("Reanalyzing raw data with new parameters...")
         results1_list = []
         results2_list = []
@@ -1886,19 +1887,19 @@ def output_filtered_data(curve_fit_score,
                 if type(file[2]) == list:
                     analyze_ms2 = True
                     fragments_dataframes = file[2]
-                    if reanalysis[0] and ".".join(version.split('.')[:2]) != ".".join(file[3].split('.')[:2]):
+                    if reanalysis and ".".join(version.split('.')[:2]) != ".".join(file[3].split('.')[:2]):
                         print("Raw data files version incompatible with\ncurrent version (Current version: "+version+";\nRaw data version: "+file[3]+")")
                         return
                 else:
-                    if reanalysis[0] and ".".join(version.split('.')[:2]) != ".".join(file[2].split('.')[:2]):
+                    if reanalysis and ".".join(version.split('.')[:2]) != ".".join(file[2].split('.')[:2]):
                         print("Raw data files version incompatible with\ncurrent version (Current version: "+version+";\nRaw data version: "+file[3]+")")
                         return
                 f.close()
     except:
-        if reanalysis[0]:
+        if reanalysis:
             print("\nRaw data files not found. If you're not\nreanalyzing existing raw data, set\n'reanalysis' to 'no' in parameters before\nexecution or choose a different option in the\ncommand-line interface.\n")
         return
-    if not reanalysis[0]:
+    if not reanalysis:
         print("Analyzing raw data...")
     df1_refactor = []
     for i_i, i in enumerate(df2["Sample_Number"]): #QCs cutoff
@@ -2561,38 +2562,33 @@ def output_filtered_data(curve_fit_score,
             except:
                 pass
     found_eic_processed_dataframes_simplified = [] #combines adducts EICs
-    for i_i, i in enumerate(found_eic_processed_dataframes):
-        glycans = []
+    found_eic_processed_dataframes_copy = copy.deepcopy(found_eic_processed_dataframes)
+    for i_i, i in enumerate(found_eic_processed_dataframes_copy):
+        current_glycan = ""
         found_eic_processed_dataframes_simplified.append({})
         for j_j, j in enumerate(i):
+            working_glycan = j.split("+")[0].split("_")[0].split("-")[0]
             if j_j == 0:
                 found_eic_processed_dataframes_simplified[i_i][j] = i[j]
+                continue
+            elif working_glycan != current_glycan:
+                current_glycan = working_glycan
+                found_eic_processed_dataframes_simplified[i_i][working_glycan] = i[j]
             else:
-                glycan = j.split("+")[0]
-                if glycan not in glycans:
-                    glycans.append(glycan)
-                    adduct_no = 1
-                    for k_k, k in enumerate(i):
-                        if k.split("+")[0] == glycan:
-                            if adduct_no == 1:
-                                found_eic_processed_dataframes_simplified[i_i][glycan] = i[k]
-                                adduct_no += 1
-                            else:
-                                for l_l, l in enumerate(i[k]):
-                                    found_eic_processed_dataframes_simplified[i_i][glycan][l_l] += l
-                                adduct_no += 1
-    found_eic_processed_dataframes = found_eic_processed_dataframes_simplified
+                for k_k, k in enumerate(i[j]):
+                    found_eic_processed_dataframes_simplified[i_i][working_glycan][k_k] += k
+    del found_eic_processed_dataframes_copy
     
     print("Creating data plotting files...", end='', flush=True)
     with ExcelWriter(save_path+begin_time+'_Found_Glycans_EICs.xlsx') as writer:
         for i_i, i in enumerate(found_eic_raw_dataframes):
             found_eic_raw_dataframes_df = DataFrame(i)
-            found_eic_processed_dataframes_df = DataFrame(found_eic_processed_dataframes[i_i])
+            found_eic_processed_dataframes_simplified_df = DataFrame(found_eic_processed_dataframes_simplified[i_i])
             found_eic_raw_dataframes_df.to_excel(writer, sheet_name="RAW_Sample_"+str(i_i), index = False)
-            found_eic_processed_dataframes_df.to_excel(writer, sheet_name="Processed_Sample_"+str(i_i), index = False)
+            found_eic_processed_dataframes_simplified_df.to_excel(writer, sheet_name="Processed_Sample_"+str(i_i), index = False)
         df2.to_excel(writer, sheet_name="Index references", index = False)
-    del found_eic_processed_dataframes
-    del found_eic_processed_dataframes_df
+    del found_eic_processed_dataframes_simplified
+    del found_eic_processed_dataframes_simplified_df
     del found_eic_raw_dataframes
     del found_eic_raw_dataframes_df
     
@@ -2631,8 +2627,38 @@ def output_filtered_data(curve_fit_score,
         del isotopic_fits_dataframes
         del isotopic_fits_dataframes_arranged
         del isotopic_fits_df
+        
+        if sneakpeek[0]:
+            with open(save_path+'results4_'+str(sneakpeek[1]), 'rb') as f:
+                curve_fitting_dataframes = dill.load(f)
+                f.close()
+        else:
+            with open(save_path+'raw_data_4', 'rb') as f:
+                curve_fitting_dataframes = dill.load(f)
+                f.close()
+        with ExcelWriter(save_path+begin_time+'_curve_fitting_Plot_Data.xlsx') as writer:
+            for i_i, i in enumerate(curve_fitting_dataframes):
+                if len(curve_fitting_dataframes[i_i]) > 16384:
+                    for j in range(int(len(curve_fitting_dataframes[i_i])/16384)+1):
+                        if j == 0:
+                            curve_df = DataFrame(dict(islice(curve_fitting_dataframes[i_i].items(), 16384)))
+                            curve_df.to_excel(writer, sheet_name="Sample_"+str(i_i)+"_Curve_Fits_0", index = False)
+                        else:
+                            if len(dict(islice(curve_fitting_dataframes[i_i].items(), j*16384, len(curve_fitting_dataframes[i_i])))) <= 16384:
+                                curve_df = DataFrame(dict(islice(curve_fitting_dataframes[i_i].items(), j*16384, len(curve_fitting_dataframes[i_i]))))
+                                curve_df.to_excel(writer, sheet_name="Sample_"+str(i_i)+"_Curve_Fits_"+str(j), index = False)
+                            else:
+                                curve_df = DataFrame(dict(islice(curve_fitting_dataframes[i_i].items(), j*16384, (j+1)*16384)))
+                                curve_df.to_excel(writer, sheet_name="Sample_"+str(i_i)+"_Curve_Fits_"+str(j), index = False)
+                else:
+                    curve_df = DataFrame(curve_fitting_dataframes[i_i])
+                    curve_df.to_excel(writer, sheet_name="Sample_"+str(i_i), index = False)
+            df2.to_excel(writer, sheet_name="Index references", index = False)
+        del curve_fitting_dataframes
+        del curve_df        
+        
     
-    if (reanalysis[1] and reanalysis[0]) or not reanalysis[0]:
+    if output_plot_data:
         # if sneakpeek[0]: #commented for now, it's just too much redundant information... smoothed eic will output as processed now
             # with open(save_path+'results2_'+str(sneakpeek[1]), 'rb') as f:
                 # eic_dataframes = dill.load(f)
@@ -2664,36 +2690,8 @@ def output_filtered_data(curve_fit_score,
         del raw_eic_dataframes
         del raw_eic_df
         
-        if sneakpeek[0]:
-            with open(save_path+'results4_'+str(sneakpeek[1]), 'rb') as f:
-                curve_fitting_dataframes = dill.load(f)
-                f.close()
-        else:
-            with open(save_path+'raw_data_4', 'rb') as f:
-                curve_fitting_dataframes = dill.load(f)
-                f.close()
-        with ExcelWriter(save_path+begin_time+'_curve_fitting_Plot_Data.xlsx') as writer:
-            for i_i, i in enumerate(curve_fitting_dataframes):
-                if len(curve_fitting_dataframes[i_i]) > 16384:
-                    for j in range(int(len(curve_fitting_dataframes[i_i])/16384)+1):
-                        if j == 0:
-                            curve_df = DataFrame(dict(islice(curve_fitting_dataframes[i_i].items(), 16384)))
-                            curve_df.to_excel(writer, sheet_name="Sample_"+str(i_i)+"_Curve_Fits_0", index = False)
-                        else:
-                            if len(dict(islice(curve_fitting_dataframes[i_i].items(), j*16384, len(curve_fitting_dataframes[i_i])))) <= 16384:
-                                curve_df = DataFrame(dict(islice(curve_fitting_dataframes[i_i].items(), j*16384, len(curve_fitting_dataframes[i_i]))))
-                                curve_df.to_excel(writer, sheet_name="Sample_"+str(i_i)+"_Curve_Fits_"+str(j), index = False)
-                            else:
-                                curve_df = DataFrame(dict(islice(curve_fitting_dataframes[i_i].items(), j*16384, (j+1)*16384)))
-                                curve_df.to_excel(writer, sheet_name="Sample_"+str(i_i)+"_Curve_Fits_"+str(j), index = False)
-                else:
-                    curve_df = DataFrame(curve_fitting_dataframes[i_i])
-                    curve_df.to_excel(writer, sheet_name="Sample_"+str(i_i), index = False)
-            df2.to_excel(writer, sheet_name="Index references", index = False)
-        del curve_fitting_dataframes
-        del curve_df
         print("Done!")
-    elif reanalysis[0] and not reanalysis[1]:
+    elif reanalysis and not output_plot_data:
         del smoothed_eic_dataframes
         del raw_eic_dataframes
         print("Done!")

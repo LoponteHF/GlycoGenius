@@ -60,12 +60,10 @@ ret_time_begin = 1
 ret_time_end = 80
 ret_time_tolerance = 0.2
 ; The minimum and maximum retention time, in minutes, used for various portions of the script. A shorter interval of ret_time makes the script run faster, so try to trim your sample as much as possible, if you know when your analytes are leaving the column. Set the retention time tolerance used for and same peak identification. ret_time_tolerance can be reapplied on raw data reanalysis.
-align_chromatograms = yes
-; If enabled, will align the assignments and drawn processed EICs of the different samples. The alignment is highly dependent on the features identified and their inherent quality, so things will change with different quality thresholds. Is processed on the output, so can be changed on reanalysis and the resulting alignment will also change when changing thresholds during reanalysis.
 custom_min_points_per_peak = no
 number_points_per_peak = 5
 ; If used, set the minimum number of datapoints to consider a chromatogram peak part of the raw dataset. If left on False it calculates automatically.
-limit_peaks_picked = no
+limit_peaks_picked = yes
 max_number_peaks = 5
 ; If used, picks only the most intense peak on the EIC and up to [max_number_peaks]-1 other peaks closest to it. Warning: This may reduce the range of your results.
 align_chromatograms = yes
@@ -90,8 +88,9 @@ metaboanalyst_groups = CONTROL, TREATED
 ; Here you set up whether or not you want to output a .csv file to be used for plotting data using metaboanalyst. If you want that, you must specify your sample groups, comma separated. Sample groups specified must be present in sample filenames for proper identification. If none is set, samples are defaulted to "ungrouped". Case sensitive. 
 analyze_compositions = no
 ; If used, also plots data related to the whole composition of each identified glycan in the analysis, in addition to the peak-separated data.
-output_isotopic_fittings = no
-; Allows to output files with the isotopic fittings to check scoring criterias. Defaultted to 'no' as these files will be big. Only use it if you really need. Can be reapplied on reanalysis.
-reanalysis = no
+output_fittings_data = no
+; Allows to output files with the fittings data to check scoring criterias. Defaultted to 'no' as these files will be big. Only use it if you really need. Can be reapplied on reanalysis.
 output_plot_data = no
-; Reanalyzes raw data with new max_ppm, isotopic_fitting_score, curve_fitting_score and signal_to_noise criteria. Overrides any other setting besides these mentioned. First parameter  produces a new Results file, second parameter also produces a new Plotting Data file (in case you deleted your original one. The data in it will not be any different than the former one). Warning: If setting a stricter max_ppm criteria on reanalysis without remaking the whole execution with a new accuracy_value, data may still contain false positives.
+; Allows to output data plotting files for all the EICs drawn by the program. If set to 'no', it will still output the found glycans EIC. Can be reapplied on reanalysis.
+reanalysis = no
+; Reanalyzes raw data with new max_ppm, isotopic_fitting_score, curve_fitting_score, signal_to_noise, outputting new plot or fitting data and aligning or not the chromatograms.

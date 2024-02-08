@@ -68,7 +68,8 @@ def main():
     plot_metaboanalyst = (False, [])
     compositions = False
     iso_fittings = False
-    reanalysis = (False, False)
+    reanalysis = False
+    output_plot_data = False
 
     multithreaded_execution = (False, 0, 0) #editted by multithreaded 1
     sneakpeek = (False, 0)
@@ -180,8 +181,9 @@ def main():
                 del metaboanalyst_groups[i_i]
         plot_metaboanalyst = (config['analysis_parameters'].getboolean('plot_metaboanalyst'), metaboanalyst_groups)
         compositions = config['analysis_parameters'].getboolean('analyze_compositions')
-        iso_fittings = config['analysis_parameters'].getboolean('output_isotopic_fittings')
-        reanalysis = (config['analysis_parameters'].getboolean('reanalysis'), config['analysis_parameters'].getboolean('output_plot_data'))
+        iso_fittings = config['analysis_parameters'].getboolean('output_fittings_data')
+        output_plot_data = config['analysis_parameters'].getboolean('output_plot_data')
+        reanalysis = config['analysis_parameters'].getboolean('reanalysis')
         
     else: #If no parameters file pipelines, run CLI
         parameters = Execution_Functions.interactive_terminal()
@@ -269,7 +271,7 @@ def main():
 
     begin_time = datetime.datetime.now()
 
-    if reanalysis[0]:
+    if reanalysis:
         Execution_Functions.output_filtered_data(curve_fit_score,
                                                  iso_fit_score,
                                                  s_to_n,
@@ -288,13 +290,14 @@ def main():
                                                  ret_time_interval[2],
                                                  rt_tolerance_frag,
                                                  iso_fittings,
+                                                 output_plot_data,
                                                  sneakpeek)
 
     else:
         if multithreaded_execution[0]:
             print('Multithreaded Execution: '+str(multithreaded_execution[1]))
         samples_names = Execution_Functions.sample_names(samples_list)
-        if not only_gen_lib and not reanalysis[0]:
+        if not only_gen_lib and not reanalysis:
             print("Sample files detected: "+str(len(samples_names)))
             for i in samples_names:
                 print("--> "+i)
@@ -399,6 +402,7 @@ def main():
                                                  ret_time_interval[2],
                                                  rt_tolerance_frag,
                                                  iso_fittings,
+                                                 output_plot_data,
                                                  sneakpeek)
                                                  
     if not os.isatty(0):
