@@ -1587,8 +1587,8 @@ def align_assignments(df, df_type, deltas = None):
                 chromatogram_interval = i['RTs_'+str(i_i)][-1]/len(i['RTs_'+str(i_i)])
                 points_per_minute = int(1/chromatogram_interval)
                 interval_list = []
-                current = 0.0
                 minutes_interval = 5
+                current = -minutes_interval
                 for j in deltas[i_i]: #rules here still to be discussed
                     if j > current+minutes_interval:
                         current = j
@@ -1918,6 +1918,11 @@ def output_filtered_data(curve_fit_score,
             to_remove_glycan = []
             to_remove_adduct = []
             for k_k, k in enumerate(temp_sn):
+                if float(temp_auc[k_k]) == 0.0:
+                    to_remove.append(k_k)
+                    to_remove_glycan.append(df1[i_i]["Glycan"][j_j])
+                    to_remove_adduct.append(j)
+                    continue
                 if df1[i_i]["Glycan"][j_j] != "Internal Standard":
                     if float(k) < sn:
                         to_remove.append(k_k)
@@ -2439,11 +2444,12 @@ def output_filtered_data(curve_fit_score,
                     if found:
                         if "Internal Standard" in j["Glycan"]:
                             glycan_line_IS.append(str(temp_AUC_IS))
+                        else:
+                            glycan_line_IS.append(0.0)
                         glycan_line.append(str(temp_AUC))
                         continue
                     if not found:
-                        if "Internal Standard" in j["Glycan"]:
-                            glycan_line_IS.append("0.0")
+                        glycan_line_IS.append("0.0")
                         glycan_line.append("0.0")
                         continue
                 if found_int_std:
@@ -2479,6 +2485,8 @@ def output_filtered_data(curve_fit_score,
                             glycan_line.append(str(j['AUC'][j['Glycan'].index(i)]))
                             if 'Internal Standard' in j['Glycan']:
                                 glycan_line_IS.append(str(j['AUC'][j['Glycan'].index(i)]/j['AUC'][j['Glycan'].index('Internal Standard')]))
+                            else:
+                                glycan_line_IS.append(0.0)
                         else:
                             glycan_line.append('0.0')
                             glycan_line_IS.append('0.0')
