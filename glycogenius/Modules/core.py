@@ -37,6 +37,7 @@ def main():
     min_max_gc = (0, 0)
     force_nglycan = False
     max_adducts = {}
+    adducts_exclusion = []
     max_charges = 0
     reducing_end_tag = 0.0
     permethylated = False
@@ -116,6 +117,10 @@ def main():
         min_max_gc = (int(config['library_building']['min_gc']), int(config['library_building']['max_gc']))
         force_nglycan = config['library_building'].getboolean('force_nglycan')
         max_adducts = General_Functions.form_to_comp(config['library_building']['max_adducts'])
+        adducts_exc = config['library_building']['adducts_exclusion'].split(",")
+        if len(adducts_exc) > 0:
+            for i in adducts_exc:
+                adducts_exclusion.append(General_Functions.form_to_comp(i.strip()))
         max_charges = int(config['library_building']['max_charges'])
         try:
             reducing_end_tag = float(config['library_building']['reducing_end_tag'])
@@ -315,6 +320,7 @@ def main():
                                                           min_max_gc,
                                                           force_nglycan,
                                                           max_adducts,
+                                                          adducts_exclusion,
                                                           max_charges,
                                                           reducing_end_tag,
                                                           fast_iso,

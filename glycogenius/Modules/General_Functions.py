@@ -554,6 +554,7 @@ def calculate_isotopic_pattern(glycan_atoms,
     return relative_isotop_pattern, relative_isotop_mass
 
 def gen_adducts_combo(adducts,
+                      exclusions,
                       max_charge):
     '''Generates a list of dictionaries with compositions of adducts combinations, based
     on parameters set.
@@ -606,6 +607,8 @@ def gen_adducts_combo(adducts,
             if abs(i[j]) > abs(adducts[j]):
                 to_remove.append(i)
                 break
+        if i in exclusions:
+            to_remove.append(i)
     for i in to_remove:
         adducts_combo_dict.remove(i)
     return adducts_combo_dict

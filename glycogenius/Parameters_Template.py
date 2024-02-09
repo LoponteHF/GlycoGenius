@@ -20,7 +20,8 @@ max_gc = 0
 force_nglycan = yes
 ; Used to force some monosaccharides compositions associated with N-Glycans biologically known features. If not used, gives a much broader library that can be used for analysis of O-Glycans, for example.
 max_adducts = H3
-; Indicates the desired adducts and their maximum amount. H3Na1 means a maximum of 3 Hydrogens and a maximum of 1 Sodium per adduct combination. Case sensitive. Doesn't work with complex adducts, such as NH4.
+adducts_exclusion = 
+; Indicates the desired adducts and their maximum amount. H3Na1 means a maximum of 3 Hydrogens and a maximum of 1 Sodium per adduct combination. Case sensitive. Doesn't work with complex adducts, such as NH4. Set adducts in 'adducts_exclusion' to avoid using specific adducts. Comma separated list.
 max_charges = 3
 ; Limits the maximum amount of calculated charges for each glycan. Set to a negative value if you want to do negative mode analysis [EXPERIMENTAL].
 reducing_end_tag = 133.0644

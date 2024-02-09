@@ -134,6 +134,7 @@ def generate_glycans_library(min_max_mono,
 
 def full_glycans_library(library,
                          max_adducts,
+                         adducts_exclusion,
                          max_charges,
                          tag_mass = 0,
                          fast = True,
@@ -233,7 +234,7 @@ def full_glycans_library(library,
             tag_mass = tag[1]
     else:
         tag = ({"C": 0, "O": 0, "N": 0, "H": 0}, 0.0)
-    adducts_combo = General_Functions.gen_adducts_combo(max_adducts, max_charges)
+    adducts_combo = General_Functions.gen_adducts_combo(max_adducts, adducts_exclusion, max_charges)
     for i in library:
         i_formula = General_Functions.comp_to_formula(i)
         i_atoms = General_Functions.sum_atoms(General_Functions.glycan_to_atoms(i, permethylated), General_Functions.form_to_comp('H2O'))
