@@ -1184,32 +1184,6 @@ def imp_exp_gen_library(multithreaded_analysis,
                                             internal_standard,
                                             permethylated,
                                             reduced)
-        if imp_exp_library[1]:
-            print('Exporting glycans library...')
-            with open(save_path+'glycans_library.py', 'w') as f:
-                f.write('full_library = '+str(full_library))
-                f.close()
-            df = {'Glycan' : [], 'Hex' : [], 'HexNAc' : [], 'dHex' : [], 'Neu5Ac' : [], 'Neu5Gc' : [], 'Isotopic Distribution' : [], 'Neutral Mass + Tag' : []}
-            for i_i, i in enumerate(full_library):
-                df['Glycan'].append(i)
-                df['Hex'].append(full_library[i]['Monos_Composition']['H'])
-                df['HexNAc'].append(full_library[i]['Monos_Composition']['N'])
-                df['dHex'].append(full_library[i]['Monos_Composition']['F'])
-                df['Neu5Ac'].append(full_library[i]['Monos_Composition']['S'])
-                df['Neu5Gc'].append(full_library[i]['Monos_Composition']['G'])
-                temp_isotopic = []
-                for j in full_library[i]['Isotopic_Distribution']:
-                    temp_isotopic.append(float("%.3f" % round(j, 3)))
-                df['Isotopic Distribution'].append(str(temp_isotopic)[1:-1])
-                df['Neutral Mass + Tag'].append(float("%.4f" % round(full_library[i]['Neutral_Mass+Tag'], 4)))
-                for j in full_library[i]['Adducts_mz']:
-                    if i_i ==0:
-                        df[j] = [float("%.4f" % round(full_library[i]['Adducts_mz'][j], 4))]
-                    else:
-                        df[j].append(float("%.4f" % round(full_library[i]['Adducts_mz'][j], 4)))
-            df = DataFrame(df)
-            with ExcelWriter(save_path+'Glycans_Library.xlsx') as writer:
-                df.to_excel(writer, index = False)
         print('Done!')
     if multithreaded_analysis[0] and not only_gen_lib and not multithreaded_execution[0]:
         print('Splitting execution for multiple threads...')
@@ -1231,32 +1205,6 @@ def imp_exp_gen_library(multithreaded_analysis,
                                                 internal_standard,
                                                 permethylated,
                                                 reduced)
-            if imp_exp_library[1]:
-                print('Exporting glycans library...')
-                with open(save_path+'glycans_library.py', 'w') as f:
-                    f.write('full_library = '+str(full_library))
-                    f.close()
-                df = {'Glycan' : [], 'Hex' : [], 'HexNAc' : [], 'dHex' : [], 'Neu5Ac' : [], 'Neu5Gc' : [], 'Isotopic Distribution' : [], 'Neutral Mass + Tag' : []}
-                for i_i, i in enumerate(full_library):
-                    df['Glycan'].append(i)
-                    df['Hex'].append(full_library[i]['Monos_Composition']['H'])
-                    df['HexNAc'].append(full_library[i]['Monos_Composition']['N'])
-                    df['dHex'].append(full_library[i]['Monos_Composition']['F'])
-                    df['Neu5Ac'].append(full_library[i]['Monos_Composition']['S'])
-                    df['Neu5Gc'].append(full_library[i]['Monos_Composition']['G'])
-                    temp_isotopic = []
-                    for j in full_library[i]['Isotopic_Distribution']:
-                        temp_isotopic.append(float("%.3f" % round(j, 3)))
-                    df['Isotopic Distribution'].append(str(temp_isotopic)[1:-1])
-                    df['Neutral Mass + Tag'].append(float("%.4f" % round(full_library[i]['Neutral_Mass+Tag'], 4)))
-                    for j in full_library[i]['Adducts_mz']:
-                        if i_i ==0:
-                            df[j] = [float("%.4f" % round(full_library[i]['Adducts_mz'][j], 4))]
-                        else:
-                            df[j].append(float("%.4f" % round(full_library[i]['Adducts_mz'][j], 4)))
-                df = DataFrame(df)
-                with ExcelWriter(save_path+'Glycans_Library.xlsx') as writer:
-                    df.to_excel(writer, index = False)
         elif imp_exp_library[0]:
             lib_module = importlib.import_module('glycans_library')
             full_library = lib_module.full_library
@@ -1349,9 +1297,7 @@ def imp_exp_gen_library(multithreaded_analysis,
                         g.write(i)
                         g.close()
             f.close()
-        print("Setup done. Run 'glycogenius_n.py' files now.")
-        os._exit(1)
-    if imp_exp_library[0]:
+    if imp_exp_library[0] and not multithreaded_analysis[0]:
         print('Importing existing library...', end = '', flush = True)
         spec = importlib.util.spec_from_file_location("glycans_library", save_path+'glycans_library.py')
         lib_module = importlib.util.module_from_spec(spec)
@@ -1385,7 +1331,7 @@ def imp_exp_gen_library(multithreaded_analysis,
                 df.to_excel(writer, index = False)
         print("Done!")
         return full_library
-    if not custom_glycans_list[0]:
+    if not custom_glycans_list[0] and not multithreaded_analysis[0]:
         print('Building glycans library...', end = "", flush = True)
         monos_library = Library_Tools.generate_glycans_library(min_max_monos,
                                                  min_max_hex,
@@ -1406,7 +1352,7 @@ def imp_exp_gen_library(multithreaded_analysis,
                                             reduced)
         print('Done!')
     if imp_exp_library[1] or only_gen_lib:
-        print('Exporting glycans library...')
+        print('Exporting glycans library...', end = '', flush = True)
         with open(save_path+'glycans_library.py', 'w') as f:
             f.write('full_library = '+str(full_library))
             f.close()
@@ -1444,6 +1390,10 @@ def imp_exp_gen_library(multithreaded_analysis,
                     list_form = [i, str(formula), '[M+'+adduct+']', str(General_Functions.form_to_charge(j))]
                     f.write(",".join(list_form)+'\n')
             f.close()
+        print("Done!")
+    if multithreaded_analysis[0]:
+        print("Setup done. Run 'glycogenius_n.py' files now.")
+        os._exit(1)
     if only_gen_lib:
         print('Library length: '+str(len(full_library)))
         print("Check it in Glycans_Library.xlsx.")
@@ -1589,8 +1539,16 @@ def align_assignments(df, df_type, deltas = None):
                 interval_list = []
                 minutes_interval = 5
                 current = -minutes_interval
-                for j in deltas[i_i]: #rules here still to be discussed
+                for j_j, j in enumerate(deltas[i_i]): #rules here still to be discussed
                     if j > current+minutes_interval:
+                        if j_j != 0 and list(deltas[i_i].keys())[j_j-1] < j-minutes_interval:
+                            closest = 0 
+                            distance = inf
+                            for k_k, k in enumerate(i['RTs_'+str(i_i)]):
+                                if abs(k-list(deltas[i_i].keys())[j_j-1]) < distance:
+                                    closest = k_k
+                                    distance = abs(k-list(deltas[i_i].keys())[j_j-1])
+                            interval_list.append(closest+int(points_per_minute*(minutes_interval/5)))
                         current = j
                         closest = 0
                         distance = inf
@@ -1599,7 +1557,7 @@ def align_assignments(df, df_type, deltas = None):
                                 closest = k_k
                                 distance = abs(k-j)
                         interval_list.append(closest-int(points_per_minute*(minutes_interval/5)))
-                interval_list.append(interval_list[-1] + points_per_minute*minutes_interval)
+                interval_list.append(interval_list[-1] + int(points_per_minute*minutes_interval))
                 for j_j, j in enumerate(interval_list):
                     x = []
                     y = []
