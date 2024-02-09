@@ -1136,7 +1136,7 @@ def imp_exp_gen_library(multithreaded_analysis,
     imp_exp_library : tuple
         A list with two indexes : The first one indicates whether or not the script should try
         to import the library from a glycans_library.py file and the second one indicates
-        whether or not the script should export the library to a glycans_libbrary.py file and
+        whether or not the script should export the library to a glycans_library.py file and
         an excel file for visualization.
         
     only_gen_lib : boolean

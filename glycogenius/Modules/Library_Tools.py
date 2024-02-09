@@ -397,7 +397,7 @@ def fragments_library(min_max_mono,
         Calculates the composition of a molecule based on its mass. Intended to use with
         small tags added to the glycans.
         
-    General_Functions.gen_adducts_combo(adducts, max_charge) : list
+    General_Functions.gen_adducts_combo(adducts, exclusions, max_charge) : list
         Generates a list of dictionaries with compositions of adducts combinations,
         based on parameters set.
 
@@ -458,7 +458,7 @@ def fragments_library(min_max_mono,
             tag_mass = tag[1]
     else:
         tag = ({"C": 0, "O": 0, "N": 0, "H": 0}, 0.0)
-    adducts_combo = General_Functions.gen_adducts_combo({'H' : 2}, max_charges)
+    adducts_combo = General_Functions.gen_adducts_combo({'H' : 2}, [], max_charges)
     frag_library = []
     combo_frags_lib = []
     adducts_mz = [[], [], []]
