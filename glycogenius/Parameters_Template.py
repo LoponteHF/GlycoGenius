@@ -30,6 +30,8 @@ permethylated = no
 ; If the sample was permethylated, set this parameter to "yes". Doesn't take into account partial permethylations.
 reduced = no
 ; If the sample doesn't have a tag and the glycans had their reducing end reduced, set this to "yes".
+lactonized_ethyl_esterified = no
+; Use if the sialic acids were derivitized with lactonization (alpha2,3) and ethyl esterification (alpha2,6). Lactonized Acetyl Sialic Acid will be identified as 'lS' and Ethyl Esterified Acetyl Sialic Acid will be identified as 'eS'.
 fast_iso = yes
 ; Allows you to calculate the isotopic distribution of glycans based only on carbon isotopes (fast, innacurate) and corrected artificially or on all the atoms isotopes (VERY SLOW, very accurate). If not used, library building may take many hours depending on size.
 high_resolution_isotopic_dist = no

@@ -42,6 +42,7 @@ def main():
     reducing_end_tag = 0.0
     permethylated = False
     reduced = False
+    lactonized_ethyl_esterified = False
     fast_iso = True
     high_res = False
     internal_standard = 0.0
@@ -128,6 +129,7 @@ def main():
             reducing_end_tag = config['library_building']['reducing_end_tag']
         permethylated = config['library_building'].getboolean('permethylated')
         reduced = config['library_building'].getboolean('reduced')
+        lactonized_ethyl_esterified = config['library_building'].getboolean('lactonized_ethyl_esterified')
         fast_iso = config['library_building'].getboolean('fast_iso')
         high_res = config['library_building'].getboolean('high_resolution_isotopic_dist')
         internal_standard = config['library_building']['internal_standard_mass']
@@ -330,6 +332,7 @@ def main():
                                                           save_path,
                                                           internal_standard,
                                                           permethylated,
+                                                          lactonized_ethyl_esterified,
                                                           reduced)
 #line to add multithreaded library
         if multithreaded_execution[0]:
@@ -379,6 +382,7 @@ def main():
                                                             force_nglycan,
                                                             permethylated,
                                                             reduced,
+                                                            lactonized_ethyl_esterified,
                                                             analyze_ms2[1],
                                                             analyze_ms2[2],
                                                             ret_time_interval[2])

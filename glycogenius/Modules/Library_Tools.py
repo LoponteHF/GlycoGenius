@@ -46,6 +46,7 @@ def generate_glycans_library(min_max_mono,
                              min_max_fuc,
                              min_max_ac,
                              min_max_gc,
+                             lactonized_ethyl_esterified,
                              n_glycan):
     '''Generates a list of combinatorial analysis of monosaccharides from the minimum
     amount of monosaccharides to the maximum amount of monosaccharides set, then trims it
@@ -107,27 +108,49 @@ def generate_glycans_library(min_max_mono,
         glycans generated.
     '''
     glycans = []
-    def_glycan_comp = {"H": 0, "N": 0, "S": 0, "F": 0, "G": 0}
+    def_glycan_comp = {"H": 0, "N": 0, "S": 0, "lS": 0, "eS": 0, "F": 0, "G": 0}
     for i in range(min_max_mono[0], min_max_mono[1]+1):
-        for j in combinations_with_replacement("HNSFG", i):
-            glycans.append(General_Functions.sum_monos(def_glycan_comp, General_Functions.count_seq_letters("".join(j))))
+        if lactonized_ethyl_esterified:
+            for j in combinations_with_replacement("HNLEFG", i):
+                glycans.append(General_Functions.sum_monos(def_glycan_comp, General_Functions.count_seq_letters("".join(j))))
+        else:
+            for j in combinations_with_replacement("HNSFG", i):
+                glycans.append(General_Functions.sum_monos(def_glycan_comp, General_Functions.count_seq_letters("".join(j))))
     to_be_removed = []
     for i_i, i in enumerate(glycans):
-        if ((i['H'] < min_max_hex[0]) or (i['H'] > min_max_hex[1])
-            or (i['N'] < min_max_hexnac[0]) or (i['N'] > min_max_hexnac[1])
-            or (i['S']+i['G'] < min_max_sialics[0])
-            or (i['S']+i['G'] > min_max_sialics[1])
-            or (i['F'] < min_max_fuc[0]) or (i['F'] > min_max_fuc[1])
-            or (i['S'] < min_max_ac[0]) or (i['S'] > min_max_ac[1])
-            or (i['G'] < min_max_gc[0]) or (i['G'] > min_max_gc[1])):
-            to_be_removed.append(i)
+        if lactonized_ethyl_esterified:
+            if ((i['H'] < min_max_hex[0]) or (i['H'] > min_max_hex[1])
+                or (i['N'] < min_max_hexnac[0]) or (i['N'] > min_max_hexnac[1])
+                or (i['lS']+i['eS']+i['G'] < min_max_sialics[0])
+                or (i['lS']+i['eS']+i['G'] > min_max_sialics[1])
+                or (i['F'] < min_max_fuc[0]) or (i['F'] > min_max_fuc[1])
+                or (i['lS']+i['eS'] < min_max_ac[0]) or (i['lS']+i['eS'] > min_max_ac[1])
+                or (i['G'] < min_max_gc[0]) or (i['G'] > min_max_gc[1])):
+                to_be_removed.append(i)
+        else:
+            if ((i['H'] < min_max_hex[0]) or (i['H'] > min_max_hex[1])
+                or (i['N'] < min_max_hexnac[0]) or (i['N'] > min_max_hexnac[1])
+                or (i['S']+i['G'] < min_max_sialics[0])
+                or (i['S']+i['G'] > min_max_sialics[1])
+                or (i['F'] < min_max_fuc[0]) or (i['F'] > min_max_fuc[1])
+                or (i['S'] < min_max_ac[0]) or (i['S'] > min_max_ac[1])
+                or (i['G'] < min_max_gc[0]) or (i['G'] > min_max_gc[1])):
+                to_be_removed.append(i)
     if n_glycan:
-        for i_i, i in enumerate(glycans):
-            if ((i['S']+i['G'] > i['N']-2)
-                or (i['F'] >= i['N']) or (i['S']+i['G'] > i['H']-3)
-                or (i['H'] < 3) or (i['N'] < 2)):
-                if i not in to_be_removed:
-                    to_be_removed.append(i)
+        if lactonized_ethyl_esterified:
+            for i_i, i in enumerate(glycans):
+                if ((i['lS']+i['eS']+i['G'] > i['N']-2)
+                    or (i['F'] >= i['N']) or (i['lS']+i['eS']+i['G'] > i['H']-3)
+                    or (i['H'] < 3) or (i['N'] < 2)):
+                    if i not in to_be_removed:
+                        to_be_removed.append(i)
+        else:
+            for i_i, i in enumerate(glycans):
+                if ((i['S']+i['G'] > i['N']-2)
+                    or (i['F'] >= i['N']) or (i['S']+i['G'] > i['H']-3)
+                    or (i['H'] < 3) or (i['N'] < 2)):
+                    if i not in to_be_removed:
+                        to_be_removed.append(i)
     for i in to_be_removed:
         glycans.remove(i)
     return glycans
@@ -302,7 +325,7 @@ def full_glycans_library(library,
         for i in range(len(i_iso_dist[0])):
             i_iso_dist[1].append(internal_standard+(i*General_Functions.h_mass))
         full_library[i_formula] = {}
-        full_library[i_formula]['Monos_Composition'] = {"H": 0, "N": 0, "S": 0, "F": 0, "G": 0}
+        full_library[i_formula]['Monos_Composition'] = {"H": 0, "N": 0, "S": 0, "lS": 0, "eS": 0, "F": 0, "G": 0}
         full_library[i_formula]['Neutral_Mass'] = i_neutral_mass
         full_library[i_formula]['Neutral_Mass+Tag'] = i_neutral_mass
         full_library[i_formula]['Isotopic_Distribution'] = i_iso_dist[0]
@@ -326,6 +349,7 @@ def fragments_library(min_max_mono,
                       tag_mass,
                       permethylated,
                       reduced,
+                      lactonized_ethyl_esterified,
                       nglycan):
     '''Generates a list of combinatorial analysis of monosaccharides from the minimum
     amount of monosaccharides to the maximum amount of monosaccharides set, then uses 
@@ -421,32 +445,59 @@ def fragments_library(min_max_mono,
     '''
     print("Building fragments library...", end = "", flush = True)
     glycans = []
-    def_glycan_comp = {"H": 0, "N": 0, "S": 0, "F": 0, "G": 0, "T" : 0}
+    def_glycan_comp = {"H": 0, "N": 0, "S": 0, "lS": 0, "eS": 0, "F": 0, "G": 0, "T" : 0}
     for i in range(1, 18):
-        for j in combinations_with_replacement("HNSFGT", i):
-            glycans.append(General_Functions.sum_monos(def_glycan_comp, General_Functions.count_seq_letters("".join(j))))
+        if lactonized_ethyl_esterified:
+            for j in combinations_with_replacement("HNLEFG", i):
+                glycans.append(General_Functions.sum_monos(def_glycan_comp, General_Functions.count_seq_letters("".join(j))))
+        else:
+            for j in combinations_with_replacement("HNSFGT", i):
+                glycans.append(General_Functions.sum_monos(def_glycan_comp, General_Functions.count_seq_letters("".join(j))))
     to_be_removed = []
     for i_i, i in enumerate(glycans):
-        if ((i['T'] > 1) 
-            or (i['T'] == 1 and i['N'] == 0)
-            or (i['H'] > min_max_hex[1])
-            or (i['N'] > min_max_hexnac[1])
-            or (i['S']+i['G'] > min_max_sialics[1])
-            or (i['F'] > min_max_fuc[1])
-            or (i['S'] > min_max_ac[1])
-            or (i['G'] > min_max_gc[1])):
-            to_be_removed.append(i_i)
-        if nglycan and i_i not in to_be_removed: #some rules and hardcoded exceptions for N-Glycans
-            if ((i['T'] == 1 and sum(i.values()) < 8 and i['S']+i['G'] > 0)
-                or (sum(i.values()) < 6 and i['S'] >= 1 and i['N'] > 1)
-                or (i['H'] > 0 and i['T'] == 1 and i['N'] < 2)
-                or (i['H'] == 2 and i['N'] == 1 and i['S'] == 0 and i['F'] == 0 and i['G'] == 0 and i['T'] == 1)
-                or (i['H'] == 0 and i['N'] == 1 and (i['S'] == 1 or i['G'] == 1) and i['F'] == 0 and i['T'] == 0)
-                or (i['H'] == 1 and i['N'] == 3 and i['S'] == 0 and i['F'] == 0 and i['G'] == 0 and i['T'] == 1)
-                or (i['H'] > 1 and i['N'] == 0 and (i['S'] == 1 or i['G'] == 1) and i['F'] == 0 and i['T'] == 0)
-                or (i['H'] == 1 and i['N'] == 1 and i['S'] == 0 and i['F'] == 0 and i['G'] == 0 and i['T'] == 1)
-                or (i['H'] == 3 and i['N'] == 1 and i['S'] == 0 and i['F'] == 0 and i['G'] == 0 and i['T'] == 1)):
+        if lactonized_ethyl_esterified:
+            if ((i['T'] > 1) 
+                or (i['T'] == 1 and i['N'] == 0)
+                or (i['H'] > min_max_hex[1])
+                or (i['N'] > min_max_hexnac[1])
+                or (i['lS']+i['eS']+i['G'] > min_max_sialics[1])
+                or (i['F'] > min_max_fuc[1])
+                or (i['lS']+i['eS'] > min_max_ac[1])
+                or (i['G'] > min_max_gc[1])):
                 to_be_removed.append(i_i)
+        else:
+            if ((i['T'] > 1) 
+                or (i['T'] == 1 and i['N'] == 0)
+                or (i['H'] > min_max_hex[1])
+                or (i['N'] > min_max_hexnac[1])
+                or (i['S']+i['G'] > min_max_sialics[1])
+                or (i['F'] > min_max_fuc[1])
+                or (i['S'] > min_max_ac[1])
+                or (i['G'] > min_max_gc[1])):
+                to_be_removed.append(i_i)
+        if nglycan and i_i not in to_be_removed: #some rules and hardcoded exceptions for N-Glycans
+            if lactonized_ethyl_esterified:
+                if ((i['T'] == 1 and sum(i.values()) < 8 and i['S']+i['G'] > 0)
+                    or (sum(i.values()) < 6 and i['S'] >= 1 and i['N'] > 1)
+                    or (i['H'] > 0 and i['T'] == 1 and i['N'] < 2)
+                    or (i['H'] == 2 and i['N'] == 1 and i['lS']+i['eS'] == 0 and i['F'] == 0 and i['G'] == 0 and i['T'] == 1)
+                    or (i['H'] == 0 and i['N'] == 1 and (i['lS']+i['eS'] == 1 or i['G'] == 1) and i['F'] == 0 and i['T'] == 0)
+                    or (i['H'] == 1 and i['N'] == 3 and i['lS']+i['eS'] == 0 and i['F'] == 0 and i['G'] == 0 and i['T'] == 1)
+                    or (i['H'] > 1 and i['N'] == 0 and (i['lS']+i['eS'] == 1 or i['G'] == 1) and i['F'] == 0 and i['T'] == 0)
+                    or (i['H'] == 1 and i['N'] == 1 and i['lS']+i['eS'] == 0 and i['F'] == 0 and i['G'] == 0 and i['T'] == 1)
+                    or (i['H'] == 3 and i['N'] == 1 and i['lS']+i['eS'] == 0 and i['F'] == 0 and i['G'] == 0 and i['T'] == 1)):
+                    to_be_removed.append(i_i)
+            else:
+                if ((i['T'] == 1 and sum(i.values()) < 8 and i['S']+i['G'] > 0)
+                    or (sum(i.values()) < 6 and i['S'] >= 1 and i['N'] > 1)
+                    or (i['H'] > 0 and i['T'] == 1 and i['N'] < 2)
+                    or (i['H'] == 2 and i['N'] == 1 and i['S'] == 0 and i['F'] == 0 and i['G'] == 0 and i['T'] == 1)
+                    or (i['H'] == 0 and i['N'] == 1 and (i['S'] == 1 or i['G'] == 1) and i['F'] == 0 and i['T'] == 0)
+                    or (i['H'] == 1 and i['N'] == 3 and i['S'] == 0 and i['F'] == 0 and i['G'] == 0 and i['T'] == 1)
+                    or (i['H'] > 1 and i['N'] == 0 and (i['S'] == 1 or i['G'] == 1) and i['F'] == 0 and i['T'] == 0)
+                    or (i['H'] == 1 and i['N'] == 1 and i['S'] == 0 and i['F'] == 0 and i['G'] == 0 and i['T'] == 1)
+                    or (i['H'] == 3 and i['N'] == 1 and i['S'] == 0 and i['F'] == 0 and i['G'] == 0 and i['T'] == 1)):
+                    to_be_removed.append(i_i)
     for i in sorted(to_be_removed, reverse = True):
         del glycans[i]
     if tag_mass != 0:

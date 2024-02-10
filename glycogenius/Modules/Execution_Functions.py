@@ -1056,6 +1056,7 @@ def imp_exp_gen_library(multithreaded_analysis,
                         save_path,
                         internal_standard,
                         permethylated,
+                        lactonized_ethyl_esterified,
                         reduced):
     '''Imports, generates and/or exports a glycans library.
 
@@ -1197,6 +1198,7 @@ def imp_exp_gen_library(multithreaded_analysis,
                                                      min_max_fuc,
                                                      min_max_ac,
                                                      min_max_gc,
+                                                     lactonized_ethyl_esterified,
                                                      force_nglycan)
             full_library = Library_Tools.full_glycans_library(monos_library,
                                                 max_adducts,
@@ -1306,35 +1308,9 @@ def imp_exp_gen_library(multithreaded_analysis,
         lib_module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(lib_module)
         full_library = lib_module.full_library
-        if imp_exp_library[1]:
-            print('Exporting glycans library...')
-            with open(save_path+'glycans_library.py', 'w') as f:
-                f.write('full_library = '+str(full_library))
-                f.close()
-            df = {'Glycan' : [], 'Hex' : [], 'HexNAc' : [], 'dHex' : [], 'Neu5Ac' : [], 'Neu5Gc' : [], 'Isotopic Distribution' : [], 'Neutral Mass + Tag' : []}
-            for i_i, i in enumerate(full_library):
-                df['Glycan'].append(i)
-                df['Hex'].append(full_library[i]['Monos_Composition']['H'])
-                df['HexNAc'].append(full_library[i]['Monos_Composition']['N'])
-                df['dHex'].append(full_library[i]['Monos_Composition']['F'])
-                df['Neu5Ac'].append(full_library[i]['Monos_Composition']['S'])
-                df['Neu5Gc'].append(full_library[i]['Monos_Composition']['G'])
-                temp_isotopic = []
-                for j in full_library[i]['Isotopic_Distribution']:
-                    temp_isotopic.append(float("%.3f" % round(j, 3)))
-                df['Isotopic Distribution'].append(str(temp_isotopic)[1:-1])
-                df['Neutral Mass + Tag'].append(float("%.4f" % round(full_library[i]['Neutral_Mass+Tag'], 4)))
-                for j in full_library[i]['Adducts_mz']:
-                    if i_i ==0:
-                        df[j] = [float("%.4f" % round(full_library[i]['Adducts_mz'][j], 4))]
-                    else:
-                        df[j].append(float("%.4f" % round(full_library[i]['Adducts_mz'][j], 4)))
-            df = DataFrame(df)
-            with ExcelWriter(save_path+'Glycans_Library.xlsx') as writer:
-                df.to_excel(writer, index = False)
         print("Done!")
         return full_library
-    if not custom_glycans_list[0] and not multithreaded_analysis[0]:
+    if not custom_glycans_list[0] and (not multithreaded_analysis[0] or only_gen_lib):
         print('Building glycans library...', end = "", flush = True)
         monos_library = Library_Tools.generate_glycans_library(min_max_monos,
                                                  min_max_hex,
@@ -1343,6 +1319,7 @@ def imp_exp_gen_library(multithreaded_analysis,
                                                  min_max_fuc,
                                                  min_max_ac,
                                                  min_max_gc,
+                                                 lactonized_ethyl_esterified,
                                                  force_nglycan)
         full_library = Library_Tools.full_glycans_library(monos_library,
                                             max_adducts,
@@ -1360,14 +1337,26 @@ def imp_exp_gen_library(multithreaded_analysis,
         with open(save_path+'glycans_library.py', 'w') as f:
             f.write('full_library = '+str(full_library))
             f.close()
-        df = {'Glycan' : [], 'Hex' : [], 'HexNAc' : [], 'dHex' : [], 'Neu5Ac' : [], 'Neu5Gc' : [], 'Isotopic Distribution' : [], 'Neutral Mass + Tag' : []}
+        if lactonized_ethyl_esterified:
+            df = {'Glycan' : [], 'Hex' : [], 'HexNAc' : [], 'dHex' : [], 'a2,3-Neu5Ac' : [], 'a2,6-Neu5Ac' : [], 'Neu5Gc' : [], 'Isotopic Distribution' : [], 'Neutral Mass + Tag' : []}
+        else:
+            df = {'Glycan' : [], 'Hex' : [], 'HexNAc' : [], 'dHex' : [], 'Neu5Ac' : [], 'Neu5Gc' : [], 'Isotopic Distribution' : [], 'Neutral Mass + Tag' : []}
         for i_i, i in enumerate(full_library):
-            df['Glycan'].append(i)
-            df['Hex'].append(full_library[i]['Monos_Composition']['H'])
-            df['HexNAc'].append(full_library[i]['Monos_Composition']['N'])
-            df['dHex'].append(full_library[i]['Monos_Composition']['F'])
-            df['Neu5Ac'].append(full_library[i]['Monos_Composition']['S'])
-            df['Neu5Gc'].append(full_library[i]['Monos_Composition']['G'])
+            if lactonized_ethyl_esterified:
+                df['Glycan'].append(i)
+                df['Hex'].append(full_library[i]['Monos_Composition']['H'])
+                df['HexNAc'].append(full_library[i]['Monos_Composition']['N'])
+                df['dHex'].append(full_library[i]['Monos_Composition']['F'])
+                df['a2,3-Neu5Ac'].append(full_library[i]['Monos_Composition']['lS'])
+                df['a2,6-Neu5Ac'].append(full_library[i]['Monos_Composition']['eS'])
+                df['Neu5Gc'].append(full_library[i]['Monos_Composition']['G'])
+            else:
+                df['Glycan'].append(i)
+                df['Hex'].append(full_library[i]['Monos_Composition']['H'])
+                df['HexNAc'].append(full_library[i]['Monos_Composition']['N'])
+                df['dHex'].append(full_library[i]['Monos_Composition']['F'])
+                df['Neu5Ac'].append(full_library[i]['Monos_Composition']['S'])
+                df['Neu5Gc'].append(full_library[i]['Monos_Composition']['G'])
             temp_isotopic = []
             for j in full_library[i]['Isotopic_Distribution']:
                 temp_isotopic.append(float("%.3f" % round(j, 3)))
@@ -2659,12 +2648,10 @@ def output_filtered_data(curve_fit_score,
             df2.to_excel(writer, sheet_name="Index references", index = False)
         del raw_eic_dataframes
         del raw_eic_df
-        
-        print("Done!")
     elif reanalysis and not output_plot_data:
         del smoothed_eic_dataframes
         del raw_eic_dataframes
-        print("Done!")
+    print("Done!")
 
 def arrange_raw_data(analyzed_data,
                      samples_names,
@@ -3271,6 +3258,7 @@ def analyze_ms2(ms2_index,
                 nglycan,
                 permethylated,
                 reduced,
+                lactonized_ethyl_esterified,
                 filter_output,
                 unrestricted_fragments,
                 rt_tolerance):
@@ -3386,6 +3374,7 @@ def analyze_ms2(ms2_index,
                                   tag_mass,
                                   permethylated,
                                   reduced,
+                                  lactonized_ethyl_esterified,
                                   nglycan)
     fragments_data = {}
     print('Scanning MS2 spectra...')
@@ -3413,12 +3402,21 @@ def analyze_ms2(ms2_index,
                             found = False
                             for n_n, n in enumerate(fragments):
                                 if 'Monos_Composition' in list(n.keys()):
-                                    if (n['Monos_Composition']['H'] == analyzed_data[0][i]['Monos_Composition']['H']
-                                        and n['Monos_Composition']['N'] == analyzed_data[0][i]['Monos_Composition']['N']
-                                        and n['Monos_Composition']['S'] == analyzed_data[0][i]['Monos_Composition']['S']
-                                        and n['Monos_Composition']['F'] == analyzed_data[0][i]['Monos_Composition']['F']
-                                        and n['Monos_Composition']['G'] == analyzed_data[0][i]['Monos_Composition']['G']):
-                                        continue
+                                    if lactonized_ethyl_esterified:
+                                        if (n['Monos_Composition']['H'] == analyzed_data[0][i]['Monos_Composition']['H']
+                                            and n['Monos_Composition']['N'] == analyzed_data[0][i]['Monos_Composition']['N']
+                                            and n['Monos_Composition']['lS'] == analyzed_data[0][i]['Monos_Composition']['lS']
+                                            and n['Monos_Composition']['eS'] == analyzed_data[0][i]['Monos_Composition']['eS']
+                                            and n['Monos_Composition']['F'] == analyzed_data[0][i]['Monos_Composition']['F']
+                                            and n['Monos_Composition']['G'] == analyzed_data[0][i]['Monos_Composition']['G']):
+                                            continue
+                                    else:
+                                        if (n['Monos_Composition']['H'] == analyzed_data[0][i]['Monos_Composition']['H']
+                                            and n['Monos_Composition']['N'] == analyzed_data[0][i]['Monos_Composition']['N']
+                                            and n['Monos_Composition']['S'] == analyzed_data[0][i]['Monos_Composition']['S']
+                                            and n['Monos_Composition']['F'] == analyzed_data[0][i]['Monos_Composition']['F']
+                                            and n['Monos_Composition']['G'] == analyzed_data[0][i]['Monos_Composition']['G']):
+                                            continue
                                 if found:
                                     break
                                 combo = False
@@ -3436,25 +3434,49 @@ def analyze_ms2(ms2_index,
                                             fragments_comp[o_o] = General_Functions.form_to_comp(o)
                                         viable = []
                                         for o in fragments_comp:
-                                            if 'H' not in o.keys():
-                                                o['H'] = 0
-                                            if 'N' not in o.keys():
-                                                o['N'] = 0
-                                            if 'S' not in o.keys():
-                                                o['S'] = 0
-                                            if 'F' not in o.keys():
-                                                o['F'] = 0
-                                            if 'G' not in o.keys():
-                                                o['G'] = 0
-                                            if (o['H'] > analyzed_data[0][i]['Monos_Composition']['H']
-                                                or o['N'] > analyzed_data[0][i]['Monos_Composition']['N']
-                                                or o['S'] > analyzed_data[0][i]['Monos_Composition']['S']
-                                                or o['F'] > analyzed_data[0][i]['Monos_Composition']['F']
-                                                or o['G'] > analyzed_data[0][i]['Monos_Composition']['G']):
-                                                viable.append(False)
-                                                break
+                                            if lactonized_ethyl_esterified:
+                                                if 'H' not in o.keys():
+                                                    o['H'] = 0
+                                                if 'N' not in o.keys():
+                                                    o['N'] = 0
+                                                if 'lS' not in o.keys():
+                                                    o['lS'] = 0
+                                                if 'eS' not in o.keys():
+                                                    o['eS'] = 0
+                                                if 'F' not in o.keys():
+                                                    o['F'] = 0
+                                                if 'G' not in o.keys():
+                                                    o['G'] = 0
+                                                if (o['H'] > analyzed_data[0][i]['Monos_Composition']['H']
+                                                    or o['N'] > analyzed_data[0][i]['Monos_Composition']['N']
+                                                    or o['lS'] > analyzed_data[0][i]['Monos_Composition']['lS']
+                                                    or o['eS'] > analyzed_data[0][i]['Monos_Composition']['eS']
+                                                    or o['F'] > analyzed_data[0][i]['Monos_Composition']['F']
+                                                    or o['G'] > analyzed_data[0][i]['Monos_Composition']['G']):
+                                                    viable.append(False)
+                                                    break
+                                                else:
+                                                    viable.append(True)
                                             else:
-                                                viable.append(True)
+                                                if 'H' not in o.keys():
+                                                    o['H'] = 0
+                                                if 'N' not in o.keys():
+                                                    o['N'] = 0
+                                                if 'S' not in o.keys():
+                                                    o['S'] = 0
+                                                if 'F' not in o.keys():
+                                                    o['F'] = 0
+                                                if 'G' not in o.keys():
+                                                    o['G'] = 0
+                                                if (o['H'] > analyzed_data[0][i]['Monos_Composition']['H']
+                                                    or o['N'] > analyzed_data[0][i]['Monos_Composition']['N']
+                                                    or o['S'] > analyzed_data[0][i]['Monos_Composition']['S']
+                                                    or o['F'] > analyzed_data[0][i]['Monos_Composition']['F']
+                                                    or o['G'] > analyzed_data[0][i]['Monos_Composition']['G']):
+                                                    viable.append(False)
+                                                    break
+                                                else:
+                                                    viable.append(True)
                                         if True not in viable:
                                             continue
                                         else:
@@ -3470,8 +3492,12 @@ def analyze_ms2(ms2_index,
                                                         new_formula+= "/"+formula_splitted[o_o]
                                                         count+= 1
                                     elif "/" not in n['Formula'] and not combo:
-                                        if (n['Monos_Composition']['H'] > analyzed_data[0][i]['Monos_Composition']['H'] or n['Monos_Composition']['N'] > analyzed_data[0][i]['Monos_Composition']['N'] or n['Monos_Composition']['S'] > analyzed_data[0][i]['Monos_Composition']['S'] or n['Monos_Composition']['F'] > analyzed_data[0][i]['Monos_Composition']['F'] or n['Monos_Composition']['G'] > analyzed_data[0][i]['Monos_Composition']['G']):
-                                            continue
+                                        if lactonized_ethyl_esterified:
+                                            if (n['Monos_Composition']['H'] > analyzed_data[0][i]['Monos_Composition']['H'] or n['Monos_Composition']['N'] > analyzed_data[0][i]['Monos_Composition']['N'] or n['Monos_Composition']['lS'] > analyzed_data[0][i]['Monos_Composition']['lS'] or n['Monos_Composition']['eS'] > analyzed_data[0][i]['Monos_Composition']['eS'] or n['Monos_Composition']['F'] > analyzed_data[0][i]['Monos_Composition']['F'] or n['Monos_Composition']['G'] > analyzed_data[0][i]['Monos_Composition']['G']):
+                                                continue
+                                        else:
+                                            if (n['Monos_Composition']['H'] > analyzed_data[0][i]['Monos_Composition']['H'] or n['Monos_Composition']['N'] > analyzed_data[0][i]['Monos_Composition']['N'] or n['Monos_Composition']['S'] > analyzed_data[0][i]['Monos_Composition']['S'] or n['Monos_Composition']['F'] > analyzed_data[0][i]['Monos_Composition']['F'] or n['Monos_Composition']['G'] > analyzed_data[0][i]['Monos_Composition']['G']):
+                                                continue
                                 for o in n['Adducts_mz']:
                                     if abs(n['Adducts_mz'][o]-m) <= General_Functions.tolerance_calc(tolerance[0], tolerance[1], n['Adducts_mz'][o]): #fragments data outputted in the form of (Glycan, Adduct, Fragment, Fragment mz, intensity, retention time, precursor)
                                         if "_" not in n['Formula']:
