@@ -60,6 +60,7 @@ def main():
     min_ppp = (False, 0)
     close_peaks = (False, 3)
     align_chromatograms = True
+    percentage_auc = 0.1
     max_ppm = 10
     iso_fit_score = 0.9
     curve_fit_score = 0.9
@@ -153,6 +154,7 @@ def main():
         min_ppp = (config['analysis_parameters'].getboolean('custom_min_points_per_peak'), int(config['analysis_parameters']['number_points_per_peak']))
         close_peaks = (config['analysis_parameters'].getboolean('limit_peaks_picked'), int(config['analysis_parameters']['max_number_peaks']))
         align_chromatograms = config['analysis_parameters'].getboolean('align_chromatograms')
+        percentage_auc = float(config['analysis_parameters']['auc_percentage_threshold'])
         max_ppm = int(config['analysis_parameters']['max_ppm'])
         iso_fit_score = float(config['analysis_parameters']['isotopic_fitting_score'])
         curve_fit_score = float(config['analysis_parameters']['curve_fitting_score'])
@@ -283,6 +285,7 @@ def main():
                                                  iso_fit_score,
                                                  s_to_n,
                                                  max_ppm,
+                                                 percentage_auc,
                                                  reanalysis,
                                                  save_path,
                                                  multithreaded_analysis,
@@ -398,6 +401,7 @@ def main():
                                                  iso_fit_score,
                                                  s_to_n,
                                                  max_ppm,
+                                                 percentage_auc,
                                                  reanalysis,
                                                  save_path,
                                                  multithreaded_analysis,

@@ -1,7 +1,7 @@
 [library_building]
 use_custom_glycans_list = no
 custom_glycans_list = H3N2, H5N2, H5N4S2F1
-; Allows you to only search for target glycans by inputing them in the "custom_glycans_list", as formulas. If True, overrides imp_library. Monosaccharides accepted: Hexoses (H), HexNAc (N), Acetyl Sialic Acid (S), Glycolyl Sialic Acid (G), Deoxyhexose (F). Case sensitive. Can also be the path to a text file containing the list (line or comma separated).
+; Allows you to only search for target glycans by inputing them in the "custom_glycans_list", as formulas. If True, overrides imp_library. Monosaccharides accepted: Hexoses (H), HexNAc (N), Acetyl Sialic Acid (S or lS and eS if you have lactonized-ethyl sterified glycans), Glycolyl Sialic Acid (G), Deoxyhexose (F). Case sensitive. Can also be the path to a text file containing the list (line or comma separated).
 min_monos = 5
 max_monos = 18
 min_hex = 3
@@ -71,6 +71,8 @@ max_number_peaks = 5
 ; If used, picks only the most intense peak on the EIC and up to [max_number_peaks]-1 other peaks closest to it. Warning: This may reduce the range of your results.
 align_chromatograms = yes
 ; If enabled, will align the assignments and drawn processed EICs of the different samples. The alignment is highly dependent on the features identified and their inherent quality, so things will change with different quality thresholds. Is processed on the output, so can be changed on reanalysis and the resulting alignment will also change when changing thresholds during reanalysis.
+auc_percentage_threshold = 0.1
+; Allows you to supress from the analysis peaks that are of the specified percentage (from 0 to 1) area under curve related to the most intense peak area within the same adduct (ie. if biggest peak has a area under curve of 100 and auc_percentage_threshold is set to 0.1, every peak with an auc of 10 and below will be supressed)
 max_ppm = 10
 ; Maximum PPM for data curation. If value is greater than equivalent accuracy_value, data won't be filtered by this criteria, as it was already filtered during processing by accuracy_value. Can be reapplied on raw data reanalysis.
 isotopic_fitting_score = 0.9

@@ -1603,6 +1603,7 @@ def output_filtered_data(curve_fit_score,
                          iso_fit_score,
                          sn,
                          max_ppm,
+                         percentage_auc,
                          reanalysis,
                          save_path,
                          multithreaded_analysis,
@@ -1869,11 +1870,6 @@ def output_filtered_data(curve_fit_score,
             to_remove_glycan = []
             to_remove_adduct = []
             for k_k, k in enumerate(temp_sn):
-                if float(temp_auc[k_k]) == 0.0:
-                    to_remove.append(k_k)
-                    to_remove_glycan.append(df1[i_i]["Glycan"][j_j])
-                    to_remove_adduct.append(j)
-                    continue
                 if df1[i_i]["Glycan"][j_j] != "Internal Standard":
                     if float(k) < sn:
                         to_remove.append(k_k)
@@ -1895,6 +1891,46 @@ def output_filtered_data(curve_fit_score,
                         to_remove_glycan.append(df1[i_i]["Glycan"][j_j])
                         to_remove_adduct.append(j)
                         continue
+            if len(to_remove) != 0:
+                to_remove.reverse()
+                to_remove_glycan.reverse()
+                to_remove_adduct.reverse()
+                for k_k in to_remove:
+                    del temp_rt[k_k]
+                    del temp_auc[k_k]
+                    del temp_ppm[k_k]
+                    del temp_sn[k_k]
+                    del temp_fit[k_k]
+                    del temp_curve[k_k]
+                    if analyze_ms2:
+                        if len(temp_rt) == 0:
+                            df1[i_i]["Detected_Fragments"][j_j] = ""
+                            for k in range(len(fragments_dataframes[i_i]["Glycan"])-1, -1, -1):
+                                if (fragments_dataframes[i_i]["Glycan"][k] == to_remove_glycan[k_k] 
+                                    and fragments_dataframes[i_i]["Adduct"][k] == to_remove_adduct[k_k]
+                                    and not unrestricted_fragments):
+                                    del fragments_dataframes[i_i]["Glycan"][k]
+                                    del fragments_dataframes[i_i]["Adduct"][k]
+                                    del fragments_dataframes[i_i]["Fragment"][k]
+                                    del fragments_dataframes[i_i]["Fragment_mz"][k]
+                                    del fragments_dataframes[i_i]["Fragment_Intensity"][k]
+                                    del fragments_dataframes[i_i]["RT"][k]
+                                    del fragments_dataframes[i_i]["Precursor_mz"][k]
+                                    del fragments_dataframes[i_i]["% TIC explained"][k]
+            to_remove = [] #second pass to remove based on % of remained peaks
+            to_remove_glycan = []
+            to_remove_adduct = []  
+            for k_k, k in enumerate(temp_sn): 
+                if max(temp_auc) == 0.0:
+                    to_remove.append(k_k)
+                    to_remove_glycan.append(df1[i_i]["Glycan"][j_j])
+                    to_remove_adduct.append(j)
+                    continue
+                if float(temp_auc[k_k]/max(temp_auc)) <= percentage_auc:
+                    to_remove.append(k_k)
+                    to_remove_glycan.append(df1[i_i]["Glycan"][j_j])
+                    to_remove_adduct.append(j)
+                    continue
             if len(to_remove) != 0:
                 to_remove.reverse()
                 to_remove_glycan.reverse()
