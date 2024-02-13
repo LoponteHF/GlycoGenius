@@ -176,15 +176,10 @@ def rt_noise_level_parameters_set(mz_int):
     '''
     if len(mz_int[0]) == 0:
         return 0.0, 0.0, 0.0
-    int_list_first_quarter = []
-    int_list_last_quarter = []
-    first_quarter_end = mz_int[0][-1]/4
-    last_quarter_begin = (mz_int[0][-1]/4)*3
-    for i_i, i in enumerate(mz_int[0]):
-        if i <= first_quarter_end:
-            int_list_first_quarter.append(mz_int[1][i_i])
-        if i > last_quarter_begin:
-            int_list_last_quarter.append(mz_int[1][i_i])
+    first_quarter_end = int(len(mz_int[0])/4)
+    last_quarter_begin = first_quarter_end*3
+    int_list_first_quarter = mz_int[:first_quarter_end]
+    int_list_last_quarter = mz_int[last_quarter_begin:]
     if len(int_list_first_quarter) == 0 or len(int_list_last_quarter) == 0:
         return 0.0, 0.0, 0.0
     return percentile(int_list_first_quarter, 95), percentile(int_list_last_quarter, 95), mz_int[0][-1]

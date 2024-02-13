@@ -275,6 +275,7 @@ def eic_from_glycan(files,
                     iso_actual = []
                     iso_target = []
                     bad_peaks_before_target = []
+                    max_int = max(sliced_int)
                     nearby_id = 0
                     checked_bad_peaks_before_target = False
                     iso_found = False
@@ -282,8 +283,9 @@ def eic_from_glycan(files,
                     current_iso_peak2 = []
                     current_mz = []
                     for l_l, l in enumerate(sliced_mz):
+                        local_noise = General_Functions.local_noise_calc(noise[j_j][k_k], l, avg_noise[j_j])
                         if iso_found and l > ((glycan_info['Isotopic_Distribution_Masses'][iso_distro]+adduct_mass)/adduct_charge) + General_Functions.tolerance_calc(tolerance[0], tolerance[1], l):
-                            if len(current_iso_peak1) > 5: #here data is profile
+                            if len(current_iso_peak1) > 5: #here data is profile (NOT RECOMMENDED, but it will work.... very slowly....)
                                 iso_actual.append(max(current_iso_peak1))
                                 iso_target.append(max(current_iso_peak2))
                             else:
@@ -296,6 +298,8 @@ def eic_from_glycan(files,
                             iso_distro += 1
                             iso_found = False
                         if not_good: #Here are checks for quick skips
+                            break
+                        if max_int < avg_noise[j_j]*0.5: #if there's no peak with intensity higher than 50% of the average noise of sample, don't even check it
                             break
                         if l_l == len(sliced_mz)-1 and not found:
                             if verbose:
@@ -310,6 +314,8 @@ def eic_from_glycan(files,
                             not_good = True
                             break
                         if l < before_target: #This is the last check for quick skips
+                            continue
+                        if sliced_int[l_l] < local_noise*0.5: #This ignores peaks that are far below the noise level (less than 50% of the calculated noise level)
                             continue
                         if l > second_peak + General_Functions.tolerance_calc(tolerance[0], tolerance[1], l) and iso_distro == 1: #This is the first check for quick skips that's dependent on mz array acquired data but independent of noise
                             if verbose:
