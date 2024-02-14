@@ -25,7 +25,7 @@ adducts_exclusion =
 max_charges = 3
 ; Limits the maximum amount of calculated charges for each glycan. Set to a negative value if you want to do negative mode analysis [EXPERIMENTAL].
 reducing_end_tag = 133.0644
-; If a reducing end tag is added to the glycans, insert its added mass or molecular formula here here. If no reducing end tag is added to the glycans, set this value to 0. Procainamide: 219.1735 or C13H21N3; Girard Reagent P: 133.0644 or C7H7N3 (deprotonated, neutral). Can also be used with a peptide molecular formula (minus an H2O due to glycosidic bond) to analyze the possible glycans in a single peptide.
+; If a reducing end tag is added to the glycans, insert its added mass or molecular formula here here. If no reducing end tag is added to the glycans, set this value to 0. Procainamide: 219.1735 or C13H21N3; Girard Reagent P: 133.0644 or C7H7N3 (deprotonated, neutral). Can also be used with a peptide by inputing 'pep-' + the petide sequence (ie. 'pep-NK' for the peptide NK).
 permethylated = no
 ; If the sample was permethylated, set this parameter to "yes". Doesn't take into account partial permethylations.
 reduced = no
