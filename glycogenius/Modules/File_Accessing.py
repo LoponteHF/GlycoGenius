@@ -362,8 +362,8 @@ def eic_from_glycan(files,
                             if sliced_int[l_l] <= mono_int*glycan_info['Isotopic_Distribution'][iso_distro]:
                                 intensity += sliced_int[l_l]
                             current_mz.append(l)
-                            current_iso_peak1.append(sliced_int[l_l])
-                            current_iso_peak2.append(mono_int*glycan_info['Isotopic_Distribution'][iso_distro])
+                            current_iso_peak1.append(sliced_int[l_l]/mono_int)
+                            current_iso_peak2.append(glycan_info['Isotopic_Distribution'][iso_distro])
                             iso_found = True
                             continue
                         if not checked_bad_peaks_before_target and l > target_mz + General_Functions.tolerance_calc(tolerance[0], tolerance[1], l):
@@ -402,23 +402,34 @@ def eic_from_glycan(files,
                     ppm_info[i][j_j][-1] = mean(mono_ppm)
 #                    print(j[k]['retentionTime'], iso_actual, iso_target)
                     if len(iso_actual) > 0:
-                        weights = [1, 0.4, 0.1, 0.05, 0.02, 0.003, 0.0002, 0.00001, 0.00001, 0.000001]
-                        temp_relation = []
-                        for l in range(len(iso_actual)):
-                            if iso_actual[l] >= iso_target[l]:
-                                relation = iso_target[l]/iso_actual[l]
-                            else:
-                                relation = iso_actual[l]/iso_target[l]
-                            if relation >= 0.7:
-                                temp_relation.append(((relation)+8)/9)
-                            if relation < 0.7 and relation >= 0.5:
-                                temp_relation.append(((relation)+4)/5)
-                            if relation < 0.5 and relation >= 0.3:
-                                temp_relation.append(((relation)+2)/3)
-                            if relation < 0.3:
-                                temp_relation.append(relation)
-                        R_sq = numpy.average(temp_relation, weights = weights[:len(temp_relation)])
-                        isotopic_fits[i][j_j][j[k]['retentionTime']] = [mz_isos, iso_target, iso_actual, R_sq]
+                        mz_isos = mz_isos
+                        iso_actual = iso_actual
+                        iso_target = iso_target
+                        dotp = []
+                        number = range(1, len(mz_isos)+1)
+                        starting_points_actual = [0, 1]
+                        starting_points_theoretical = [0, 1]
+                        for m_m, m in enumerate(number):
+                            vector_actual = [m-starting_points_actual[0], iso_actual[m_m]-starting_points_actual[1]]
+                            vector_target = [m-starting_points_theoretical[0], iso_target[m_m]-starting_points_theoretical[1]]
+                            normalized_actual = vector_actual/numpy.linalg.norm(vector_actual)
+                            normalized_target = vector_target/numpy.linalg.norm(vector_target)
+                            starting_points_actual = [m, iso_actual[m_m]]
+                            starting_points_theoretical = [m, iso_target[m_m]]
+                            dotproduct = numpy.dot(normalized_actual, normalized_target)
+                            dotp.append(dotproduct)
+                            print(j[k]['retentionTime'], m, normalized_actual, normalized_target, dotproduct)
+                        R_sq = mean(dotp)
+                        
+                        #reduces score if fewer isotopic peaks are found: very punishing for only 1 peak, much less punishing for more than one, normal score from 4 and over
+                        if len(iso_actual) == 1: 
+                            R_sq = (R_sq)/2
+                        if len(iso_actual) == 2:
+                            R_sq = (R_sq+(R_sq*0.80))/2
+                        if len(iso_actual) == 3:
+                            R_sq = (R_sq+(R_sq*0.95))/2
+                        
+                        isotopic_fits[i][j_j][j[k]['retentionTime']] = [[target_mz]+mz_isos, [1]+iso_target, [1]+iso_actual, R_sq]
                     if len(iso_actual) == 0:
                         R_sq = 0.0
                     iso_fitting_quality[i][j_j][-1] = R_sq

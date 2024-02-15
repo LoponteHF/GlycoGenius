@@ -129,10 +129,10 @@ def main():
             reducing_end_tag = float(config['library_building']['reducing_end_tag'])
         except:
             reducing_end_tag = config['library_building']['reducing_end_tag']
-        if reducing_end_tag.split('-')[0] == 'pep':
-            reducing_end_tag = dict(mass.Composition(sequence = reducing_end_tag.split('-')[-1]))
-            reducing_end_tag['H'] -= 2
-            reducing_end_tag['O'] -= 1
+            if reducing_end_tag.split('-')[0] == 'pep':
+                reducing_end_tag = dict(mass.Composition(sequence = reducing_end_tag.split('-')[-1]))
+                reducing_end_tag['H'] -= 2
+                reducing_end_tag['O'] -= 1
         permethylated = config['library_building'].getboolean('permethylated')
         reduced = config['library_building'].getboolean('reduced')
         lactonized_ethyl_esterified = config['library_building'].getboolean('lactonized_ethyl_esterified')
