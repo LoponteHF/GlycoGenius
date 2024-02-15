@@ -418,7 +418,6 @@ def eic_from_glycan(files,
                             starting_points_theoretical = [m, iso_target[m_m]]
                             dotproduct = numpy.dot(normalized_actual, normalized_target)
                             dotp.append(dotproduct)
-                            print(j[k]['retentionTime'], m, normalized_actual, normalized_target, dotproduct)
                         R_sq = mean(dotp)
                         
                         #reduces score if fewer isotopic peaks are found: very punishing for only 1 peak, much less punishing for more than one, normal score from 4 and over
