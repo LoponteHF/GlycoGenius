@@ -18,10 +18,11 @@
 
 from pyteomics import mzxml, mzml, mass, auxiliary
 from itertools import combinations_with_replacement
-from numpy import percentile, arange, zeros, array, polyfit
+from numpy import percentile, arange, zeros, array, polyfit, std, where
 from re import split
 from math import inf, exp, pi
 from statistics import stdev, mean
+from scipy.stats import linregress
 from scipy import sparse
 import sys
 import datetime
@@ -52,7 +53,7 @@ times during a run.
 ##General functions (these functions use only external libraries, such as itertools and
 ##pyteomics).
 
-def linear_regression(x, y):
+def linear_regression(x, y, th = 2.5):
     '''
     '''
     if len(x) != len(y): # Ensure x and y have the same length
@@ -61,9 +62,13 @@ def linear_regression(x, y):
         return 0, y[0]
     x = array(x) # Convert input data to numpy arrays
     y = array(y) # Convert input data to numpy arrays
-    m, b = polyfit(x, y, 1) # Calculate the slope (m) and y-intercept (b) using numpy's polyfit function
+    m, b, r_value, p_value, std_err = linregress(x, y) # Calculate the slope (m) and y-intercept (b) using numpy's polyfit function
+    predicted_y = m * x + b
+    residuals = y - predicted_y
+    threshold = th * std(residuals)
+    outlier_indices = where(abs(residuals) > threshold)[0]
     # Final equation is used as (y = mx + b)
-    return m, b
+    return m, b, outlier_indices
 
 def calculate_ppm_diff(mz, target):
     '''Calculates the PPM difference between a mz and a target mz.

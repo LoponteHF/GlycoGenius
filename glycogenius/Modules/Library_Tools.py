@@ -309,6 +309,9 @@ def full_glycans_library(library,
                                      charge_carrier = j,
                                      carrier_charge = charges)
             full_library[i_formula]['Adducts_mz'][General_Functions.comp_to_formula(j)] = mz
+    
+    full_library = dict(sorted(full_library.items()))
+            
     if internal_standard != 0.0:
         i_formula = 'Internal Standard'
         i_neutral_mass = internal_standard

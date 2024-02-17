@@ -420,7 +420,7 @@ def eic_from_glycan(files,
                             dotp.append(dotproduct)
                         R_sq = mean(dotp)
                         
-                        #reduces score if fewer isotopic peaks are found: very punishing for only 1 peak, much less punishing for more than one, normal score from 4 and over
+                        #reduces score if fewer isotopic peaks are found: very punishing for only 2 peaks, much less punishing for more than one, normal score from 5 and over
                         if len(iso_actual) == 1: 
                             R_sq = (R_sq)/2
                         if len(iso_actual) == 2:

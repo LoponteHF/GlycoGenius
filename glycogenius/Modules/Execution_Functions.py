@@ -42,7 +42,7 @@ from pandas import DataFrame, ExcelWriter
 from numpy import percentile
 from re import split
 from math import inf, isnan
-from statistics import mean
+from statistics import mean, median
 from time import sleep
 import os
 import dill
@@ -1375,7 +1375,7 @@ def imp_exp_gen_library(multithreaded_analysis,
             for i_i, i in enumerate(full_library):
                 for j_j, j in enumerate(full_library[i]['Adducts_mz']):
                     adduct_comp = General_Functions.form_to_comp(j)
-                    if len(adduct_comp) > 1: #can't seem to make skyline work with mixed adducts, so have this in place for now
+                    if len(adduct_comp) > 1 or i == "Internal Standard": #can't seem to make skyline work with mixed adducts, so have this in place for now
                         continue
                     adduct = str(adduct_comp[list(adduct_comp.keys())[0]])+str(list(adduct_comp.keys())[0]) #only first adduct
                     del adduct_comp[list(adduct_comp.keys())[0]]
@@ -1400,7 +1400,7 @@ def imp_exp_gen_library(multithreaded_analysis,
             os._exit(1)
     return full_library
     
-def align_assignments(df, df_type, deltas = None):
+def align_assignments(df, df_type, deltas = None, rt_tol = None):
     '''
     '''
     dataframe = copy.deepcopy(df)
@@ -1459,28 +1459,108 @@ def align_assignments(df, df_type, deltas = None):
                             if not found:
                                 deltas_per_sample[j_j][rts[l_l]] = [inf, k]
                         break
+                        
+        #pre-cleanup step to remove odd variations
+        for i_i, i in enumerate(deltas_per_sample):
+            if len(i) > 0:
+                x_list = []
+                y_list = []
+                for j_j, j in enumerate(i):
+                    if i[j][0] != inf:
+                        x_list.append(j)
+                        y_list.append(i[j][0])
+                if len(x_list) > 0:
+                    outliers = General_Functions.linear_regression(x_list, y_list, 0.5)[2]
+                    if len(outliers) > 0:
+                        for j_j, j in enumerate(outliers):
+                            i[x_list[j]][0] = inf
+                            
+        # for i in dict(sorted(deltas_per_sample[0].items())):
+            # print(i, deltas_per_sample[0][i][0])                          
+        # print()
+                        
+        for i_i, i in enumerate(deltas_per_sample):
+            if len(i) == 0:
+                continue
+            negative_ids = []
+            positive_ids = []
+            all_deltas = []
+            for j_j, j in enumerate(i):
+                all_deltas.append(i[j][0])
+            for j_j, j in enumerate(i):
+                if i[j][0] != inf:
+                    if i[j][0] > 0:
+                        positive_ids.append(j)
+                    if i[j][0] < 0:
+                        negative_ids.append(j)
+            if len(negative_ids) > len(positive_ids):
+                for j_j, j in enumerate(positive_ids):
+                    i[j][0] = inf
+            elif len(negative_ids) < len(positive_ids):
+                for j_j, j in enumerate(negative_ids):
+                    i[j][0] = inf
+            elif mean(all_deltas) < rt_tol:
+                for j_j, j in enumerate(i):
+                    i[j][0] = 0
+            elif len(negative_ids) == len(positive_ids):
+                for j_j, j in enumerate(i):
+                    i[j][0] = mean(all_deltas)
+                    
+        # for i in dict(sorted(deltas_per_sample[0].items())):
+            # print(i, deltas_per_sample[0][i][0])                          
+        # print()
+                    
+        for i_i, i in enumerate(deltas_per_sample):
+            if len(i) > 0:
+                x_list = []
+                y_list = []
+                for j_j, j in enumerate(i):
+                    if i[j][0] != inf:
+                        x_list.append(j)
+                        y_list.append(i[j][0])
+                if len(x_list) > 0:
+                    outliers = General_Functions.linear_regression(x_list, y_list)[2]
+                    if len(outliers) > 0:
+                        for j_j, j in enumerate(outliers):
+                            i[x_list[j]][0] = inf
+                            
+        # for i in dict(sorted(deltas_per_sample[0].items())):
+            # print(i, deltas_per_sample[0][i][0])                          
+        # print()
+        
         for i_i, i in enumerate(dataframe): #this will apply the alignment based on ids and deltas
+            rts_list_original = sorted(i['RT'])
+            rts_list_adjusted = copy.deepcopy(rts_list_original)
             if len(ids_per_sample[i_i]) == 0: #this is the reference sample or blank sample
                 continue
-            to_fix = []
+            to_fix_rt = []
+            to_fix_id = []
             for j_j, j in enumerate(i['RT']):
                 found = False
                 for k_k, k in enumerate(deltas_per_sample[i_i]):
                     if i['RT'][j_j] == k and i['Glycan'][j_j] == deltas_per_sample[i_i][k][1] and deltas_per_sample[i_i][k][0] != inf:
-                        i['RT'][j_j] = i['RT'][j_j] + deltas_per_sample[i_i][i['RT'][j_j]][0]
+                        rts_list_adjusted[rts_list_original.index(i['RT'][j_j])] = float("%.2f" % round(i['RT'][j_j] + deltas_per_sample[i_i][i['RT'][j_j]][0], 2))
+                        i['RT'][j_j] = float("%.2f" % round(i['RT'][j_j] + deltas_per_sample[i_i][i['RT'][j_j]][0], 2))
                         found = True
                         break
                 if not found:
-                    to_fix.append(j_j)
-            if len(to_fix) > 0:
-                for j_j, j in enumerate(i['RT']):
-                    if j_j in to_fix:
+                    to_fix_rt.append(j)
+                    to_fix_id.append(j_j)
+            if len(to_fix_rt) > 0:
+                for j_j, j in enumerate(rts_list_adjusted):
+                    if j in to_fix_rt:
                         before_j_j = None
                         after_j_j = None
-                        if j_j-1 >= 0 and df[i_i]['Glycan'][j_j-1] == df[i_i]['Glycan'][j_j] and j_j-1 not in to_fix:
-                            before_j_j = df[i_i]['RT'][j_j-1]
-                        if j_j+1 < len(df[i_i]['Glycan']) and df[i_i]['Glycan'][j_j+1] == df[i_i]['Glycan'][j_j] and j_j+1 not in to_fix:
-                            after_j_j = df[i_i]['RT'][j_j+1]
+                        if j_j > 0:
+                            for k in range(j_j-1, -1, -1):
+                                if rts_list_adjusted[k] not in to_fix_rt:
+                                    before_j_j = rts_list_original[k]
+                                    before_j_j_id = k
+                        if j_j < len(rts_list_adjusted)-1:
+                            for k in range(j_j+1, len(rts_list_adjusted)):
+                                if rts_list_adjusted[k] not in to_fix_rt:
+                                    after_j_j = rts_list_original[k]
+                                    after_j_j_id = k
                         x = []
                         y = []
                         for k_k, k in enumerate(deltas_per_sample[i_i]):
@@ -1488,37 +1568,28 @@ def align_assignments(df, df_type, deltas = None):
                                 x.append(float(k))
                                 y.append(deltas_per_sample[i_i][k][0])
                         linear_equation = General_Functions.linear_regression(x, y)
-                        fixed_RT = float("%.2f" % round(i['RT'][j_j] + (i['RT'][j_j]*linear_equation[0]) + linear_equation[1], 2))
+                        fixed_RT = float("%.2f" % round(j + (j*linear_equation[0]) + linear_equation[1], 2))
                         if before_j_j != None and after_j_j != None:
-                            scaling_factor = (i['RT'][j_j]-before_j_j)/(after_j_j-before_j_j)
-                            fixed_RT = float("%.2f" % round(i['RT'][j_j-1]+(scaling_factor*(i['RT'][j_j+1]-i['RT'][j_j-1])), 2))
+                            scaling_factor = (j-before_j_j)/(after_j_j-before_j_j)
+                            fixed_RT = float("%.2f" % round(rts_list_adjusted[before_j_j_id]+(scaling_factor*(rts_list_adjusted[after_j_j_id]-rts_list_adjusted[before_j_j_id])), 2))
                         elif before_j_j == None and after_j_j != None:
-                            scaling_factor = i['RT'][j_j]/after_j_j
-                            fixed_RT = float("%.2f" % round(i['RT'][j_j+1]*scaling_factor, 2))
+                            scaling_factor = j/after_j_j
+                            fixed_RT = float("%.2f" % round(rts_list_adjusted[after_j_j_id]*scaling_factor, 2))
                         elif before_j_j != None and after_j_j == None:
-                            scaling_factor = i['RT'][j_j]/before_j_j
-                            fixed_RT = float("%.2f" % round(i['RT'][j_j-1]*scaling_factor, 2))
+                            scaling_factor = j/before_j_j
+                            fixed_RT = float("%.2f" % round(rts_list_adjusted[before_j_j_id]*scaling_factor, 2))
                         if j in list(deltas_per_sample[i_i].keys()):
-                            deltas_per_sample[i_i][j][0] = i['RT'][j_j] - fixed_RT
-                        else:
-                            deltas_per_sample[i_i][j] = [i['RT'][j_j] - fixed_RT, i['Glycan'][j_j]]
-                        i['RT'][j_j] = fixed_RT
+                            deltas_per_sample[i_i][j][0] = fixed_RT - j
+                        elif j not in list(deltas_per_sample[i_i].keys()):
+                            deltas_per_sample[i_i][j] = [fixed_RT - j]
+                        rts_list_adjusted[j_j] = fixed_RT
+                        i['RT'][to_fix_id[to_fix_rt.index(j)]] = fixed_RT
         for i_i, i in enumerate(deltas_per_sample):
             deltas_per_sample[i_i] = dict(sorted(i.items()))
-        for i_i, i in enumerate(deltas_per_sample): #cleanup
-            positive = []
-            negative = []
-            for j_j, j in enumerate(i):
-                if i[j][0] > 0:
-                    positive.append(j)
-                if i[j][0] < 0:
-                    negative.append(j)
-            if len(positive) < len(negative):
-                for j in positive:
-                    del deltas_per_sample[i_i][j]
-            if len(positive) > len(negative):
-                for j in negative:
-                    del deltas_per_sample[i_i][j]
+            
+        # for i in deltas_per_sample[0]:
+            # print(i, deltas_per_sample[0][i][0])
+            
         return dataframe, deltas_per_sample, biggest_df
         
     if df_type == "chromatograms": #for when you want to align chromatograms based on existing deltas calculated previously
@@ -1529,28 +1600,34 @@ def align_assignments(df, df_type, deltas = None):
                 chromatogram_length = len(i['RTs_'+str(i_i)])
                 chromatogram_interval = i['RTs_'+str(i_i)][-1]/len(i['RTs_'+str(i_i)])
                 points_per_minute = int(1/chromatogram_interval)
+                interval_list_rts = []
                 interval_list = []
-                minutes_interval = 5
-                current = -minutes_interval
-                for j_j, j in enumerate(deltas[i_i]): #rules here still to be discussed
-                    if j > current+minutes_interval:
-                        if j_j != 0 and list(deltas[i_i].keys())[j_j-1] < j-minutes_interval:
-                            closest = 0 
-                            distance = inf
-                            for k_k, k in enumerate(i['RTs_'+str(i_i)]):
-                                if abs(k-list(deltas[i_i].keys())[j_j-1]) < distance:
-                                    closest = k_k
-                                    distance = abs(k-list(deltas[i_i].keys())[j_j-1])
-                            interval_list.append(closest+int(points_per_minute*(minutes_interval/5)))
-                        current = j
-                        closest = 0
-                        distance = inf
-                        for k_k, k in enumerate(i['RTs_'+str(i_i)]):
-                            if abs(k-j) < distance:
-                                closest = k_k
-                                distance = abs(k-j)
-                        interval_list.append(closest-int(points_per_minute*(minutes_interval/5)))
-                interval_list.append(interval_list[-1] + int(points_per_minute*minutes_interval))
+                for j in range(len(i['RTs_'+str(i_i)])-1, -1, -1):
+                    if i['RTs_'+str(i_i)][j] < list(deltas[i_i].keys())[0]:
+                        zero = True
+                        for k_k, k in enumerate(i):
+                            if k_k != 0:
+                                if i[k][j] != 0:
+                                    zero = False
+                                    break
+                        if zero:
+                            interval_list_rts.append(i['RTs_'+str(i_i)][j])
+                            interval_list.append(j)
+                            break
+                            
+                for j_j, j in enumerate(i['RTs_'+str(i_i)]):
+                    if j > list(deltas[i_i].keys())[-1]:
+                        zero = True
+                        for k_k, k in enumerate(i):
+                            if k_k != 0:
+                                if i[k][j_j] != 0:
+                                    zero = False
+                                    break
+                        if zero:
+                            interval_list_rts.append(j)
+                            interval_list.append(j_j)
+                            break
+                
                 for j_j, j in enumerate(interval_list):
                     x = []
                     y = []
@@ -2120,7 +2197,7 @@ def output_filtered_data(curve_fit_score,
                         else:
                             break
                 if current_checking == to_check and fragments_dataframes[i_i]["% TIC explained"] != 0:
-                    fragments_dataframes[i_i]["% TIC explained"][j_j] = float("%.3f" % round(fragments_int_sum/fragments_dataframes[i_i]["% TIC explained"][j_j], 3)) #end of annotated_peaks ratio calculation
+                    fragments_dataframes[i_i]["% TIC explained"][j_j] = float("%.2f" % round((fragments_int_sum/fragments_dataframes[i_i]["% TIC explained"][j_j])*100, 2)) #end of annotated_peaks ratio calculation
                     
         for i_i, i in enumerate(df1_refactor): #start of ms2 score calculation (at the moment its just % TIC explained)
             for j_j, j in enumerate(i['Glycan']):
@@ -2134,7 +2211,7 @@ def output_filtered_data(curve_fit_score,
                             if glycan == l and adduct == k['Adduct'][l_l] and abs(rt-k['RT'][l_l]) <= rt_tolerance_frag:
                                 list_tics_explained.append(k['% TIC explained'][l_l])
                     if len(list_tics_explained) > 0:
-                        i['%_TIC_explained'][j_j] = float('%.2f' % round(max(list_tics_explained), 2))
+                        i['%_TIC_explained'][j_j] = max(list_tics_explained)
                 else:
                     i['%_TIC_explained'][j_j] = 0.0
                     
@@ -2149,7 +2226,7 @@ def output_filtered_data(curve_fit_score,
                     glycan_number+=1
                     current_scan = scan_name
                     fragments_refactor_dataframes[i_i]['Glycan_'+str(glycan_number)+':'] = [j, 'RT_'+str(glycan_number)+':', i['RT'][j_j], 'Fragment:']
-                    fragments_refactor_dataframes[i_i]['Adduct_'+str(glycan_number)+':'] = [i['Adduct'][j_j], '% TIC assigned_'+str(glycan_number)+':', i['% TIC explained'][j_j]*100, 'm/z:']
+                    fragments_refactor_dataframes[i_i]['Adduct_'+str(glycan_number)+':'] = [i['Adduct'][j_j], '% TIC assigned_'+str(glycan_number)+':', i['% TIC explained'][j_j], 'm/z:']
                     fragments_refactor_dataframes[i_i]['m/z_'+str(glycan_number)+':'] = [i['Precursor_mz'][j_j], None, None, 'Intensity:']
                     fragments_refactor_dataframes[i_i]['Glycan_'+str(glycan_number)+':'].append(i['Fragment'][j_j])
                     fragments_refactor_dataframes[i_i]['Adduct_'+str(glycan_number)+':'].append(i['Fragment_mz'][j_j])
@@ -2300,11 +2377,32 @@ def output_filtered_data(curve_fit_score,
             compositions_dataframes[i_i]['Class'] = []
             for j_j, j in enumerate(i['Glycan']):
                 i['Class'].append(glycan_class[j])
+        proportion_classes = {'Paucimannose' : [], 'Hybrid' : [], 'High-Mannose' : [], 'Complex' : []}        
+        for i_i, i in enumerate(compositions_dataframes):
+            total_sample = sum(i['AUC'])
+            total_pauci = 0
+            total_hybrid = 0
+            total_oligo = 0
+            total_complex = 0
+            for j_j, j in enumerate(i['Class']):
+                if j == 'Paucimannose':
+                    total_pauci+= i['AUC'][j_j]
+                if j == 'Hybrid':
+                    total_hybrid+= i['AUC'][j_j]
+                if j == 'High-Mannose':
+                    total_oligo+= i['AUC'][j_j]
+                if j == 'Complex':
+                    total_complex+= i['AUC'][j_j]
+            proportion_classes['Paucimannose'].append(float("%.2f" % round((total_pauci/total_sample)*100, 2)))
+            proportion_classes['Hybrid'].append(float("%.2f" % round((total_hybrid/total_sample)*100, 2)))
+            proportion_classes['High-Mannose'].append(float("%.2f" % round((total_oligo/total_sample)*100, 2)))
+            proportion_classes['Complex'].append(float("%.2f" % round((total_complex/total_sample)*100, 2)))
+            
     
     #hook for alignment tool. it'll use the total_dataframes (total_glycans) 
     if align_chromatograms:
         if len(total_dataframes) > 1:
-            aligned_total_glycans = align_assignments(total_dataframes, 'total_glycans')
+            aligned_total_glycans = align_assignments(total_dataframes, 'total_glycans', rt_tol = rt_tolerance)
             total_dataframes = aligned_total_glycans[0]
             df2["Average Delta t"] = []
             for i_i, i in enumerate(aligned_total_glycans[1]):
@@ -2344,6 +2442,12 @@ def output_filtered_data(curve_fit_score,
         df2["MS2_Glycans_Compositions"] = glycans_count #end of glycans counts
         
     df2["Ambiguities"] = ambiguity_count
+    
+    if nglycan:
+        df2["Paucimannose %"] = proportion_classes["Paucimannose"]
+        df2["Hybrid %"] = proportion_classes["Hybrid"]
+        df2["High-Mannose %"] = proportion_classes["High-Mannose"]
+        df2["Complex %"] = proportion_classes["Complex"]
         
     all_glycans_list = [] #here it makes a list of ALL the glycans found for use in other parts of the data arrangement workflow
     for i in total_dataframes:
