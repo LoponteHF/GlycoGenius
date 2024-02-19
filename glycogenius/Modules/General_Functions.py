@@ -20,10 +20,12 @@ from pyteomics import mzxml, mzml, mass, auxiliary
 from itertools import combinations_with_replacement
 from numpy import percentile, arange, zeros, array, polyfit, std, where
 from re import split
-from math import inf, exp, pi
+from math import inf, atan, acos, exp, pi
 from statistics import stdev, mean
 from scipy.stats import linregress
+from scipy.sparse.linalg import splu
 from scipy import sparse
+import numpy
 import sys
 import datetime
 
@@ -58,8 +60,10 @@ def linear_regression(x, y, th = 2.5):
     '''
     if len(x) != len(y): # Ensure x and y have the same length
         raise ValueError("Input arrays x and y must have the same length.")
+    if len(x) == 0:
+        return 0, 0, []
     if len(x) == 1:
-        return 0, y[0]
+        return 0, y[0], []
     x = array(x) # Convert input data to numpy arrays
     y = array(y) # Convert input data to numpy arrays
     m, b, r_value, p_value, std_err = linregress(x, y) # Calculate the slope (m) and y-intercept (b) using numpy's polyfit function
@@ -159,7 +163,7 @@ def speyediff(N, d, format='csc'):
     spmat = sparse.diags(diagonals, offsets, shape, format=format)
     return spmat        
     
-def rt_noise_level_parameters_set(mz_int):
+def rt_noise_level_parameters_set(mz_int, mode): #outdated description
     '''Gathers the int at the 95th percentile of the mz/int array (which is 
     equivalent to the 3rd SD from the mean.
     
@@ -179,15 +183,38 @@ def rt_noise_level_parameters_set(mz_int):
     scalar
         The intensity of the 95th percentile of the intensity array.
     '''
-    if len(mz_int[0]) == 0:
-        return 0.0, 0.0, 0.0
-    first_quarter_end = int(len(mz_int[0])/4)
-    last_quarter_begin = first_quarter_end*3
-    int_list_first_quarter = mz_int[:first_quarter_end]
-    int_list_last_quarter = mz_int[last_quarter_begin:]
-    if len(int_list_first_quarter) == 0 or len(int_list_last_quarter) == 0:
-        return 0.0, 0.0, 0.0
-    return percentile(int_list_first_quarter, 95), percentile(int_list_last_quarter, 95), mz_int[0][-1]
+    if mode == "segments":
+        first_quarter_end = int(len(mz_int[1])/4)
+        last_quarter_begin = first_quarter_end*3
+        int_list_first_quarter = mz_int[1][:first_quarter_end]
+        int_list_last_quarter = mz_int[1][last_quarter_begin:]
+        segments_list = [sorted(int_list_first_quarter), sorted(int_list_last_quarter)]
+        
+    if mode == "whole":
+        segments_list = [sorted(list(mz_int[1]))]
+    
+    noise = []
+    for j_j, j in enumerate(segments_list):
+        # print('-------------'+mode+str(j_j)+'---------------')
+        noise.append(1.0)
+        found = False
+        distance = int(len(j)/10)
+        for i_i, i in enumerate(j):
+            if i_i < distance/2 or i_i > len(j)-(distance/2) or i_i%int(distance/2) != 0:
+                continue
+            slope = linear_regression(list(range(i_i-int(distance/2), i_i+int(distance/2))), j[i_i-int(distance/2):i_i+int(distance/2)])[0]
+            # print(i, slope)
+            if not found and slope > 10:
+                found = True
+                noise[j_j] = i
+                break
+        if not found:
+            noise[j_j] = (1.0)
+            
+    if len(noise) == 1:
+        return noise[0]
+    else:
+        return noise[0], noise[1], mz_int[0][-1]
     
 def local_noise_calc(noise_specs, x, avg_noise):
     '''Uses the noise_specs produced by rt_noise_level_parameters_set to 

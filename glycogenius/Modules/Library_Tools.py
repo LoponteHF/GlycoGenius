@@ -140,14 +140,14 @@ def generate_glycans_library(min_max_mono,
         if lactonized_ethyl_esterified:
             for i_i, i in enumerate(glycans):
                 if ((i['lS']+i['eS']+i['G'] > i['N']-2)
-                    or (i['F'] >= i['N']) or (i['lS']+i['eS']+i['G'] > i['H']-3)
+                    or (i['F'] >= i['N']) or (i['lS']+i['eS']+i['G'] > i['H']-2)
                     or (i['H'] < 3) or (i['N'] < 2)):
                     if i not in to_be_removed:
                         to_be_removed.append(i)
         else:
             for i_i, i in enumerate(glycans):
                 if ((i['S']+i['G'] > i['N']-2)
-                    or (i['F'] >= i['N']) or (i['S']+i['G'] > i['H']-3)
+                    or (i['F'] >= i['N']) or (i['S']+i['G'] > i['H']-2)
                     or (i['H'] < 3) or (i['N'] < 2)):
                     if i not in to_be_removed:
                         to_be_removed.append(i)

@@ -284,7 +284,8 @@ def eic_from_glycan(files,
                     current_mz = []
                     for l_l, l in enumerate(sliced_mz):
                         local_noise = General_Functions.local_noise_calc(noise[j_j][k_k], l, avg_noise[j_j])
-                        if iso_found and l > ((glycan_info['Isotopic_Distribution_Masses'][iso_distro]+adduct_mass)/adduct_charge) + General_Functions.tolerance_calc(tolerance[0], tolerance[1], l):
+                        current_tolerance = General_Functions.tolerance_calc(tolerance[0], tolerance[1], l)
+                        if iso_found and l > ((glycan_info['Isotopic_Distribution_Masses'][iso_distro]+adduct_mass)/adduct_charge) + current_tolerance:
                             if len(current_iso_peak1) > 5: #here data is profile (NOT RECOMMENDED, but it will work.... very slowly....)
                                 iso_actual.append(max(current_iso_peak1))
                                 iso_target.append(max(current_iso_peak2))
@@ -317,19 +318,19 @@ def eic_from_glycan(files,
                             continue
                         if sliced_int[l_l] < local_noise*0.5: #This ignores peaks that are far below the noise level (less than 50% of the calculated noise level)
                             continue
-                        if l > second_peak + General_Functions.tolerance_calc(tolerance[0], tolerance[1], l) and iso_distro == 1: #This is the first check for quick skips that's dependent on mz array acquired data but independent of noise
+                        if l > second_peak + current_tolerance and iso_distro == 1: #This is the first check for quick skips that's dependent on mz array acquired data but independent of noise
                             if verbose:
                                 verbose_info.append("------m/z "+str(l)+", int "+str(sliced_int[l_l]))
                                 verbose_info.append("--------Couldn't check correct charge.")
                             not_good = True
                             break
-                        if l > (target_mz + General_Functions.tolerance_calc(tolerance[0], tolerance[1], l)) and not found:
+                        if l > (target_mz + current_tolerance) and not found:
                             if verbose:
                                 verbose_info.append("------m/z "+str(l)+", int "+str(sliced_int[l_l]))
                                 verbose_info.append("--------Couldn't find monoisotopic peak.")
                             not_good = True
                             break
-                        if l > last_peak + General_Functions.tolerance_calc(tolerance[0], tolerance[1], l) and found:
+                        if l > last_peak + current_tolerance and found:
                             if verbose:
                                 verbose_info.append("------m/z "+str(l)+", int "+str(sliced_int[l_l]))
                                 verbose_info.append("--------Checked all available isotopologue peaks with no error.")
@@ -337,12 +338,12 @@ def eic_from_glycan(files,
                             if iso_distro < min_isotops:
                                 not_good = True
                             break
-                        if l > target_mz + General_Functions.tolerance_calc(tolerance[0], tolerance[1], l) and l < target_mz + General_Functions.h_mass and found:
+                        if l > target_mz + current_tolerance and l < target_mz + General_Functions.h_mass and found:
                             for m in charge_range:
                                 if m == 1:
                                     continue
                                 expected_value = (l*m*0.0006)+0.1401 #based on linear regression of the relationship between masses and the second isotopic peak relative intensity of the average of different organic macromolecules
-                                if m != adduct_charge and abs(l-(target_mz+(General_Functions.h_mass/m))) <= General_Functions.tolerance_calc(tolerance[0], tolerance[1], l) and (sliced_int[l_l] > mono_int*expected_value*0.6):
+                                if m != adduct_charge and (sliced_int[l_l] > mono_int*expected_value*0.6)  and abs(l-(target_mz+(General_Functions.h_mass/m))) <= current_tolerance:
                                     if verbose:
                                         verbose_info.append("------m/z "+str(l)+", int "+str(sliced_int[l_l]))
                                         verbose_info.append("--------Incorrect charge assigned. Peak intensity: "+str(sliced_int[l_l])+" Monoisotopic peak intensity: "+str(mono_int)+" Charge detected: "+str(m)+" Found/Mono: "+str(sliced_int[l_l]/mono_int))
@@ -350,13 +351,13 @@ def eic_from_glycan(files,
                                     break
                             if not_good:
                                 break
-                        if l > target_mz - General_Functions.h_mass - General_Functions.tolerance_calc(tolerance[0], tolerance[1], l) and l < target_mz - General_Functions.tolerance_calc(tolerance[0], tolerance[1], l):
+                        if l > target_mz - General_Functions.h_mass - current_tolerance and l < target_mz - current_tolerance:
                             nearby_id = l_l
                             for m in charge_range:
-                                if abs(l-(target_mz-(General_Functions.h_mass/m))) <= General_Functions.tolerance_calc(tolerance[0], tolerance[1], l):
+                                if abs(l-(target_mz-(General_Functions.h_mass/m))) <= current_tolerance:
                                     bad_peaks_before_target.append((sliced_int[l_l], m))
                                     break
-                        if l > target_mz + General_Functions.tolerance_calc(tolerance[0], tolerance[1], l) and abs(l-((glycan_info['Isotopic_Distribution_Masses'][iso_distro]+adduct_mass)/adduct_charge)) <= General_Functions.tolerance_calc(tolerance[0], tolerance[1], l):
+                        if l > target_mz + current_tolerance and abs(l-((glycan_info['Isotopic_Distribution_Masses'][iso_distro]+adduct_mass)/adduct_charge)) <= current_tolerance:
                             if sliced_int[l_l] > mono_int*glycan_info['Isotopic_Distribution'][iso_distro]:
                                 intensity += mono_int*glycan_info['Isotopic_Distribution'][iso_distro]
                             if sliced_int[l_l] <= mono_int*glycan_info['Isotopic_Distribution'][iso_distro]:
@@ -366,7 +367,7 @@ def eic_from_glycan(files,
                             current_iso_peak2.append(glycan_info['Isotopic_Distribution'][iso_distro])
                             iso_found = True
                             continue
-                        if not checked_bad_peaks_before_target and l > target_mz + General_Functions.tolerance_calc(tolerance[0], tolerance[1], l):
+                        if not checked_bad_peaks_before_target and l > target_mz + current_tolerance:
                             checked_bad_peaks_before_target = True
                             for m in bad_peaks_before_target:
                                 expected_value = 1/((l*m[1]*0.0006)+0.1401) #based on linear regression of the relationship between masses and the second isotopic peak relative intensity of the average of different organic macromolecules
@@ -378,9 +379,9 @@ def eic_from_glycan(files,
                                     break
                             if not_good:
                                 break
-                        if sliced_int[l_l] < General_Functions.local_noise_calc(noise[j_j][k_k], l, avg_noise[j_j]): #Everything from here is dependent on noise level (currently: monoisotopic peak detection only)
+                        if sliced_int[l_l] < local_noise: #Everything from here is dependent on noise level (currently: monoisotopic peak detection only)
                             continue
-                        if l >= target_mz - General_Functions.tolerance_calc(tolerance[0], tolerance[1], l) and abs(l-target_mz) <= General_Functions.tolerance_calc(tolerance[0], tolerance[1], l):
+                        if l >= target_mz - current_tolerance and abs(l-target_mz) <= current_tolerance:
                             mono_ppm.append(General_Functions.calculate_ppm_diff(l, target_mz))
                             intensity += sliced_int[l_l]
                             mono_int += sliced_int[l_l]
@@ -420,12 +421,10 @@ def eic_from_glycan(files,
                             dotp.append(dotproduct)
                         R_sq = mean(dotp)
                         
-                        #reduces score if fewer isotopic peaks are found: very punishing for only 2 peaks, much less punishing for more than one, normal score from 5 and over
-                        if len(iso_actual) == 1: 
-                            R_sq = (R_sq)/2
+                        #reduces score if fewer isotopic peaks are found: very punishing for only 2 peaks, much less punishing for three, normal score from 4 and over
+                        if len(iso_actual) == 1:
+                            R_sq = (R_sq+(R_sq*0.70))/2
                         if len(iso_actual) == 2:
-                            R_sq = (R_sq+(R_sq*0.80))/2
-                        if len(iso_actual) == 3:
                             R_sq = (R_sq+(R_sq*0.95))/2
                         
                         isotopic_fits[i][j_j][j[k]['retentionTime']] = [[target_mz]+mz_isos, [1]+iso_target, [1]+iso_actual, R_sq]

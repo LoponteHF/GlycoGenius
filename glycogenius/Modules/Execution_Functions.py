@@ -1470,7 +1470,7 @@ def align_assignments(df, df_type, deltas = None, rt_tol = None):
                         x_list.append(j)
                         y_list.append(i[j][0])
                 if len(x_list) > 0:
-                    outliers = General_Functions.linear_regression(x_list, y_list, 0.5)[2]
+                    outliers = General_Functions.linear_regression(x_list, y_list, 1)[2]
                     if len(outliers) > 0:
                         for j_j, j in enumerate(outliers):
                             i[x_list[j]][0] = inf
@@ -3270,16 +3270,14 @@ def analyze_files(library,
         for j_j, j in enumerate(ms1_index[i_i]):
             rt_array_report[i_i].append(i[j]['retentionTime'])
             mz_ints = [i[j]['m/z array'], i[j]['intensity array']]
-            if len(mz_ints[1]) > 0:
-                noise_avg_level = percentile(mz_ints[1], 95)
+            if i[j]['retentionTime'] >= ret_time_interval[0] and i[j]['retentionTime'] <= ret_time_interval[1]:
+                if len(mz_ints[1]) > 100:
+                    temp_noise.append(General_Functions.rt_noise_level_parameters_set(mz_ints, "segments"))
+                    temp_avg_noise.append(General_Functions.rt_noise_level_parameters_set(mz_ints, "whole"))
+                elif len(mz_ints[1]) <= 100:
+                    temp_noise.append((1.0, 0.0, 0.0))
             else:
-                noise_avg_level = 0.0
-            if i[j]['retentionTime'] < ret_time_interval[0] or i[j]['retentionTime'] > ret_time_interval[1]:
-                noise_level = (0.0, 0.0, 0.0)
-            else:
-                noise_level = General_Functions.rt_noise_level_parameters_set(mz_ints)
-            temp_noise.append(noise_level)
-            temp_avg_noise.append(noise_avg_level)
+                temp_noise.append((1.0, 0.0, 0.0))
         noise[i_i] = temp_noise
         noise_avg[i_i] = percentile(temp_avg_noise, 66.8)
     print('Done!')

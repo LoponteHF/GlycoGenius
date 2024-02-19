@@ -1,7 +1,7 @@
 [library_building]
 use_custom_glycans_list = no
 custom_glycans_list = H3N2, H5N2, H5N4S2F1
-; Allows you to only search for target glycans by inputing them in the "custom_glycans_list", as formulas. If True, overrides imp_library. Monosaccharides accepted: Hexoses (H), HexNAc (N), Acetyl Sialic Acid (S or lS and eS if you have lactonized-ethyl sterified glycans), Glycolyl Sialic Acid (G), Deoxyhexose (F). Case sensitive. Can also be the path to a text file containing the list (line or comma separated).
+; 	Allows you to only search for target glycans by inputing them in the "custom_glycans_list", as formulas. If True, overrides imp_library. Monosaccharides accepted: Hexoses (H), HexNAc (N), Acetyl Sialic Acid (S or lS and eS if you have lactonized-ethyl sterified glycans), Glycolyl Sialic Acid (G), Deoxyhexose (F). Case sensitive. Can also be the path to a text file containing the list (line or comma separated).
 min_monos = 5
 max_monos = 18
 min_hex = 3
@@ -16,86 +16,86 @@ min_ac = 0
 max_ac = 4
 min_gc = 0
 max_gc = 0
-; Specify the minimum and maximum monosaccharides amounts for generating a library.
+; 	Specify the minimum and maximum monosaccharides amounts for generating a library.
 force_nglycan = yes
-; Used to force some monosaccharides compositions associated with N-Glycans biologically known features. If not used, gives a much broader library that can be used for analysis of O-Glycans, for example.
+; 	Used to force some monosaccharides compositions associated with N-Glycans biologically known features. If not used, gives a much broader library that can be used for analysis of O-Glycans, for example.
 max_adducts = H3
 adducts_exclusion = 
-; Indicates the desired adducts and their maximum amount. H3Na1 means a maximum of 3 Hydrogens and a maximum of 1 Sodium per adduct combination. Case sensitive. Doesn't work with complex adducts, such as NH4. Set adducts in 'adducts_exclusion' to avoid using specific adducts. Comma separated list.
+; 	Indicates the desired adducts and their maximum amount. H3Na1 means a maximum of 3 Hydrogens and a maximum of 1 Sodium per adduct combination. Case sensitive. Doesn't work with complex adducts, such as NH4. Set adducts in 'adducts_exclusion' to avoid using specific adducts. Comma separated list.
 max_charges = 3
-; Limits the maximum amount of calculated charges for each glycan. Set to a negative value if you want to do negative mode analysis [EXPERIMENTAL].
+; 	Limits the maximum amount of calculated charges for each glycan. Set to a negative value if you want to do negative mode analysis [EXPERIMENTAL].
 reducing_end_tag = 133.0644
-; If a reducing end tag is added to the glycans, insert its added mass or molecular formula here here. If no reducing end tag is added to the glycans, set this value to 0. Procainamide: 219.1735 or C13H21N3; Girard Reagent P: 133.0644 or C7H7N3 (deprotonated, neutral). Can also be used with a peptide by inputing 'pep-' + the petide sequence (ie. 'pep-NK' for the peptide NK).
+; 	If a reducing end tag is added to the glycans, insert its added mass or molecular formula here here. If no reducing end tag is added to the glycans, set this value to 0. Procainamide: 219.1735 or C13H21N3; Girard Reagent P: 133.0644 or C7H7N3 (deprotonated, neutral). Can also be used with a peptide by inputing 'pep-' + the petide sequence (ie. 'pep-NK' for the peptide NK).
 permethylated = no
-; If the sample was permethylated, set this parameter to "yes". Doesn't take into account partial permethylations.
+; 	If the sample was permethylated, set this parameter to "yes". Doesn't take into account partial permethylations.
 reduced = no
-; If the sample doesn't have a tag and the glycans had their reducing end reduced, set this to "yes".
+; 	If the sample doesn't have a tag and the glycans had their reducing end reduced, set this to "yes".
 lactonized_ethyl_esterified = no
-; Use if the sialic acids were derivitized with lactonization (alpha2,3) and ethyl esterification (alpha2,6). Lactonized Acetyl Sialic Acid will be identified as 'lS' and Ethyl Esterified Acetyl Sialic Acid will be identified as 'eS'.
+; 	Use if the sialic acids were derivitized with lactonization (alpha2,3) and ethyl esterification (alpha2,6). Lactonized Acetyl Sialic Acid will be identified as 'lS' and Ethyl Esterified Acetyl Sialic Acid will be identified as 'eS'.
 fast_iso = yes
-; Allows you to calculate the isotopic distribution of glycans based only on carbon isotopes (fast, innacurate) and corrected artificially or on all the atoms isotopes (VERY SLOW, very accurate). If not used, library building may take many hours depending on size.
+; 	Allows you to calculate the isotopic distribution of glycans based only on carbon isotopes (fast, innacurate) and corrected artificially or on all the atoms isotopes (VERY SLOW, very accurate). If not used, library building may take many hours depending on size.
 high_resolution_isotopic_dist = no
-; If not used, doesn't clump isotope peaks together, meaning that you'll have more than one isotopic peak in a 1 Da interval. Only use this if you have fast_iso off. Useful when analyzing very high resolution data, such as data acquired on FT mass spectrometers.
+; 	If not used, doesn't clump isotope peaks together, meaning that you'll have more than one isotopic peak in a 1 Da interval. Only use this if you have fast_iso off. Useful when analyzing very high resolution data, such as data acquired on FT mass spectrometers.
 internal_standard_mass = 0.0
-; If using an internal standard, insert its mass here for the script to calculate its area. This also allows the script to output a normalized metaboanalyst compatible file.
+; 	If using an internal standard, insert its mass here for the script to calculate its area. This also allows the script to output a normalized metaboanalyst compatible file.
 imp_library = no
-; Can be used to import a glycans library previously generated by this script. Glycan library must be in working directory (set below, on analysis_parameters).
+; 	Can be used to import a glycans library previously generated by this script. Glycan library must be in working directory (set below, on analysis_parameters).
 exp_library = no
-; Export the library you generate to use in future analysis without having to build a new library. Also creates an excel file containing a human-readable version of the library generated. If used, will also make a file compatible with Skyline's transition list model. No effect if using 'imp_library'.
+; 	Export the library you generate to use in future analysis without having to build a new library. Also creates an excel file containing a human-readable version of the library generated. If used, will also make a file compatible with Skyline's transition list model. No effect if using 'imp_library'.
 only_gen_lib = no
-; Determines if the script should stop after generating library or proceed with data analysis. If used, will also make a file compatible with Skyline's transition list model.
+; 	Determines if the script should stop after generating library or proceed with data analysis. If used, will also make a file compatible with Skyline's transition list model.
 
 [analysis_parameters]
 multithreaded_analysis = no
 threads_number = 20
-; Allows you to split the execution and generated library into multiple pieces for multithreaded execution. After running GlycoGenius, there will be several .py files in working directory. Run the ones named Multithreaded_0.py-Multithreaded_n.py in whatever time you want, in how many amounts at a time you want.
+; 	Allows you to split the execution and generated library into multiple pieces for multithreaded execution. After running GlycoGenius, there will be several .py files in working directory. Run the ones named Multithreaded_0.py-Multithreaded_n.py in whatever time you want, in how many amounts at a time you want.
 analyze_ms2 = yes
 force_fragments_to_glycans = yes
 unrestricted_fragments = no
 reporter_ions = N1T1, 366.14
 ret_time_tolerance_ms2 = 0.2
-; Allows to analyze ms2 data, as well. Fragments identified will be associated with each glycan. You can choose to filter identified fragments by monosaccharides compositions, in order to avoid reporting fragments that aren't compatible with detected precursor. If unrestricted_fragments is used, it searches for glycans in every ms2 scan, regardless if the glycan was found in full scan. This will take a bit longer. If you have any reporter ions set, the program will only display fragments of MS2 spectra that contains said reporter ions. Can be based on glycans formula (with T being the reducing end of the glycan, including possibly the tag, if used) or an mz. reporter_ions can be changed on raw data reanalysis. ret_time_tolerance_ms2 indicates the retention time tolerance for attributing a given MS2 spectra to a specific peak.
+; 	Allows to analyze ms2 data, as well. Fragments identified will be associated with each glycan. You can choose to filter identified fragments by monosaccharides compositions, in order to avoid reporting fragments that aren't compatible with detected precursor. If unrestricted_fragments is used, it searches for glycans in every ms2 scan, regardless if the glycan was found in full scan. This will take a bit longer. If you have any reporter ions set, the program will only display fragments of MS2 spectra that contains said reporter ions. Can be based on glycans formula (with T being the reducing end of the glycan, including possibly the tag, if used) or an mz. reporter_ions can be changed on raw data reanalysis. ret_time_tolerance_ms2 indicates the retention time tolerance for attributing a given MS2 spectra to a specific peak.
 accuracy_unit = mz
-; Determines the units of mz tolerance to be used by the script. Options: 'ppm' or 'pw'. 'ppm' = Particles per Million, where 10 ppm is around 0.01 mz tolerance at mz 1000, 'mz' = Fixed mz tolerance from centroid, 0.01 mz means it tolerates a 0.01 variance in mz
+; 	Determines the units of mz tolerance to be used by the script. Options: 'ppm' or 'pw'. 'ppm' = Particles per Million, where 10 ppm is around 0.01 mz tolerance at mz 1000, 'mz' = Fixed mz tolerance from centroid, 0.01 mz means it tolerates a 0.01 variance in mz
 accuracy_value = 0.01
-; The value for the accuracy_unit parameter. You can use a broader accuracy value and then filter raw data using max_ppm, but this may lead to false positives.
+; 	The value for the accuracy_unit parameter. You can use a broader accuracy value and then filter raw data using max_ppm, but this may lead to false positives.
 ret_time_begin = 1
 ret_time_end = 80
 ret_time_tolerance = 0.2
-; The minimum and maximum retention time, in minutes, used for various portions of the script. A shorter interval of ret_time makes the script run faster, so try to trim your sample as much as possible, if you know when your analytes are leaving the column. Set the retention time tolerance used for and same peak identification. ret_time_tolerance can be reapplied on raw data reanalysis.
+; 	The minimum and maximum retention time, in minutes, used for various portions of the script. A shorter interval of ret_time makes the script run faster, so try to trim your sample as much as possible, if you know when your analytes are leaving the column. Set the retention time tolerance used for and same peak identification. ret_time_tolerance can be reapplied on raw data reanalysis.
 custom_min_points_per_peak = no
 number_points_per_peak = 5
-; If used, set the minimum number of datapoints to consider a chromatogram peak part of the raw dataset. If left on False it calculates automatically.
+; 	If used, set the minimum number of datapoints to consider a chromatogram peak part of the raw dataset. If left on False it calculates automatically.
 limit_peaks_picked = yes
 max_number_peaks = 5
-; If used, picks only the most intense peak on the EIC and up to [max_number_peaks]-1 other peaks closest to it. Warning: This may reduce the range of your results.
+; 	If used, picks only the most intense peak on the EIC and up to [max_number_peaks]-1 other peaks closest to it. Warning: This may reduce the range of your results.
 align_chromatograms = yes
-; If enabled, will align the assignments and drawn processed EICs of the different samples. The alignment is highly dependent on the features identified and their inherent quality, so things will change with different quality thresholds. Is processed on the output, so can be changed on reanalysis and the resulting alignment will also change when changing thresholds during reanalysis.
+; 	If enabled, will align the assignments and drawn processed EICs of the different samples. The alignment is highly dependent on the features identified and their inherent quality, so things will change with different quality thresholds. Is processed on the output, so can be changed on reanalysis and the resulting alignment will also change when changing thresholds during reanalysis.
 auc_percentage_threshold = 0.1
-; Allows you to supress from the analysis peaks that are of the specified percentage (from 0 to 1) area under curve related to the most intense peak area within the same adduct (ie. if biggest peak has a area under curve of 100 and auc_percentage_threshold is set to 0.1, every peak with an auc of 10 and below will be supressed)
+; 	Allows you to supress from the analysis peaks that are of the specified percentage (from 0 to 1) area under curve related to the most intense peak area within the same adduct (ie. if biggest peak has a area under curve of 100 and auc_percentage_threshold is set to 0.1, every peak with an auc of 10 and below will be supressed)
 max_ppm = 10
-; Maximum PPM for data curation. If value is greater than equivalent accuracy_value, data won't be filtered by this criteria, as it was already filtered during processing by accuracy_value. Can be reapplied on raw data reanalysis.
+; 	Maximum PPM for data curation. If value is greater than equivalent accuracy_value, data won't be filtered by this criteria, as it was already filtered during processing by accuracy_value. Can be reapplied on raw data reanalysis.
 isotopic_fitting_score = 0.9
-; Minimum score of the isotopic distribution fitting in order to consider a mz peak viable. Can be reapplied on raw data reanalysis.
+; 	Minimum score of the isotopic distribution fitting in order to consider a mz peak viable. Can be reapplied on raw data reanalysis.
 curve_fitting_score = 0.9
-; Minimum score for the chromatogram peak curve fitting to a gaussian to consider a viable peak. Can be reapplied on raw data reanalysis.
+; 	Minimum score for the chromatogram peak curve fitting to a gaussian to consider a viable peak. Can be reapplied on raw data reanalysis.
 signal_to_noise = 3
-; Minimum signal-to-noise ratio to consider a chromatogram peak viable. Can be reapplied on raw data reanalysis.
+; 	Minimum signal-to-noise ratio to consider a chromatogram peak viable. Can be reapplied on raw data reanalysis.
 custom_noise_level = no
 noise_levels = 0, 0
-; Sets a custom level of noise for each sample, ignoring the automatic noise calculation. Noise for each sample is comma separated in "noise_levels". Warning: NOT RECOMMENDED unless you're really sure about what you're doing.
+; 	Sets a custom level of noise for each sample, ignoring the automatic noise calculation. Noise for each sample is comma separated in "noise_levels". Warning: NOT RECOMMENDED unless you're really sure about what you're doing.
 samples_path =
-; A comma separated list of full path to files to be analyzed together.
+; 	A comma separated list of full path to files to be analyzed together.
 working_path =
-; Directory to load and save files from script.
+; 	Directory to load and save files from script.
 plot_metaboanalyst = no
 metaboanalyst_groups = CONTROL, TREATED
-; Here you set up whether or not you want to output a .csv file to be used for plotting data using metaboanalyst. If you want that, you must specify your sample groups, comma separated. Sample groups specified must be present in sample filenames for proper identification. If none is set, samples are defaulted to "ungrouped". Case sensitive. 
+; 	Here you set up whether or not you want to output a .csv file to be used for plotting data using metaboanalyst. If you want that, you must specify your sample groups, comma separated. Sample groups specified must be present in sample filenames for proper identification. If none is set, samples are defaulted to "ungrouped". Case sensitive. 
 analyze_compositions = no
-; If used, also plots data related to the whole composition of each identified glycan in the analysis, in addition to the peak-separated data.
+; 	If used, also plots data related to the whole composition of each identified glycan in the analysis, in addition to the peak-separated data.
 output_fittings_data = no
-; Allows to output files with the fittings data to check scoring criterias. Defaultted to 'no' as these files will be big. Only use it if you really need. Can be reapplied on reanalysis.
+; 	Allows to output files with the fittings data to check scoring criterias. Defaultted to 'no' as these files will be big. Only use it if you really need. Can be reapplied on reanalysis.
 output_plot_data = no
-; Allows to output data plotting files for all the EICs drawn by the program. If set to 'no', it will still output the found glycans EIC. Can be reapplied on reanalysis.
+; 	Allows to output data plotting files for all the EICs drawn by the program. If set to 'no', it will still output the found glycans EIC. Can be reapplied on reanalysis.
 reanalysis = no
-; Reanalyzes raw data with new max_ppm, isotopic_fitting_score, curve_fitting_score, signal_to_noise, outputting new plot or fitting data and aligning or not the chromatograms.
+; 	Reanalyzes raw data with new max_ppm, isotopic_fitting_score, curve_fitting_score, signal_to_noise, outputting new plot or fitting data and aligning or not the chromatograms.
