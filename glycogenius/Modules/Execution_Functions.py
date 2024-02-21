@@ -1603,31 +1603,38 @@ def align_assignments(df, df_type, deltas = None, rt_tol = None):
                 interval_list_rts = []
                 interval_list = []
                 for j in range(len(i['RTs_'+str(i_i)])-1, -1, -1):
-                    if i['RTs_'+str(i_i)][j] < list(deltas[i_i].keys())[0]:
+                    if i['RTs_'+str(i_i)][j] < list(deltas[i_i].keys())[0]: #this finds the zero before the peaks
                         zero = True
                         for k_k, k in enumerate(i):
                             if k_k != 0:
-                                if i[k][j] != 0:
+                                if i[k][j] > max(i[k])*0.01:
                                     zero = False
                                     break
                         if zero:
+                            # print("Found zero before the peak: "+str(i['RTs_'+str(i_i)][j])+", "+str(j)+", Delta RT: "+str(list(deltas[i_i].keys())[0]))
                             interval_list_rts.append(i['RTs_'+str(i_i)][j])
                             interval_list.append(j)
                             break
+                if not zero:
+                    interval_list_rts.append(i['RTs_'+str(i_i)][0])
+                    interval_list.append(0)
                             
                 for j_j, j in enumerate(i['RTs_'+str(i_i)]):
-                    if j > list(deltas[i_i].keys())[-1]:
+                    if j > list(deltas[i_i].keys())[-1]: #this finds the zero after the peaks
                         zero = True
                         for k_k, k in enumerate(i):
                             if k_k != 0:
-                                if i[k][j_j] != 0:
+                                if i[k][j_j] > max(i[k])*0.1:
                                     zero = False
                                     break
                         if zero:
+                            # print("Found zero after the peak: "+str(j)+","+str(j_j)+", Delta RT: "+str(list(deltas[i_i].keys())[-1]))
                             interval_list_rts.append(j)
                             interval_list.append(j_j)
                             break
-                
+                if not zero:
+                    interval_list_rts.append(i['RTs_'+str(i_i)][-1])
+                    interval_list.append(len(i['RTs_'+str(i_i)])-1)
                 for j_j, j in enumerate(interval_list):
                     x = []
                     y = []
@@ -3271,15 +3278,13 @@ def analyze_files(library,
             rt_array_report[i_i].append(i[j]['retentionTime'])
             mz_ints = [i[j]['m/z array'], i[j]['intensity array']]
             if i[j]['retentionTime'] >= ret_time_interval[0] and i[j]['retentionTime'] <= ret_time_interval[1]:
-                if len(mz_ints[1]) > 100:
-                    temp_noise.append(General_Functions.rt_noise_level_parameters_set(mz_ints, "segments"))
-                    temp_avg_noise.append(General_Functions.rt_noise_level_parameters_set(mz_ints, "whole"))
-                elif len(mz_ints[1]) <= 100:
-                    temp_noise.append((1.0, 0.0, 0.0))
+                temp_noise.append(General_Functions.rt_noise_level_parameters_set(mz_ints, "segments"))
+                temp_avg_noise.append(General_Functions.rt_noise_level_parameters_set(mz_ints, "whole"))
             else:
                 temp_noise.append((1.0, 0.0, 0.0))
         noise[i_i] = temp_noise
         noise_avg[i_i] = percentile(temp_avg_noise, 66.8)
+    # print(noise_avg, str(datetime.datetime.now() - begin_time))
     print('Done!')
     print_sep()
     if verbose:

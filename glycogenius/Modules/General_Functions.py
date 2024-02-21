@@ -195,22 +195,14 @@ def rt_noise_level_parameters_set(mz_int, mode): #outdated description
     
     noise = []
     for j_j, j in enumerate(segments_list):
-        # print('-------------'+mode+str(j_j)+'---------------')
-        noise.append(1.0)
-        found = False
-        distance = int(len(j)/10)
-        for i_i, i in enumerate(j):
-            if i_i < distance/2 or i_i > len(j)-(distance/2) or i_i%int(distance/2) != 0:
-                continue
-            slope = linear_regression(list(range(i_i-int(distance/2), i_i+int(distance/2))), j[i_i-int(distance/2):i_i+int(distance/2)])[0]
-            # print(i, slope)
-            if not found and slope > 10:
-                found = True
-                noise[j_j] = i
-                break
-        if not found:
-            noise[j_j] = (1.0)
-            
+        intensity_std = numpy.std(j)
+        noise_threshold = 2.0 * intensity_std
+        if noise_threshold > min(j)*5 or noise_threshold > max(j)*0.5: #this means that the data is denoised already, so it picks really high intensity as possible noise
+            # if mode == "whole": print("picked minimum", min(j), max(j), len(j), noise_threshold) 
+            noise.append(min(j))
+        else:
+            # if mode == "whole": print("picked 2 std", min(j), max(j), len(j), noise_threshold) 
+            noise.append(noise_threshold)
     if len(noise) == 1:
         return noise[0]
     else:
