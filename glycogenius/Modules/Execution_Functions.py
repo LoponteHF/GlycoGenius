@@ -232,11 +232,11 @@ def interactive_terminal():
             print("\nGlycoGenius version: "+version)
             continue
         if var == 'license':
-            license_path = str(pathlib.Path(__file__).parent.parent.parent.resolve())
+            license_path = str(pathlib.Path(__file__).parent.parent.resolve())
             for i_i, i in enumerate(license_path):
                 if i == "\\":
                     license_path = license_path[:i_i]+"/"+license_path[i_i+1:]
-            with open(license_path+"/LICENSE", 'r') as f:
+            with open(license_path+"/LICENSE.py", 'r') as f:
                 for line in f:
                     print(line, end = "")
             continue
@@ -521,11 +521,14 @@ def interactive_terminal():
         print("")
         if var == 'y':
             while True:
-                var2 = input("Insert the tag added mass\nor molecular formula (ie. 133.0644 or C7H7N3\nfor GirP or 219.1735 or C13H21N3 for ProA): ")
+                var2 = input("Insert the tag added mass\nor molecular formula (ie. 133.0644 or C7H7N3\nfor GirP or 219.1735 or C13H21N3 for ProA) or\ninput 'pep-'+ aminoacids sequence for peptide\nas tag (ie. pep-NK for the peptide NK): ")
                 try:
                     var2 = float(var2)
                 except:
-                    pass
+                    if var2.split('-')[0] == 'pep':
+                        var2 = dict(mass.Composition(sequence = var2.split('-')[-1]))
+                        var2['H'] -= 2
+                        var2['O'] -= 1
                 tag_mass = var2
                 break
         permethylated = False
@@ -551,7 +554,7 @@ def interactive_terminal():
                 else:
                     print('Wrong input')
                     continue
-        print_sep()
+            print_sep()
         fast_iso = True
 #        while True:
 #            var = input("Do you want to do a quick isotopic distribution\ncalculation? If 'n', then isotopic distribution\ncalculation may take several hours, depending on\nlibrary size (y/n): ")
@@ -640,7 +643,7 @@ def interactive_terminal():
             print("")
             accuracy_value = 0.0
             while True:
-                var = input("Insert the accuracy value for the unit you've\nchosen (ie. '0.01' or '10'): ")
+                var = input("Insert the accuracy value for the unit you've\nchosen (ie. '0.01' for 'mz' or '10' for 'ppm'): ")
                 try:
                     var = float(var)
                 except:
@@ -748,7 +751,7 @@ def interactive_terminal():
                             var = var[:i_i]+"/"+var[i_i+1:]
                     if var[-1] != "/":
                         var = var+"/"
-                    path = var
+                    files = var
                     break
             print("")
             path = default_path
