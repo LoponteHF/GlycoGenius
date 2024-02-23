@@ -1214,7 +1214,9 @@ def imp_exp_gen_library(multithreaded_analysis,
                                                 permethylated,
                                                 reduced)
         elif imp_exp_library[0]:
-            lib_module = importlib.import_module('glycans_library')
+            spec = importlib.util.spec_from_file_location("glycans_library", save_path+'glycans_library.py')
+            lib_module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(lib_module)
             full_library = lib_module.full_library
             if imp_exp_library[1]:
                 print('Exporting glycans library...')

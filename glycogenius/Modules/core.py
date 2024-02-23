@@ -345,6 +345,15 @@ def main():
                                                           permethylated,
                                                           lactonized_ethyl_esterified,
                                                           reduced)
+        if len(samples_list) == 0:                                             
+            if not os.isatty(0):
+                Execution_Functions.print_sep()
+                print("No sample files to analyze.")
+                os._exit(1)
+            else:
+                Execution_Functions.print_sep()
+                input("No sample files to analyzed. Press Enter\nto exit.")
+                os._exit(1)
 #line to add multithreaded library
         if multithreaded_execution[0]:
             library = full_library

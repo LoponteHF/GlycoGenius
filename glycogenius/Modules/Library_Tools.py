@@ -253,9 +253,10 @@ def full_glycans_library(library,
             tag = General_Functions.calculate_comp_from_mass(tag_mass)
         elif type(tag_mass) != dict:
             comp_tag = General_Functions.form_to_comp(tag_mass)
+            tag = (comp_tag, mass.calculate_mass(comp_tag))
         else:
             comp_tag = tag_mass
-        tag = (comp_tag, mass.calculate_mass(comp_tag))
+            tag = (comp_tag, mass.calculate_mass(comp_tag))
         tag_mass = tag[1]
     else:
         tag = ({"C": 0, "O": 0, "N": 0, "H": 0}, 0.0)
