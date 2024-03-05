@@ -77,7 +77,6 @@ def main():
 
     multithreaded_execution = (False, 0, 0) #editted by multithreaded 1
     sneakpeek = (False, 0)
-    verbose = False
 
     if not os.isatty(0) or multithreaded_execution[0]: #If multithreaded execution or pipelined parameters file
         Execution_Functions.print_header(False)
@@ -86,34 +85,36 @@ def main():
         for line in sys.stdin:              #editted by multithreaded 2
             configs+=line                   #editted by multithreaded 3
         config.read_string(configs)
-        try:
-            temp_path_custom_glycans = config['library_building']['custom_glycans_list']
-            for i_i, i in enumerate(temp_path_custom_glycans):
-                if i == "\\":
-                    temp_path_custom_glycans = temp_path_custom_glycans[:i_i]+"/"+temp_path_custom_glycans[i_i+1:]
-            temp_custom_glycans_list = ""
-            with open(temp_path_custom_glycans.strip("\""), 'r') as f:
-                for i in f:
-                    temp_custom_glycans_list += i
-            f.close()
-            custom_glycans = temp_custom_glycans_list.split(",")
-            if len(custom_glycans) == 1:
-                custom_glycans = temp_custom_glycans_list.split("\n")
-            to_remove = []
-            if len(custom_glycans) > 1:
+        custom_glycans_boolean = config['library_building'].getboolean('use_custom_glycans_list')
+        if custom_glycans_boolean:
+            try:
+                temp_path_custom_glycans = config['library_building']['custom_glycans_list']
+                for i_i, i in enumerate(temp_path_custom_glycans):
+                    if i == "\\":
+                        temp_path_custom_glycans = temp_path_custom_glycans[:i_i]+"/"+temp_path_custom_glycans[i_i+1:]
+                temp_custom_glycans_list = ""
+                with open(temp_path_custom_glycans.strip("\""), 'r') as f:
+                    for i in f:
+                        temp_custom_glycans_list += i
+                f.close()
+                custom_glycans = temp_custom_glycans_list.split(",")
+                if len(custom_glycans) == 1:
+                    custom_glycans = temp_custom_glycans_list.split("\n")
+                to_remove = []
+                if len(custom_glycans) > 1:
+                    for i_i, i in enumerate(custom_glycans):
+                        custom_glycans[i_i] = i.strip()
+                        if len(i) == 0:
+                            to_remove.append(i_i)
+                for i in sorted(to_remove, reverse = True):
+                    del custom_glycans[i]
+            except:
+                custom_glycans = config['library_building']['custom_glycans_list'].split(",")
                 for i_i, i in enumerate(custom_glycans):
                     custom_glycans[i_i] = i.strip()
                     if len(i) == 0:
-                        to_remove.append(i_i)
-            for i in sorted(to_remove, reverse = True):
-                del custom_glycans[i]
-        except:
-            custom_glycans = config['library_building']['custom_glycans_list'].split(",")
-            for i_i, i in enumerate(custom_glycans):
-                custom_glycans[i_i] = i.strip()
-                if len(i) == 0:
-                    custom_glycans = custom_glycans[:i_i]+custom_glycans[i_i+1:]
-        custom_glycans_list = (config['library_building'].getboolean('use_custom_glycans_list'), custom_glycans)
+                        custom_glycans = custom_glycans[:i_i]+custom_glycans[i_i+1:]
+            custom_glycans_list = (config['library_building'].getboolean('use_custom_glycans_list'), custom_glycans)
         min_max_monos = (int(config['library_building']['min_monos']), int(config['library_building']['max_monos']))
         min_max_hex = (int(config['library_building']['min_hex']), int(config['library_building']['max_hex']))
         min_max_hexnac = (int(config['library_building']['min_hexnac']), int(config['library_building']['max_hexnac']))
@@ -381,8 +382,7 @@ def main():
                                                           max_charges,
                                                           custom_noise,
                                                           close_peaks,
-                                                          fast_iso,
-                                                          verbose)
+                                                          fast_iso)
         if analyze_ms2[0]:
             Execution_Functions.print_sep()
             analyzed_data = Execution_Functions.analyze_ms2(ms2_index, 

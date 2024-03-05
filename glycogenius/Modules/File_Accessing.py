@@ -38,6 +38,8 @@ from math import inf, atan, pi, exp
 import numpy
 import sys
 import datetime
+import copy
+import os
 
 ##---------------------------------------------------------------------------------------
 ##File accessing-associated functions (these are functions that deal with the data in
@@ -113,7 +115,7 @@ class make_mzxml(object):
                     else:
                         data.append({'num': self.it[index]['id'].split('=')[-1], 'retentionTime': float(self.it[index]['scanList']['scan'][0]['scan start time']), 'msLevel': self.it[index]['ms level'], 'm/z array': self.it[index]['m/z array'], 'intensity array': self.it[index]['intensity array']})
             return data
-        
+       
 def eic_from_glycan(files,
                     glycan,
                     glycan_info,
@@ -125,7 +127,11 @@ def eic_from_glycan(files,
                     avg_noise,
                     max_charges,
                     fast_iso,
-                    verbose = False):
+                    zeroes_arrays,
+                    inf_arrays,
+                    threads_arrays,
+                    rt_arrays,
+                    ms1_id):
     '''Generates a very processed EIC for each adduct of each glycan of each sample.
     Removes non-monoisotopic peaks, check charges and calculates multiple quality scoring
     data.
@@ -222,9 +228,6 @@ def eic_from_glycan(files,
     verbose_info = []
     raw_data = {}
     for i in glycan_info['Adducts_mz']:
-        if verbose:
-            print('Adduct: '+str(i)+" mz: "+str(glycan_info['Adducts_mz'][i]))
-            verbose_info.append('Adduct: '+str(i)+" mz: "+str(glycan_info['Adducts_mz'][i]))
         adduct_mass = mass.calculate_mass(composition=General_Functions.form_to_comp(i))
         adduct_charge = General_Functions.form_to_charge(i)
         ppm_info[i] = {}
@@ -233,206 +236,210 @@ def eic_from_glycan(files,
         raw_data[i] = {}
         isotopic_fits[i] = {}
         for j_j, j in enumerate(files):
-            if verbose:
-                print("--Drawing EIC for Sample: "+str(j_j))
-                verbose_info.append("--Sample: "+str(j_j))
-            ppm_info[i][j_j] = []
-            iso_fitting_quality[i][j_j] = []
-            data[i][j_j] = [[], []]
-            raw_data[i][j_j] = [[], []]
+            ppm_info[i][j_j] = copy.deepcopy(inf_arrays[j_j])
+            iso_fitting_quality[i][j_j] = copy.deepcopy(zeroes_arrays[j_j])
+            data[i][j_j] = [copy.deepcopy(rt_arrays[j_j]), copy.deepcopy(zeroes_arrays[j_j])]
+            raw_data[i][j_j] = [copy.deepcopy(rt_arrays[j_j]), copy.deepcopy(zeroes_arrays[j_j])]
             isotopic_fits[i][j_j] = {}
-            for k_k, k in enumerate(ms1_indexes[j_j]):
-                iso_fitting_quality[i][j_j].append(0.0)
-                ppm_info[i][j_j].append(inf)
-                not_good = False
-                found = False
-                rt = j[k]['retentionTime']
-                data[i][j_j][0].append(rt)
-                raw_data[i][j_j][0].append(rt)
-                if (j[k]['retentionTime'] < rt_interval[0] or j[k]['retentionTime'] > rt_interval[1]):
-                    data[i][j_j][1].append(0.0)
-                    raw_data[i][j_j][1].append(0.0)
-                    continue
-                else:   
-                    if verbose:
-                        verbose_info.append("----RT: "+str(rt))
-                    l_l = 0
-                    last_skip = 2
-                    intensity = 0.0
-                    mono_int = 0.0
-                    iso_distro = 1
-                    sliced_mz = j[k]['m/z array']
-                    sliced_int = j[k]['intensity array']
-                    charge_range = range(1, abs(max_charges)*2)
-                    target_mz = glycan_info['Adducts_mz'][i]
-                    second_peak = (glycan_info['Isotopic_Distribution_Masses'][1]+adduct_mass)/adduct_charge
-                    sec_peak_rel_int = glycan_info['Isotopic_Distribution'][1]
-                    last_peak = (glycan_info['Isotopic_Distribution_Masses'][-1]+adduct_mass)/adduct_charge
-                    no_iso_peaks = len(glycan_info['Isotopic_Distribution_Masses'])
-                    before_target = glycan_info['Adducts_mz'][i]-General_Functions.h_mass-General_Functions.tolerance_calc(tolerance[0], tolerance[1], glycan_info['Adducts_mz'][i])
-                    mono_ppm = []
-                    mz_isos = []
-                    iso_actual = []
-                    iso_target = []
-                    bad_peaks_before_target = []
-                    max_int = max(sliced_int)
-                    nearby_id = 0
-                    checked_bad_peaks_before_target = False
-                    iso_found = False
-                    current_iso_peak1 = []
-                    current_iso_peak2 = []
-                    current_mz = []
-                    for l_l, l in enumerate(sliced_mz):
-                        local_noise = General_Functions.local_noise_calc(noise[j_j][k_k], l, avg_noise[j_j])
-                        current_tolerance = General_Functions.tolerance_calc(tolerance[0], tolerance[1], l)
-                        if iso_found and l > ((glycan_info['Isotopic_Distribution_Masses'][iso_distro]+adduct_mass)/adduct_charge) + current_tolerance:
-                            if len(current_iso_peak1) > 5: #here data is profile (NOT RECOMMENDED, but it will work.... very slowly....)
-                                iso_actual.append(max(current_iso_peak1))
-                                iso_target.append(max(current_iso_peak2))
-                            else:
-                                iso_actual.append(sum(current_iso_peak1))
-                                iso_target.append(sum(current_iso_peak2))
-                            mz_isos.append(sum(current_mz)/len(current_mz))
-                            current_iso_peak1 = []
-                            current_iso_peak2 = []
-                            current_mz = []
-                            iso_distro += 1
-                            iso_found = False
-                        if not_good: #Here are checks for quick skips
-                            break
-                        if max_int < avg_noise[j_j]*0.5: #if there's no peak with intensity higher than 50% of the average noise of sample, don't even check it
-                            break
-                        if l_l == len(sliced_mz)-1 and not found:
-                            if verbose:
-                                verbose_info.append("------m/z "+str(l)+", int "+str(sliced_int[l_l]))
-                                verbose_info.append("--------Couldn't find peak and array ends shortly afterwards.")
-                            not_good = True
-                            break
-                        if target_mz > sliced_mz[-1]:
-                            if verbose:
-                                verbose_info.append("------m/z "+str(l)+", int "+str(sliced_int[l_l]))
-                                verbose_info.append("--------Target mz outside acquired mz interval.")
-                            not_good = True
-                            break
-                        if l < before_target: #This is the last check for quick skips
-                            continue
-                        if sliced_int[l_l] < local_noise*0.5: #This ignores peaks that are far below the noise level (less than 50% of the calculated noise level)
-                            continue
-                        if l > second_peak + current_tolerance and iso_distro == 1: #This is the first check for quick skips that's dependent on mz array acquired data but independent of noise
-                            if verbose:
-                                verbose_info.append("------m/z "+str(l)+", int "+str(sliced_int[l_l]))
-                                verbose_info.append("--------Couldn't check correct charge.")
-                            not_good = True
-                            break
-                        if l > (target_mz + current_tolerance) and not found:
-                            if verbose:
-                                verbose_info.append("------m/z "+str(l)+", int "+str(sliced_int[l_l]))
-                                verbose_info.append("--------Couldn't find monoisotopic peak.")
-                            not_good = True
-                            break
-                        if l > last_peak + current_tolerance and found:
-                            if verbose:
-                                verbose_info.append("------m/z "+str(l)+", int "+str(sliced_int[l_l]))
-                                verbose_info.append("--------Checked all available isotopologue peaks with no error.")
-                                verbose_info.append("--------Isotopologue peaks found: "+str(iso_distro)+"/"+str(no_iso_peaks))
-                            if iso_distro < min_isotops:
-                                not_good = True
-                            break
-                        if l > target_mz + current_tolerance and l < target_mz + General_Functions.h_mass and found:
-                            for m in charge_range:
-                                if m == 1:
-                                    continue
-                                expected_value = (l*m*0.0006)+0.1401 #based on linear regression of the relationship between masses and the second isotopic peak relative intensity of the average of different organic macromolecules
-                                if m != adduct_charge and (sliced_int[l_l] > mono_int*expected_value*0.6)  and abs(l-(target_mz+(General_Functions.h_mass/m))) <= current_tolerance:
-                                    if verbose:
-                                        verbose_info.append("------m/z "+str(l)+", int "+str(sliced_int[l_l]))
-                                        verbose_info.append("--------Incorrect charge assigned. Peak intensity: "+str(sliced_int[l_l])+" Monoisotopic peak intensity: "+str(mono_int)+" Charge detected: "+str(m)+" Found/Mono: "+str(sliced_int[l_l]/mono_int))
-                                    not_good = True
-                                    break
-                            if not_good:
-                                break
-                        if l > target_mz - General_Functions.h_mass - current_tolerance and l < target_mz - current_tolerance:
-                            nearby_id = l_l
-                            for m in charge_range:
-                                if abs(l-(target_mz-(General_Functions.h_mass/m))) <= current_tolerance:
-                                    bad_peaks_before_target.append((sliced_int[l_l], m))
-                                    break
-                        if l > target_mz + current_tolerance and abs(l-((glycan_info['Isotopic_Distribution_Masses'][iso_distro]+adduct_mass)/adduct_charge)) <= current_tolerance:
-                            if sliced_int[l_l] > mono_int*glycan_info['Isotopic_Distribution'][iso_distro]:
-                                intensity += mono_int*glycan_info['Isotopic_Distribution'][iso_distro]
-                            if sliced_int[l_l] <= mono_int*glycan_info['Isotopic_Distribution'][iso_distro]:
-                                intensity += sliced_int[l_l]
-                            current_mz.append(l)
-                            current_iso_peak1.append(sliced_int[l_l]/mono_int)
-                            current_iso_peak2.append(glycan_info['Isotopic_Distribution'][iso_distro])
-                            iso_found = True
-                            continue
-                        if not checked_bad_peaks_before_target and l > target_mz + current_tolerance:
-                            checked_bad_peaks_before_target = True
-                            for m in bad_peaks_before_target:
-                                expected_value = 1/((l*m[1]*0.0006)+0.1401) #based on linear regression of the relationship between masses and the second isotopic peak relative intensity of the average of different organic macromolecules
-                                if (m[0] > mono_int*expected_value*0.6):
-                                    if verbose:
-                                        verbose_info.append("------m/z "+str(l)+", int "+str(sliced_int[l_l]))
-                                        verbose_info.append("--------Not monoisotopic.")
-                                    not_good = True
-                                    break
-                            if not_good:
-                                break
-                        if sliced_int[l_l] < local_noise: #Everything from here is dependent on noise level (currently: monoisotopic peak detection only)
-                            continue
-                        if l >= target_mz - current_tolerance and abs(l-target_mz) <= current_tolerance:
-                            mono_ppm.append(General_Functions.calculate_ppm_diff(l, target_mz))
-                            intensity += sliced_int[l_l]
-                            mono_int += sliced_int[l_l]
-                            found = True
-                            continue
-                    for l_l in range(nearby_id, len(sliced_mz)):
-                        if sliced_mz[l_l] > target_mz+General_Functions.tolerance_calc(tolerance[0], tolerance[1], target_mz) or l_l == len(sliced_mz)-1:
-                            raw_data[i][j_j][1].append(0.0)
-                            break
-                        if abs(sliced_mz[l_l] - target_mz) <= General_Functions.tolerance_calc(tolerance[0], tolerance[1], target_mz):
-                            raw_data[i][j_j][1].append(sliced_int[l_l])
-                            break
-                if not_good:
-                    ppm_info[i][j_j][-1] = inf
-                    iso_fitting_quality[i][j_j][-1] = 0.0
-                    data[i][j_j][1].append(0.0)
-                    continue
-                else:
-                    ppm_info[i][j_j][-1] = mean(mono_ppm)
-#                    print(j[k]['retentionTime'], iso_actual, iso_target)
-                    if len(iso_actual) > 0:
-                        mz_isos = mz_isos
-                        iso_actual = iso_actual
-                        iso_target = iso_target
-                        dotp = []
-                        number = range(1, len(mz_isos)+1)
-                        starting_points_actual = [0, 1]
-                        starting_points_theoretical = [0, 1]
-                        for m_m, m in enumerate(number):
-                            vector_actual = [m-starting_points_actual[0], iso_actual[m_m]-starting_points_actual[1]]
-                            vector_target = [m-starting_points_theoretical[0], iso_target[m_m]-starting_points_theoretical[1]]
-                            normalized_actual = vector_actual/numpy.linalg.norm(vector_actual)
-                            normalized_target = vector_target/numpy.linalg.norm(vector_target)
-                            starting_points_actual = [m, iso_actual[m_m]]
-                            starting_points_theoretical = [m, iso_target[m_m]]
-                            dotproduct = numpy.dot(normalized_actual, normalized_target)
-                            dotp.append(dotproduct)
-                        R_sq = mean(dotp)
-                        
-                        #reduces score if fewer isotopic peaks are found: very punishing for only 2 peaks, much less punishing for three, normal score from 4 and over
-                        if len(iso_actual) == 1:
-                            R_sq = (R_sq+(R_sq*0.70))/2
-                        if len(iso_actual) == 2:
-                            R_sq = (R_sq+(R_sq*0.95))/2
-                        
-                        isotopic_fits[i][j_j][j[k]['retentionTime']] = [[target_mz]+mz_isos, [1]+iso_target, [1]+iso_actual, R_sq]
-                    if len(iso_actual) == 0:
-                        R_sq = 0.0
-                    iso_fitting_quality[i][j_j][-1] = R_sq
-                    data[i][j_j][1].append(intensity)
+            thread_numbers = threads_arrays[j_j]
+            
+            #this is a possible point of parallelization
+            for k_k, k in enumerate(thread_numbers):
+                analyze_mz_array(j[k]['m/z array'],
+                                 j[k]['intensity array'],
+                                 glycan_info,
+                                 tolerance,
+                                 min_isotops,
+                                 noise,
+                                 avg_noise,
+                                 max_charges,
+                                 ppm_info,
+                                 iso_fitting_quality,
+                                 data,
+                                 raw_data,
+                                 isotopic_fits,
+                                 i,
+                                 j_j,
+                                 k,
+                                 j[k]['retentionTime'],
+                                 ms1_id[j_j][k_k],
+                                 adduct_mass,
+                                 adduct_charge)
+                
     return data, ppm_info, iso_fitting_quality, verbose_info, raw_data, isotopic_fits
+    
+def analyze_mz_array(sliced_mz,
+                     sliced_int,
+                     glycan_info,
+                     tolerance,
+                     min_isotops,
+                     noise,
+                     avg_noise,
+                     max_charges,
+                     ppm_info,
+                     iso_fitting_quality,
+                     data,
+                     raw_data,
+                     isotopic_fits,
+                     glycan_id,
+                     file_id,
+                     thread_id,
+                     ret_time,
+                     ms1_id,
+                     adduct_mass,
+                     adduct_charge):
+    '''
+    '''
+    intensity = 0.0 #variable to sum the total deisotopotized intensity
+    mono_int = 0.0 #variable to sum the total intensity of the monoisotopic peak
+    iso_distro = 1 #starting isotopic distribution peak, always 1
+    charge_range = range(1, abs(max_charges)*2)
+    target_mz = glycan_info['Adducts_mz'][glycan_id]
+    second_peak = (glycan_info['Isotopic_Distribution_Masses'][1]+adduct_mass)/adduct_charge
+    sec_peak_rel_int = glycan_info['Isotopic_Distribution'][1]
+    last_peak = (glycan_info['Isotopic_Distribution_Masses'][-1]+adduct_mass)/adduct_charge
+    no_iso_peaks = len(glycan_info['Isotopic_Distribution_Masses'])
+    before_target = glycan_info['Adducts_mz'][glycan_id]-General_Functions.h_mass-General_Functions.tolerance_calc(tolerance[0], tolerance[1], glycan_info['Adducts_mz'][glycan_id])
+    mono_ppm = []
+    mz_isos = []
+    iso_actual = []
+    iso_target = []
+    bad_peaks_before_target = []
+    max_int = max(sliced_int)
+    nearby_id = 0
+    checked_bad_peaks_before_target = False
+    iso_found = False
+    current_iso_peak1 = []
+    current_iso_peak2 = []
+    current_mz = []
+    not_good = False
+    found = False
+    for l_l, l in enumerate(sliced_mz):
+        local_noise = General_Functions.local_noise_calc(noise[file_id][ms1_id], l, avg_noise[file_id])
+        current_tolerance = General_Functions.tolerance_calc(tolerance[0], tolerance[1], l)
+        if iso_found and l > ((glycan_info['Isotopic_Distribution_Masses'][iso_distro]+adduct_mass)/adduct_charge) + current_tolerance:
+            if len(current_iso_peak1) > 5: #here data is profile (NOT RECOMMENDED, but it will work.... very slowly....)
+                iso_actual.append(max(current_iso_peak1))
+                iso_target.append(max(current_iso_peak2))
+            else:
+                iso_actual.append(sum(current_iso_peak1))
+                iso_target.append(sum(current_iso_peak2))
+            mz_isos.append(sum(current_mz)/len(current_mz))
+            current_iso_peak1 = []
+            current_iso_peak2 = []
+            current_mz = []
+            iso_distro += 1
+            iso_found = False
+        if not_good: #Here are checks for quick skips
+            break
+        if max_int < avg_noise[file_id]*0.5: #if there's no peak with intensity higher than 50% of the average noise of sample, don't even check it
+            break
+        if l_l == len(sliced_mz)-1 and not found:
+            not_good = True
+            break
+        if target_mz > sliced_mz[-1]:
+            not_good = True
+            break
+        if l < before_target: #This is the last check for quick skips
+            continue
+        if sliced_int[l_l] < local_noise*0.5: #This ignores peaks that are far below the noise level (less than 50% of the calculated noise level)
+            continue
+        if l > second_peak + current_tolerance and iso_distro == 1: #This is the first check for quick skips that's dependent on mz array acquired data but independent of noise
+            not_good = True
+            break
+        if l > (target_mz + current_tolerance) and not found:
+            not_good = True
+            break
+        if l > last_peak + current_tolerance and found:
+            if iso_distro < min_isotops:
+                not_good = True
+            break
+        if l > target_mz + current_tolerance and l < target_mz + General_Functions.h_mass and found:
+            for m in charge_range:
+                if m == 1:
+                    continue
+                expected_value = (l*m*0.0006)+0.1401 #based on linear regression of the relationship between masses and the second isotopic peak relative intensity of the average of different organic macromolecules
+                if m != adduct_charge and (sliced_int[l_l] > mono_int*expected_value*0.6)  and abs(l-(target_mz+(General_Functions.h_mass/m))) <= current_tolerance:
+                    not_good = True
+                    break
+            if not_good:
+                break
+        if l > target_mz - General_Functions.h_mass - current_tolerance and l < target_mz - current_tolerance:
+            nearby_id = l_l
+            for m in charge_range:
+                if abs(l-(target_mz-(General_Functions.h_mass/m))) <= current_tolerance:
+                    bad_peaks_before_target.append((sliced_int[l_l], m))
+                    break
+        if l > target_mz + current_tolerance and abs(l-((glycan_info['Isotopic_Distribution_Masses'][iso_distro]+adduct_mass)/adduct_charge)) <= current_tolerance:
+            if sliced_int[l_l] > mono_int*glycan_info['Isotopic_Distribution'][iso_distro]:
+                intensity += mono_int*glycan_info['Isotopic_Distribution'][iso_distro]
+            if sliced_int[l_l] <= mono_int*glycan_info['Isotopic_Distribution'][iso_distro]:
+                intensity += sliced_int[l_l]
+            current_mz.append(l)
+            current_iso_peak1.append(sliced_int[l_l]/mono_int)
+            current_iso_peak2.append(glycan_info['Isotopic_Distribution'][iso_distro])
+            iso_found = True
+            continue
+        if not checked_bad_peaks_before_target and l > target_mz + current_tolerance:
+            checked_bad_peaks_before_target = True
+            for m in bad_peaks_before_target:
+                expected_value = 1/((l*m[1]*0.0006)+0.1401) #based on linear regression of the relationship between masses and the second isotopic peak relative intensity of the average of different organic macromolecules
+                if (m[0] > mono_int*expected_value*0.6):
+                    not_good = True
+                    break
+            if not_good:
+                break
+        if sliced_int[l_l] < local_noise: #Everything from here is dependent on noise level (currently: monoisotopic peak detection only)
+            continue
+        if l >= target_mz - current_tolerance and abs(l-target_mz) <= current_tolerance:
+            mono_ppm.append(General_Functions.calculate_ppm_diff(l, target_mz))
+            intensity += sliced_int[l_l]
+            mono_int += sliced_int[l_l]
+            found = True
+            continue
+            
+    for l_l in range(nearby_id, len(sliced_mz)):
+        if sliced_mz[l_l] > target_mz+General_Functions.tolerance_calc(tolerance[0], tolerance[1], target_mz) or l_l == len(sliced_mz)-1:
+            raw_data[glycan_id][file_id][1][ms1_id] = 0.0
+            break
+        if abs(sliced_mz[l_l] - target_mz) <= General_Functions.tolerance_calc(tolerance[0], tolerance[1], target_mz):
+            raw_data[glycan_id][file_id][1][ms1_id] = sliced_int[l_l]
+            break
+            
+    if len(iso_actual) > 0:
+        dotp = []
+        number = range(1, len(mz_isos)+1)
+        starting_points_actual = [0, 1]
+        starting_points_theoretical = [0, 1]
+        for m_m, m in enumerate(number):
+            vector_actual = [m-starting_points_actual[0], iso_actual[m_m]-starting_points_actual[1]]
+            vector_target = [m-starting_points_theoretical[0], iso_target[m_m]-starting_points_theoretical[1]]
+            normalized_actual = vector_actual/numpy.linalg.norm(vector_actual)
+            normalized_target = vector_target/numpy.linalg.norm(vector_target)
+            starting_points_actual = [m, iso_actual[m_m]]
+            starting_points_theoretical = [m, iso_target[m_m]]
+            dotproduct = numpy.dot(normalized_actual, normalized_target)
+            dotp.append(dotproduct)
+        iso_quali = mean(dotp)
+        
+        #reduces score if fewer isotopic peaks are found: very punishing for only 2 peaks, much less punishing for three, normal score from 4 and over
+        if len(iso_actual) == 1:
+            iso_quali = (iso_quali+(iso_quali*0.70))/2
+        if len(iso_actual) == 2:
+            iso_quali = (iso_quali+(iso_quali*0.95))/2
+            
+    if len(iso_actual) == 0:
+        iso_quali = 0.0
+        
+    if len(mono_ppm) > 0:
+        ppm_error = mean(mono_ppm)
+    else:
+        ppm_error = inf
+        
+    ppm_info[glycan_id][file_id][ms1_id] = ppm_error
+    iso_fitting_quality[glycan_id][file_id][ms1_id] = iso_quali
+    data[glycan_id][file_id][1][ms1_id] = intensity
+    isotopic_fits[glycan_id][file_id][ret_time] = [[glycan_info['Adducts_mz'][glycan_id]]+mz_isos, [1]+iso_target, [1]+iso_actual, iso_quali]
     
 def eic_smoothing(y, lmbd = 100, d = 2):
     '''Implementation of the Whittaker smoothing algorithm,
