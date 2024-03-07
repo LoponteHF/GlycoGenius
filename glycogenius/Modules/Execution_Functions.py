@@ -18,24 +18,9 @@
 
 import pathlib
 import importlib
-import_path = str(pathlib.Path(__file__).parent.resolve())
-for i_i, i in enumerate(import_path):
-    if i == "\\":
-        import_path = import_path[:i_i]+"/"+import_path[i_i+1:]
-        
-#Absolute import of General_Functions
-spec1 = importlib.util.spec_from_file_location("General_Functions", import_path+'/General_Functions.py')
-General_Functions = importlib.util.module_from_spec(spec1)
-spec1.loader.exec_module(General_Functions)
-#Absolute import of Library_Tools
-spec2 = importlib.util.spec_from_file_location("Library_Tools", import_path+'/Library_Tools.py')
-Library_Tools = importlib.util.module_from_spec(spec2)
-spec2.loader.exec_module(Library_Tools)
-#Absolute import of File_Accessing
-spec3 = importlib.util.spec_from_file_location("File_Accessing", import_path+'/File_Accessing.py')
-File_Accessing = importlib.util.module_from_spec(spec3)
-spec3.loader.exec_module(File_Accessing)
-
+from . import Library_Tools
+from . import General_Functions
+from . import File_Accessing
 from pyteomics import mzxml, mzml, mass, auxiliary
 from itertools import combinations_with_replacement, islice, product
 from pandas import DataFrame, ExcelWriter
@@ -44,7 +29,8 @@ from re import split
 from math import inf, isnan
 from statistics import mean, median
 from time import sleep
-import multiprocessing
+from numba import jit, cuda
+import concurrent.futures
 import os
 import dill
 import sys
@@ -212,7 +198,7 @@ def interactive_terminal():
         default_path = "/home/GlycoGenius/"
     while input_order[0] == None:
         print_header()
-        print("1 - Build and output glycans library.\n2 - Analyze sample files in single-threaded mode\n3 - Reanalyze raw results files with new\n    parameters\n4 - Create template parameters file for command-\n    line execution\n5 - Exit")
+        print("1 - Build and output glycans library.\n2 - Analyze sample files\n3 - Reanalyze raw results files with new\n    parameters\n4 - Create template parameters file for command-\n    line execution\n5 - Exit")
         var = input("Select your option: ")
         if var == 'warranty':
             print("\nDisclaimer of Warranty.\n")
@@ -241,34 +227,6 @@ def interactive_terminal():
                 for line in f:
                     print(line, end = "")
             continue
-        if var == 'sneakpeek':
-            path = default_path
-            while True:
-                var = input("Insert the working directory (where the\n'resultsn_' files are, default: "+default_path+"): ")
-                if var == "":
-                    var = path
-                print(var)
-                var2 = input("Is this path correct? (y/n): ")
-                if var2 == 'n':
-                    continue
-                if var2 == 'y':
-                    for i_i, i in enumerate(var):
-                        if i == "\\":
-                            var = var[:i_i]+"/"+var[i_i+1:]
-                    if var[-1] != "/":
-                        var = var+"/"
-                    path = var
-                    break
-            number = 0
-            while True:
-                var = input("Type execution number: ")
-                try:
-                    number = int(var)
-                except:
-                    print("Wrong Input")
-                    continue
-                break
-            return [69], path, number
         try:
             var = int(var)
         except:
@@ -1037,9 +995,7 @@ def sample_names(samples_list):
         curated_samples.append(i[backlash+1:dot])
     return curated_samples
 
-def imp_exp_gen_library(multithreaded_analysis,
-                        multithreaded_execution,
-                        samples_names,
+def imp_exp_gen_library(samples_names,
                         custom_glycans_list,
                         min_max_monos,
                         min_max_hex,
@@ -1174,8 +1130,6 @@ def imp_exp_gen_library(multithreaded_analysis,
         glycans with the desired adducts combination.
     '''
     begin_time = datetime.datetime.now()
-    if multithreaded_execution[0]:
-        return
     if custom_glycans_list[0] and not imp_exp_library[0]:
         custom_glycans_comp = []
         print('Building custom glycans library...', end = "", flush = True)
@@ -1192,123 +1146,7 @@ def imp_exp_gen_library(multithreaded_analysis,
                                             permethylated,
                                             reduced)
         print('Done!')
-    if multithreaded_analysis[0] and not only_gen_lib and not multithreaded_execution[0]:
-        print('Splitting execution for multiple threads...')
-        if not imp_exp_library[0] and not custom_glycans_list[0]:
-            monos_library = Library_Tools.generate_glycans_library(min_max_monos,
-                                                     min_max_hex,
-                                                     min_max_hexnac,
-                                                     min_max_sia,
-                                                     min_max_fuc,
-                                                     min_max_ac,
-                                                     min_max_gc,
-                                                     lactonized_ethyl_esterified,
-                                                     force_nglycan)
-            full_library = Library_Tools.full_glycans_library(monos_library,
-                                                max_adducts,
-                                                adducts_exclusion,
-                                                max_charges,
-                                                tag_mass,
-                                                fast_iso,
-                                                high_res,
-                                                internal_standard,
-                                                permethylated,
-                                                reduced)
-        elif imp_exp_library[0]:
-            spec = importlib.util.spec_from_file_location("glycans_library", save_path+'glycans_library.py')
-            lib_module = importlib.util.module_from_spec(spec)
-            spec.loader.exec_module(lib_module)
-            full_library = lib_module.full_library
-            if imp_exp_library[1]:
-                print('Exporting glycans library...')
-                with open(save_path+'glycans_library.py', 'w') as f:
-                    f.write('full_library = '+str(full_library))
-                    f.close()
-                df = {'Glycan' : [], 'Hex' : [], 'HexNAc' : [], 'dHex' : [], 'Neu5Ac' : [], 'Neu5Gc' : [], 'Isotopic Distribution' : [], 'Neutral Mass + Tag' : []}
-                for i_i, i in enumerate(full_library):
-                    df['Glycan'].append(i)
-                    df['Hex'].append(full_library[i]['Monos_Composition']['H'])
-                    df['HexNAc'].append(full_library[i]['Monos_Composition']['N'])
-                    df['dHex'].append(full_library[i]['Monos_Composition']['F'])
-                    df['Neu5Ac'].append(full_library[i]['Monos_Composition']['S'])
-                    df['Neu5Gc'].append(full_library[i]['Monos_Composition']['G'])
-                    temp_isotopic = []
-                    for j in full_library[i]['Isotopic_Distribution']:
-                        temp_isotopic.append(float("%.3f" % round(j, 3)))
-                    df['Isotopic Distribution'].append(str(temp_isotopic)[1:-1])
-                    df['Neutral Mass + Tag'].append(float("%.4f" % round(full_library[i]['Neutral_Mass+Tag'], 4)))
-                    for j in full_library[i]['Adducts_mz']:
-                        if i_i ==0:
-                            df[j] = [float("%.4f" % round(full_library[i]['Adducts_mz'][j], 4))]
-                        else:
-                            df[j].append(float("%.4f" % round(full_library[i]['Adducts_mz'][j], 4)))
-                df = DataFrame(df)
-                with ExcelWriter(save_path+'Glycans_Library.xlsx') as writer:
-                    df.to_excel(writer, index = False)
-        lib_names = []
-        full_library_keys_list = list(full_library.keys())
-        if len(full_library)%multithreaded_analysis[1] == 0:
-            split_s = int(len(full_library)/multithreaded_analysis[1])
-        else:
-            split_s = int(len(full_library)/multithreaded_analysis[1])+1
-        start = 0
-        libraries = []
-        for i in range(multithreaded_analysis[1]):
-            if start >= len(full_library):
-                multithreaded_analysis = (True, i)
-                break
-            temp_library = ""
-            for j in range(start, start+split_s):
-                if j == start+split_s-1 or j == len(full_library)-1:
-                    temp_library+= "'"+full_library_keys_list[j]+"'"+": "+str(full_library[full_library_keys_list[j]])
-                    start+=split_s
-                    break
-                if j < start+split_s-1:
-                    temp_library+= "'"+full_library_keys_list[j]+"'"+": "+str(full_library[full_library_keys_list[j]])+", "
-            libraries.append(temp_library)
-        mt_path = str(pathlib.Path(__file__).parent.resolve())
-        for i_i, i in enumerate(mt_path):
-            if i == "\\":
-                mt_path = mt_path[:i_i]+"/"+mt_path[i_i+1:]
-        with open(mt_path+'/core.py', 'r') as f:
-            for i_i, i in enumerate(f):
-                if i_i == 0:
-                    mode = 'w'
-                else:
-                    mode = 'a'
-                for j in range(multithreaded_analysis[1]):
-                    with open(save_path+'glycogenius_'+str(j)+'.py', mode) as g:
-                        if i_i == 18:
-                            g.write("import importlib\n")
-                            g.write("spec1 = importlib.util.spec_from_file_location('Execution_Functions', '"+mt_path+"/Execution_Functions.py')\n")
-                            g.write("Execution_Functions = importlib.util.module_from_spec(spec1)\n")
-                            g.write("spec1.loader.exec_module(Execution_Functions)\n")
-                            continue
-                        if i_i == 19:
-                            g.write("spec2 = importlib.util.spec_from_file_location('General_Functions', '"+mt_path+"/General_Functions.py')\n")
-                            g.write("General_Functions = importlib.util.module_from_spec(spec2)\n")
-                            g.write("spec2.loader.exec_module(General_Functions)\n")
-                            continue
-                        if i[-28:] == "#editted by multithreaded 1\n":
-                            g.write("    multithreaded_execution = (True, "+str(j)+", "+str(multithreaded_analysis[1])+")\n")
-                            continue
-                        if i[-28:] == "#editted by multithreaded 2\n":
-                            g.write("        with open('glycogenius_parameters.ini', 'r') as f:\n")
-                            continue
-                        if i[-28:] == "#editted by multithreaded 3\n":
-                            g.write("            for line in f:\n")
-                            g.write("                configs+=line\n")
-                            continue
-                        if i == "#line to add multithreaded library\n":
-                            g.write("        full_library = {"+str(libraries[j])+"}\n")
-                            continue
-                        if i == "#here multithreaded prints execution of main()":
-                            g.write("main()")
-                            continue
-                        g.write(i)
-                        g.close()
-            f.close()
-    if imp_exp_library[0] and not multithreaded_analysis[0]:
+    if imp_exp_library[0]:
         print('Importing existing library...', end = '', flush = True)
         spec = importlib.util.spec_from_file_location("glycans_library", save_path+'glycans_library.py')
         lib_module = importlib.util.module_from_spec(spec)
@@ -1316,7 +1154,7 @@ def imp_exp_gen_library(multithreaded_analysis,
         full_library = lib_module.full_library
         print("Done!")
         return full_library
-    if not custom_glycans_list[0] and (not multithreaded_analysis[0] or only_gen_lib):
+    if not custom_glycans_list[0]:
         print('Building glycans library...', end = "", flush = True)
         monos_library = Library_Tools.generate_glycans_library(min_max_monos,
                                                  min_max_hex,
@@ -1390,9 +1228,6 @@ def imp_exp_gen_library(multithreaded_analysis,
                     f.write(",".join(list_form)+'\n')
             f.close()
         print("Done!")
-    if multithreaded_analysis[0]:
-        print("Setup done. Run 'glycogenius_n.py' files now.")
-        os._exit(1)
     if only_gen_lib:
         print('Library length: '+str(len(full_library)))
         print("Check it in Glycans_Library.xlsx.")
@@ -1696,8 +1531,6 @@ def output_filtered_data(curve_fit_score,
                          percentage_auc,
                          reanalysis,
                          save_path,
-                         multithreaded_analysis,
-                         multithreaded_execution,
                          analyze_ms2,
                          unrestricted_fragments,
                          reporter_ions,
@@ -1708,8 +1541,7 @@ def output_filtered_data(curve_fit_score,
                          rt_tolerance,
                          rt_tolerance_frag,
                          output_isotopic_fittings,
-                         output_plot_data,
-                         sneakpeek):
+                         output_plot_data):
     '''This function filters and converts raw results data into human readable
     excel files.
     
@@ -1797,152 +1629,30 @@ def output_filtered_data(curve_fit_score,
     '''
     date = datetime.datetime.now()
     begin_time = str(date)[2:4]+str(date)[5:7]+str(date)[8:10]+"_"+str(date)[11:13]+str(date)[14:16]+str(date)[17:19]
-    if reanalysis and not sneakpeek[0]:
+    if reanalysis:
         print("Reanalyzing raw data with new parameters...")
-        results1_list = []
-        results2_list = []
-        results3_list = []
-        results4_list = []
-        results5_list = []
-        results6_list = []
-        for i in range(multithreaded_analysis[1]):
-            results1_list.append(save_path+'results1_'+str(i))
-            results2_list.append(save_path+'results2_'+str(i))
-            results3_list.append(save_path+'results3_'+str(i))
-            results4_list.append(save_path+'results4_'+str(i))
-            results5_list.append(save_path+'results5_'+str(i))
-            results6_list.append(save_path+'results6_'+str(i))
-        try:
-            for i_i, i in enumerate(results1_list):
-                with open(i, 'rb') as f:
-                    file = dill.load(f)
-                    df1_import = file[0]
-                    df2_import = file[1]
-                    if analyze_ms2:
-                        fragments_dataframes_import = file[2]
-                        total_threads = file[3]
-                    else:
-                        total_threads = file[2]
-                    f.close()
-                with open(results2_list[i_i], 'rb') as f:
-                    eic_dataframes_import = dill.load(f)
-                    f.close()
-                with open(results3_list[i_i], 'rb') as f:
-                    smoothed_eic_dataframes_import = dill.load(f)
-                    f.close()
-                with open(results4_list[i_i], 'rb') as f:
-                    curve_fitting_dataframes_import = dill.load(f)
-                    f.close()
-                with open(results5_list[i_i], 'rb') as f:
-                    raw_eic_dataframes_import = dill.load(f)
-                    f.close()
-                with open(results6_list[i_i], 'rb') as f:
-                    isotopic_fits_dataframes_import = dill.load(f)
-                    f.close()
-                if i_i == 0:
-                    df1 = df1_import
-                    df2 = df2_import
-                    raw_eic_dataframes = raw_eic_dataframes_import
-                    eic_dataframes = eic_dataframes_import
-                    smoothed_eic_dataframes = smoothed_eic_dataframes_import
-                    curve_fitting_dataframes = curve_fitting_dataframes_import
-                    isotopic_fits_dataframes = isotopic_fits_dataframes_import
-                    if analyze_ms2:
-                        fragments_dataframes = fragments_dataframes_import
-                else:
-                    for j_j, j in enumerate(df1_import):
-                        for k in j:
-                            df1[j_j][k] = df1[j_j][k] + df1_import[j_j][k]
-                    for j_j, j in enumerate(eic_dataframes_import):
-                        for k in j:
-                            if k[:4] != 'RTs_':
-                                raw_eic_dataframes[j_j][k] = raw_eic_dataframes_import[j_j][k]
-                                eic_dataframes[j_j][k] = eic_dataframes_import[j_j][k]
-                                smoothed_eic_dataframes[j_j][k] = smoothed_eic_dataframes_import[j_j][k]
-                    for j_j, j in enumerate(curve_fitting_dataframes_import):
-                        for k in j:
-                            curve_fitting_dataframes[j_j][k] = curve_fitting_dataframes_import[j_j][k]
-                    for j_j, j in enumerate(isotopic_fits_dataframes_import):
-                        for k in j:
-                            isotopic_fits_dataframes[j_j][k] = j[k]
-                    if analyze_ms2:
-                        for j_j, j in enumerate(fragments_dataframes_import):
-                            for k in j:
-                                fragments_dataframes[j_j][k] = fragments_dataframes[j_j][k] + fragments_dataframes_import[j_j][k]
-                if i_i == total_threads-1:
-                    break
-            with open(save_path+'raw_data_1', 'wb') as f:
-                if analyze_ms2:
-                    dill.dump([df1, df2, fragments_dataframes, version], f)
-                else:
-                    dill.dump([df1, df2, version], f)
-                f.close()
-            with open(save_path+'raw_data_2', 'wb') as f:
-                dill.dump(eic_dataframes, f)
-                f.close()
-            with open(save_path+'raw_data_3', 'wb') as f:
-                dill.dump(smoothed_eic_dataframes, f)
-                f.close()
-            with open(save_path+'raw_data_4', 'wb') as f:
-                dill.dump(curve_fitting_dataframes, f)
-                f.close()
-            with open(save_path+'raw_data_5', 'wb') as f:
-                dill.dump(raw_eic_dataframes, f)
-                f.close()
-            with open(save_path+'raw_data_6', 'wb') as f:
-                dill.dump(isotopic_fits_dataframes, f)
-                f.close()
-            for i in range(multithreaded_analysis[1]):
-                p1 = pathlib.Path(save_path+'results1_'+str(i))
-                p2 = pathlib.Path(save_path+'results2_'+str(i))
-                p3 = pathlib.Path(save_path+'results3_'+str(i))
-                p4 = pathlib.Path(save_path+'results4_'+str(i))
-                p5 = pathlib.Path(save_path+'results5_'+str(i))
-                p6 = pathlib.Path(save_path+'results6_'+str(i))
-                p1.unlink(missing_ok=True)
-                p2.unlink(missing_ok=True)
-                p3.unlink(missing_ok=True)
-                p4.unlink(missing_ok=True)
-                p5.unlink(missing_ok=True)
-                p6.unlink(missing_ok=True)
-        except:
-            pass
-    if not sneakpeek[0]:
-        files_list_in_path = os.listdir(save_path)
-        for i in files_list_in_path:
-            if "results1" in i:
-                return
+    else:
+        print("Analyzing raw data...")
     try:
-        if sneakpeek[0]:
-            with open(save_path+'results1_'+str(sneakpeek[1]), 'rb') as f:
-                file = dill.load(f)
-                df1 = file[0]
-                df2 = file[1]
-                if analyze_ms2:
-                    fragments_dataframes = file[2]
-                f.close()
-        else:
-            with open(save_path+'raw_data_1', 'rb') as f:
-                file = dill.load(f)
-                df1 = file[0]
-                df2 = file[1]
-                if type(file[2]) == list:
-                    analyze_ms2 = True
-                    fragments_dataframes = file[2]
-                    if reanalysis and ".".join(version.split('.')[:2]) != ".".join(file[3].split('.')[:2]):
-                        print("Raw data files version incompatible with\ncurrent version (Current version: "+version+";\nRaw data version: "+file[3]+")")
-                        return
-                else:
-                    if reanalysis and ".".join(version.split('.')[:2]) != ".".join(file[2].split('.')[:2]):
-                        print("Raw data files version incompatible with\ncurrent version (Current version: "+version+";\nRaw data version: "+file[3]+")")
-                        return
-                f.close()
+        with open(save_path+'raw_data_1', 'rb') as f:
+            file = dill.load(f)
+            df1 = file[0]
+            df2 = file[1]
+            if type(file[2]) == list:
+                analyze_ms2 = True
+                fragments_dataframes = file[2]
+                if reanalysis and ".".join(version.split('.')[:2]) != ".".join(file[3].split('.')[:2]):
+                    print("Raw data files version incompatible with\ncurrent version (Current version: "+version+";\nRaw data version: "+file[3]+")")
+                    return
+            else:
+                if reanalysis and ".".join(version.split('.')[:2]) != ".".join(file[2].split('.')[:2]):
+                    print("Raw data files version incompatible with\ncurrent version (Current version: "+version+";\nRaw data version: "+file[3]+")")
+                    return
+            f.close()
     except:
         if reanalysis:
             print("\nRaw data files not found. If you're not\nreanalyzing existing raw data, set\n'reanalysis' to 'no' in parameters before\nexecution or choose a different option in the\ncommand-line interface.\n")
         return
-    if not reanalysis:
-        print("Analyzing raw data...")
     df1_refactor = []
     for i_i, i in enumerate(df2["Sample_Number"]): #QCs cutoff
         if analyze_ms2:
@@ -2638,22 +2348,13 @@ def output_filtered_data(curve_fit_score,
     
     found_eic_raw_dataframes = [] #This creates a file with only the found glycan's EIC
     found_eic_processed_dataframes = []
-    if sneakpeek[0]:
-        with open(save_path+'results5_'+str(sneakpeek[1]), 'rb') as f:
-            raw_eic_dataframes = dill.load(f)
-            f.close()
-    else:
-        with open(save_path+'raw_data_5', 'rb') as f:
-            raw_eic_dataframes = dill.load(f)
-            f.close()
-    if sneakpeek[0]:
-        with open(save_path+'results3_'+str(sneakpeek[1]), 'rb') as f:
-            smoothed_eic_dataframes = dill.load(f)
-            f.close()
-    else:
-        with open(save_path+'raw_data_3', 'rb') as f:
-            smoothed_eic_dataframes = dill.load(f)
-            f.close()
+
+    with open(save_path+'raw_data_5', 'rb') as f:
+        raw_eic_dataframes = dill.load(f)
+        f.close()
+    with open(save_path+'raw_data_3', 'rb') as f:
+        smoothed_eic_dataframes = dill.load(f)
+        f.close()
             
     if align_chromatograms:        
         if len(df2['Sample_Number']) > 1: #aligns the chromatograms, may take some time (around 1 minute per sample, depending on run length)
@@ -2740,14 +2441,9 @@ def output_filtered_data(curve_fit_score,
         del isotopic_fits_dataframes_arranged
         del isotopic_fits_df
         
-        if sneakpeek[0]:
-            with open(save_path+'results4_'+str(sneakpeek[1]), 'rb') as f:
-                curve_fitting_dataframes = dill.load(f)
-                f.close()
-        else:
-            with open(save_path+'raw_data_4', 'rb') as f:
-                curve_fitting_dataframes = dill.load(f)
-                f.close()
+        with open(save_path+'raw_data_4', 'rb') as f:
+            curve_fitting_dataframes = dill.load(f)
+            f.close()
         with ExcelWriter(save_path+begin_time+'_curve_fitting_Plot_Data.xlsx') as writer:
             for i_i, i in enumerate(curve_fitting_dataframes):
                 if len(curve_fitting_dataframes[i_i]) > 16384:
@@ -2771,14 +2467,9 @@ def output_filtered_data(curve_fit_score,
         
     
     if output_plot_data:
-        # if sneakpeek[0]: #commented for now, it's just too much redundant information... smoothed eic will output as processed now
-            # with open(save_path+'results2_'+str(sneakpeek[1]), 'rb') as f:
-                # eic_dataframes = dill.load(f)
-                # f.close()
-        # else:
-            # with open(save_path+'raw_data_2', 'rb') as f:
-                # eic_dataframes = dill.load(f)
-                # f.close()
+        # with open(save_path+'raw_data_2', 'rb') as f:
+            # eic_dataframes = dill.load(f)
+            # f.close()
         # with ExcelWriter(save_path+begin_time+'_processed_EIC_Plot_Data.xlsx') as writer:
             # for i_i, i in enumerate(eic_dataframes):
                 # eic_df = DataFrame(i)
@@ -2808,8 +2499,6 @@ def output_filtered_data(curve_fit_score,
 
 def arrange_raw_data(analyzed_data,
                      samples_names,
-                     multithreaded_analysis,
-                     multithreaded_execution,
                      analyze_ms2,
                      save_path): ##Complete
     '''Arrange the raw results data into pickled files to be processed by output_filtered_data.
@@ -2985,169 +2674,37 @@ def arrange_raw_data(analyzed_data,
             if len(i[j]) < biggest_len:
                 for k in range(biggest_len-len(i[j])):
                     i[j].append(None)
-    if multithreaded_execution[0]:
-#        sleep((multithreaded_execution[1])*(30/multithreaded_execution[2]))
-        with open(save_path+'results1_'+str(multithreaded_execution[1]), 'wb') as f:
-            if analyze_ms2:
-                dill.dump([df1, df2, fragments_dataframes, multithreaded_execution[2]], f)
-            else:
-                dill.dump([df1, df2, multithreaded_execution[2]], f)
-            f.close()
-        with open(save_path+'results2_'+str(multithreaded_execution[1]), 'wb') as f:
-            dill.dump(eic_dataframes, f)
-            f.close()
-        with open(save_path+'results3_'+str(multithreaded_execution[1]), 'wb') as f:
-            dill.dump(smoothed_eic_dataframes, f)
-            f.close()
-        with open(save_path+'results4_'+str(multithreaded_execution[1]), 'wb') as f:
-            dill.dump(curve_fitting_dataframes, f)
-            f.close()
-        with open(save_path+'results5_'+str(multithreaded_execution[1]), 'wb') as f:
-            dill.dump(raw_eic_dataframes, f)
-            f.close()
-        with open(save_path+'results6_'+str(multithreaded_execution[1]), 'wb') as f:
-            dill.dump(isotopic_fits_dataframes, f)
-            f.close()
-        p1 = pathlib.Path(save_path+'glycogenius_'+str(multithreaded_execution[1])+'.py')
-        p1.unlink(missing_ok=True)
-        results1_list = []
-        results2_list = []
-        results3_list = []
-        results4_list = []
-        results5_list = []
-        results6_list = []
-        for i in range(multithreaded_execution[2]):
-            results1_list.append('results1_'+str(i))
-            results2_list.append('results2_'+str(i))
-            results3_list.append('results3_'+str(i))
-            results4_list.append('results4_'+str(i))
-            results5_list.append('results5_'+str(i))
-            results6_list.append('results6_'+str(i))
-        dir_list = os.listdir(save_path)
-        last = True
-        for i in results1_list:
-            if i not in dir_list:
-                last = False
-        if last:
-            for i_i, i in enumerate(results1_list):
-                with open(i, 'rb') as f:
-                    file = dill.load(f)
-                    df1_import = file[0]
-                    df2_import = file[1]
-                    if analyze_ms2:
-                        fragments_dataframes_import = file[2]
-                    f.close()
-                with open(results2_list[i_i], 'rb') as f:
-                    eic_dataframes_import = dill.load(f)
-                    f.close()
-                with open(results3_list[i_i], 'rb') as f:
-                    smoothed_eic_dataframes_import = dill.load(f)
-                    f.close()
-                with open(results4_list[i_i], 'rb') as f:
-                    curve_fitting_dataframes_import = dill.load(f)
-                    f.close()
-                with open(results5_list[i_i], 'rb') as f:
-                    raw_eic_dataframes_import = dill.load(f)
-                    f.close()
-                with open(results6_list[i_i], 'rb') as f:
-                    isotopic_fits_dataframes_import = dill.load(f)
-                    f.close()
-                if i_i == 0:
-                    df1 = df1_import
-                    df2 = df2_import
-                    raw_eic_dataframes = raw_eic_dataframes_import
-                    eic_dataframes = eic_dataframes_import
-                    smoothed_eic_dataframes = smoothed_eic_dataframes_import
-                    curve_fitting_dataframes = curve_fitting_dataframes_import
-                    isotopic_fits_dataframes = isotopic_fits_dataframes_import
-                    if analyze_ms2:
-                        fragments_dataframes = fragments_dataframes_import
-                else:
-                    for j_j, j in enumerate(df1_import):
-                        for k in j:
-                            df1[j_j][k] = df1[j_j][k] + df1_import[j_j][k]
-                    for j_j, j in enumerate(eic_dataframes_import):
-                        for k in j:
-                            if k[:4] != 'RTs_':
-                                raw_eic_dataframes[j_j][k] = raw_eic_dataframes_import[j_j][k]
-                                eic_dataframes[j_j][k] = eic_dataframes_import[j_j][k]
-                                smoothed_eic_dataframes[j_j][k] = smoothed_eic_dataframes_import[j_j][k]
-                    for j_j, j in enumerate(curve_fitting_dataframes_import):
-                        for k in j:
-                            curve_fitting_dataframes[j_j][k] = curve_fitting_dataframes_import[j_j][k]
-                    for j_j, j in enumerate(isotopic_fits_dataframes_import):
-                        for k in j:
-                            isotopic_fits_dataframes[j_j][k] = j[k]
-                    if analyze_ms2:
-                        for j_j, j in enumerate(fragments_dataframes_import):
-                            for k in j:
-                                fragments_dataframes[j_j][k] = fragments_dataframes[j_j][k] + fragments_dataframes_import[j_j][k]
-            with open(save_path+'raw_data_1', 'wb') as f:
-                if analyze_ms2:
-                    dill.dump([df1, df2, fragments_dataframes, version], f)
-                else:
-                    dill.dump([df1, df2, version], f)
-                f.close()
-            with open(save_path+'raw_data_2', 'wb') as f:
-                dill.dump(eic_dataframes, f)
-                f.close()
-            with open(save_path+'raw_data_3', 'wb') as f:
-                dill.dump(smoothed_eic_dataframes, f)
-                f.close()
-            with open(save_path+'raw_data_4', 'wb') as f:
-                dill.dump(curve_fitting_dataframes, f)
-                f.close()
-            with open(save_path+'raw_data_5', 'wb') as f:
-                dill.dump(raw_eic_dataframes, f)
-                f.close()
-            with open(save_path+'raw_data_6', 'wb') as f:
-                dill.dump(isotopic_fits_dataframes, f)
-                f.close()
-            for i in range(multithreaded_analysis[1]):
-                p1 = pathlib.Path(save_path+'results1_'+str(i))
-                p2 = pathlib.Path(save_path+'results2_'+str(i))
-                p3 = pathlib.Path(save_path+'results3_'+str(i))
-                p4 = pathlib.Path(save_path+'results4_'+str(i))
-                p5 = pathlib.Path(save_path+'results5_'+str(i))
-                p6 = pathlib.Path(save_path+'results6_'+str(i))
-                p1.unlink(missing_ok=True)
-                p2.unlink(missing_ok=True)
-                p3.unlink(missing_ok=True)
-                p4.unlink(missing_ok=True)
-                p5.unlink(missing_ok=True)
-                p6.unlink(missing_ok=True)
-    else:
-        with open(save_path+'raw_data_1', 'wb') as f:
-            if analyze_ms2:
-                dill.dump([df1, df2, fragments_dataframes, version], f)
-                del df1
-                del df2
-                del fragments_dataframes
-            else:
-                dill.dump([df1, df2, version], f)
-                del df1
-                del df2
-            f.close()
-        with open(save_path+'raw_data_2', 'wb') as f:
-            dill.dump(eic_dataframes, f)
-            del eic_dataframes
-            f.close()
-        with open(save_path+'raw_data_3', 'wb') as f:
-            dill.dump(smoothed_eic_dataframes, f)
-            del smoothed_eic_dataframes
-            f.close()
-        with open(save_path+'raw_data_4', 'wb') as f:
-            dill.dump(curve_fitting_dataframes, f)
-            del curve_fitting_dataframes
-            f.close()
-        with open(save_path+'raw_data_5', 'wb') as f:
-            dill.dump(raw_eic_dataframes, f)
-            del raw_eic_dataframes
-            f.close()
-        with open(save_path+'raw_data_6', 'wb') as f:
-            dill.dump(isotopic_fits_dataframes, f)
-            del isotopic_fits_dataframes
-            f.close()
+    with open(save_path+'raw_data_1', 'wb') as f:
+        if analyze_ms2:
+            dill.dump([df1, df2, fragments_dataframes, version], f)
+            del df1
+            del df2
+            del fragments_dataframes
+        else:
+            dill.dump([df1, df2, version], f)
+            del df1
+            del df2
+        f.close()
+    with open(save_path+'raw_data_2', 'wb') as f:
+        dill.dump(eic_dataframes, f)
+        del eic_dataframes
+        f.close()
+    with open(save_path+'raw_data_3', 'wb') as f:
+        dill.dump(smoothed_eic_dataframes, f)
+        del smoothed_eic_dataframes
+        f.close()
+    with open(save_path+'raw_data_4', 'wb') as f:
+        dill.dump(curve_fitting_dataframes, f)
+        del curve_fitting_dataframes
+        f.close()
+    with open(save_path+'raw_data_5', 'wb') as f:
+        dill.dump(raw_eic_dataframes, f)
+        del raw_eic_dataframes
+        f.close()
+    with open(save_path+'raw_data_6', 'wb') as f:
+        dill.dump(isotopic_fits_dataframes, f)
+        del isotopic_fits_dataframes
+        f.close()
     print("Done!")
 
 def print_sep(): ##Complete
@@ -3166,7 +2723,8 @@ def analyze_files(library,
                   max_charges,
                   custom_noise,
                   close_peaks,
-                  fast_iso): ##Complete
+                  fast_iso,
+                  multithreaded): ##Complete
     '''Integrates all the file-accessing associated functions in this script to go
     through the files data, draw and process eic of hypothetical glycans, does 
     peak-picking and calculates AUC of the peaks.
@@ -3311,29 +2869,41 @@ def analyze_files(library,
     print_sep()
     print("Analyzing glycans in samples' MS1 spectra...")
     
-    for i_i, i in enumerate(library):
-        print('Analyzing glycan '+str(i)+': '+str(i_i+1)+'/'+str(lib_size))
-        # a good candidate function for in-code parallelization, if we can pickle it
-        analyze_glycan(library,
-                        lib_size,
-                        data,
-                        ms1_index,
-                        tolerance,
-                        ret_time_interval,
-                        min_isotops,
-                        min_ppp,
-                        max_charges,
-                        noise,
-                        noise_avg,
-                        close_peaks,
-                        fast_iso,
-                        zeroes_arrays,
-                        inf_arrays,
-                        threads_arrays,
-                        rt_arrays,
-                        ms1_id,
-                        analyzed_data,
-                        i)
+    results = []
+    if multithreaded:
+        cpu_count = (os.cpu_count())-1
+    else:
+        cpu_count = 1
+    with concurrent.futures.ProcessPoolExecutor(max_workers = cpu_count) as executor:
+        for i_i, i in enumerate(library):
+            
+            # a good candidate function for in-code parallelization, if we can pickle it
+            result = executor.submit(analyze_glycan, 
+                                     library,
+                                     lib_size,
+                                     data,
+                                     ms1_index,
+                                     tolerance,
+                                     ret_time_interval,
+                                     min_isotops,
+                                     min_ppp,
+                                     max_charges,
+                                     noise,
+                                     noise_avg,
+                                     close_peaks,
+                                     fast_iso,
+                                     zeroes_arrays,
+                                     inf_arrays,
+                                     threads_arrays,
+                                     rt_arrays,
+                                     ms1_id,
+                                     i,
+                                     i_i,
+                                     lib_size)
+            results.append(result)
+    for i in results:
+        result_data = i.result()
+        analyzed_data[result_data[1]] = result_data[0]
             
     print('Sample MS1 analysis done in '+str(datetime.datetime.now() - begin_time)+'!')
     return analyzed_data, rt_array_report, noise_avg
@@ -3356,10 +2926,12 @@ def analyze_glycan(library,
                   threads_arrays,
                   rt_arrays,
                   ms1_id,
-                  analyzed_data,
-                  i):
+                  i,
+                  i_i,
+                  total_glycans):
     '''
     '''
+    print('Analyzing glycan '+str(i)+': '+str(i_i+1)+'/'+str(total_glycans))
     
     glycan_data = library[i]
     glycan_data['Adducts_mz_data'] = {}
@@ -3426,7 +2998,7 @@ def analyze_glycan(library,
                     l['Signal-to-Noise'] = l['int']/(General_Functions.local_noise_calc(noise[k][l['id']], glycan_data['Adducts_mz'][j], noise_avg[k]))
                     l['Curve_Fit_Score'] = File_Accessing.peak_curve_fit(temp_eic_smoothed, l)
                     glycan_data['Adducts_mz_data'][j][k][1].append(l)
-    analyzed_data[i] = glycan_data
+    return glycan_data, i
     
 def analyze_ms2(ms2_index, 
                 data, 
@@ -3448,7 +3020,8 @@ def analyze_ms2(ms2_index,
                 lactonized_ethyl_esterified,
                 filter_output,
                 unrestricted_fragments,
-                rt_tolerance):
+                rt_tolerance,
+                multithreaded):
     '''Analyzes the MS2 data in the sample files, outputting the found matches.
     
     Parameters
@@ -3566,152 +3139,194 @@ def analyze_ms2(ms2_index,
     fragments_data = {}
     print('Scanning MS2 spectra...')
     scan_begin_time = datetime.datetime.now()
-    for i_i, i in enumerate(analyzed_data[0]): #goes through each glycan found in analysis
-        if i_i == 0:
-            print("0.00% Done")
-        fragments_data[i] = {}
-        for j_j, j in enumerate(analyzed_data[0][i]['Adducts_mz_data']): #goes through each adduct
-            fragments_data[i][j] = {}
-            for k_k, k in enumerate(data): #goes through each file
-                fragments_data[i][j][k_k] = []
-                if len(ms2_index[k_k]) == 0:
-                    continue
-                if len(analyzed_data[0][i]['Adducts_mz_data'][j][k_k][1]) == 0 and not unrestricted_fragments: #checks if found the adduct
-                    continue
-                for l in ms2_index[k_k]:
-                    if len(k[l]['intensity array']) == 0:
-                        continue
-                    if unrestricted_fragments:
-                        if k[l]['retentionTime'] < rt_interval[0] or k[l]['retentionTime'] > rt_interval[1]:
-                            continue
-                    else:
-                        if k[l]['retentionTime'] < analyzed_data[0][i]['Adducts_mz_data'][j][k_k][1][0]['peak_interval'][0] - rt_tolerance or k[l]['retentionTime'] > analyzed_data[0][i]['Adducts_mz_data'][j][k_k][1][-1]['peak_interval'][1] + rt_tolerance: #skips spectra outside peak interval of peaks found
-                            continue
-                    if abs((k[l]['precursorMz'][0]['precursorMz']) - analyzed_data[0][i]['Adducts_mz'][j]) <= (1.0074/General_Functions.form_to_charge(j))+General_Functions.tolerance_calc(tolerance[0], tolerance[1], analyzed_data[0][i]['Adducts_mz'][j]): #checks if precursor matches adduct mz
-                        found_count = 0
-                        total = sum(k[l]['intensity array'])
-                        former_peak_mz = 0
-                        max_int = max(k[l]['intensity array'])
-                        for m_m, m in enumerate(k[l]['m/z array']):
-                        
-                            if k[l]['intensity array'][m_m] < max_int*0.1: #this avoids picking on super small intensity peaks... since MS2 data noise is sometimes almost boolean, it's easier to just filter by intensity related to base peak
-                                continue
-                                
-                            if abs(m+former_peak_mz+General_Functions.h_mass) < General_Functions.tolerance_calc(tolerance[0], tolerance[1], m) or abs(m-former_peak_mz+(General_Functions.h_mass/2)) < General_Functions.tolerance_calc(tolerance[0], tolerance[1], m): #this stack makes it so that fragments are not picked as peaks of the envelope of former peaks. checks for singly or doubly charged fragments only
-                                former_peak_mz = m
-                                continue
-                            former_peak_mz = m
-                            
-                            found = False
-                            for n_n, n in enumerate(fragments):
-                                if 'Monos_Composition' in list(n.keys()):
-                                    if lactonized_ethyl_esterified:
-                                        if (n['Monos_Composition']['H'] == analyzed_data[0][i]['Monos_Composition']['H']
-                                            and n['Monos_Composition']['N'] == analyzed_data[0][i]['Monos_Composition']['N']
-                                            and n['Monos_Composition']['lS'] == analyzed_data[0][i]['Monos_Composition']['lS']
-                                            and n['Monos_Composition']['eS'] == analyzed_data[0][i]['Monos_Composition']['eS']
-                                            and n['Monos_Composition']['F'] == analyzed_data[0][i]['Monos_Composition']['F']
-                                            and n['Monos_Composition']['G'] == analyzed_data[0][i]['Monos_Composition']['G']):
-                                            continue
-                                    else:
-                                        if (n['Monos_Composition']['H'] == analyzed_data[0][i]['Monos_Composition']['H']
-                                            and n['Monos_Composition']['N'] == analyzed_data[0][i]['Monos_Composition']['N']
-                                            and n['Monos_Composition']['S'] == analyzed_data[0][i]['Monos_Composition']['S']
-                                            and n['Monos_Composition']['F'] == analyzed_data[0][i]['Monos_Composition']['F']
-                                            and n['Monos_Composition']['G'] == analyzed_data[0][i]['Monos_Composition']['G']):
-                                            continue
-                                if found:
-                                    break
-                                combo = False
-                                if filter_output:
-                                    if "/" in n['Formula']:
-                                        combo = True
-                                        fragments_comp = []
-                                        formula_splitted = n['Formula'].split("/")
-                                        for o in formula_splitted:
-                                            for p_p, p in enumerate(o):
-                                                if p == "-" or p == "+" or p == "_":
-                                                    fragments_comp.append(o[:p_p])
-                                                    break
-                                        for o_o, o in enumerate(fragments_comp):
-                                            fragments_comp[o_o] = General_Functions.form_to_comp(o)
-                                        viable = []
-                                        for o in fragments_comp:
-                                            if lactonized_ethyl_esterified:
-                                                if 'H' not in o.keys():
-                                                    o['H'] = 0
-                                                if 'N' not in o.keys():
-                                                    o['N'] = 0
-                                                if 'lS' not in o.keys():
-                                                    o['lS'] = 0
-                                                if 'eS' not in o.keys():
-                                                    o['eS'] = 0
-                                                if 'F' not in o.keys():
-                                                    o['F'] = 0
-                                                if 'G' not in o.keys():
-                                                    o['G'] = 0
-                                                if (o['H'] > analyzed_data[0][i]['Monos_Composition']['H']
-                                                    or o['N'] > analyzed_data[0][i]['Monos_Composition']['N']
-                                                    or o['lS'] > analyzed_data[0][i]['Monos_Composition']['lS']
-                                                    or o['eS'] > analyzed_data[0][i]['Monos_Composition']['eS']
-                                                    or o['F'] > analyzed_data[0][i]['Monos_Composition']['F']
-                                                    or o['G'] > analyzed_data[0][i]['Monos_Composition']['G']):
-                                                    viable.append(False)
-                                                    break
-                                                else:
-                                                    viable.append(True)
-                                            else:
-                                                if 'H' not in o.keys():
-                                                    o['H'] = 0
-                                                if 'N' not in o.keys():
-                                                    o['N'] = 0
-                                                if 'S' not in o.keys():
-                                                    o['S'] = 0
-                                                if 'F' not in o.keys():
-                                                    o['F'] = 0
-                                                if 'G' not in o.keys():
-                                                    o['G'] = 0
-                                                if (o['H'] > analyzed_data[0][i]['Monos_Composition']['H']
-                                                    or o['N'] > analyzed_data[0][i]['Monos_Composition']['N']
-                                                    or o['S'] > analyzed_data[0][i]['Monos_Composition']['S']
-                                                    or o['F'] > analyzed_data[0][i]['Monos_Composition']['F']
-                                                    or o['G'] > analyzed_data[0][i]['Monos_Composition']['G']):
-                                                    viable.append(False)
-                                                    break
-                                                else:
-                                                    viable.append(True)
-                                        if True not in viable:
-                                            continue
-                                        else:
-                                            count = 0
-                                            new_formula = ""
-                                            for o_o, o in enumerate(viable):
-                                                if count == 0:
-                                                    if o:
-                                                        new_formula = formula_splitted[o_o]
-                                                        count+= 1
-                                                else:
-                                                    if o:
-                                                        new_formula+= "/"+formula_splitted[o_o]
-                                                        count+= 1
-                                    elif "/" not in n['Formula'] and not combo:
-                                        if lactonized_ethyl_esterified:
-                                            if (n['Monos_Composition']['H'] > analyzed_data[0][i]['Monos_Composition']['H'] or n['Monos_Composition']['N'] > analyzed_data[0][i]['Monos_Composition']['N'] or n['Monos_Composition']['lS'] > analyzed_data[0][i]['Monos_Composition']['lS'] or n['Monos_Composition']['eS'] > analyzed_data[0][i]['Monos_Composition']['eS'] or n['Monos_Composition']['F'] > analyzed_data[0][i]['Monos_Composition']['F'] or n['Monos_Composition']['G'] > analyzed_data[0][i]['Monos_Composition']['G']):
-                                                continue
-                                        else:
-                                            if (n['Monos_Composition']['H'] > analyzed_data[0][i]['Monos_Composition']['H'] or n['Monos_Composition']['N'] > analyzed_data[0][i]['Monos_Composition']['N'] or n['Monos_Composition']['S'] > analyzed_data[0][i]['Monos_Composition']['S'] or n['Monos_Composition']['F'] > analyzed_data[0][i]['Monos_Composition']['F'] or n['Monos_Composition']['G'] > analyzed_data[0][i]['Monos_Composition']['G']):
-                                                continue
-                                for o in n['Adducts_mz']:
-                                    if abs(n['Adducts_mz'][o]-m) <= General_Functions.tolerance_calc(tolerance[0], tolerance[1], n['Adducts_mz'][o]): #fragments data outputted in the form of (Glycan, Adduct, Fragment, Fragment mz, intensity, retention time, precursor)
-                                        if "_" not in n['Formula']:
-                                            fragments_data[i][j][k_k].append((i, j, n['Formula']+'_'+o, n['Adducts_mz'][o], k[l]['intensity array'][m_m], k[l]['retentionTime'], k[l]['precursorMz'][0]['precursorMz'], total))
-                                        elif "_" in n['Formula'] and combo:
-                                            fragments_data[i][j][k_k].append((i, j, new_formula, n['Adducts_mz'][o], k[l]['intensity array'][m_m], k[l]['retentionTime'], k[l]['precursorMz'][0]['precursorMz'], total))
-                                        else:
-                                            fragments_data[i][j][k_k].append((i, j, n['Formula'], n['Adducts_mz'][o], k[l]['intensity array'][m_m], k[l]['retentionTime'], k[l]['precursorMz'][0]['precursorMz'], total))
-                                        found = True
-                                        found_count += k[l]['intensity array'][m_m]
-                                        break
-        print(str("%.2f" % round(((i_i+1)/len(analyzed_data[0]))*100, 2))+"% Done")
+    
+    results = []
+    if multithreaded:
+        cpu_count = (os.cpu_count())-1
+    else:
+        cpu_count = 1
+    with concurrent.futures.ProcessPoolExecutor(max_workers = cpu_count) as executor:
+        for i_i, i in enumerate(analyzed_data[0]): #goes through each glycan found in analysis
+            if i_i == 0:
+                print("0.00% Done")
+            result = executor.submit(analyze_glycan_ms2,
+                                     ms2_index,
+                                     fragments,
+                                     data, 
+                                     analyzed_data, 
+                                     lactonized_ethyl_esterified,
+                                     rt_interval,
+                                     tolerance,
+                                     filter_output,
+                                     unrestricted_fragments,
+                                     rt_tolerance,
+                                     i_i,
+                                     i)
+            results.append(result)
+            
+    for i in results:
+        result_data = i.result()
+        fragments_data[result_data[1]] = result_data[0]
+        
     print('Sample MS2 analysis done in '+str(datetime.datetime.now() - begin_time)+'!')
     return analyzed_data[0], analyzed_data[1], analyzed_data[2], fragments_data
+                                 
+def analyze_glycan_ms2(ms2_index,
+                       fragments,
+                       data, 
+                       analyzed_data,
+                       lactonized_ethyl_esterified,
+                       rt_interval,
+                       tolerance,
+                       filter_output,
+                       unrestricted_fragments,
+                       rt_tolerance,
+                       i_i,
+                       i):
+    '''
+    '''
+    fragments_data = {}
+    for j_j, j in enumerate(analyzed_data[0][i]['Adducts_mz_data']): #goes through each adduct
+        fragments_data[j] = {}
+        for k_k, k in enumerate(data): #goes through each file
+            fragments_data[j][k_k] = []
+            if len(ms2_index[k_k]) == 0:
+                continue
+            if len(analyzed_data[0][i]['Adducts_mz_data'][j][k_k][1]) == 0 and not unrestricted_fragments: #checks if found the adduct
+                continue
+            for l in ms2_index[k_k]:
+                if len(k[l]['intensity array']) == 0:
+                    continue
+                if unrestricted_fragments:
+                    if k[l]['retentionTime'] < rt_interval[0] or k[l]['retentionTime'] > rt_interval[1]:
+                        continue
+                else:
+                    if k[l]['retentionTime'] < analyzed_data[0][i]['Adducts_mz_data'][j][k_k][1][0]['peak_interval'][0] - rt_tolerance or k[l]['retentionTime'] > analyzed_data[0][i]['Adducts_mz_data'][j][k_k][1][-1]['peak_interval'][1] + rt_tolerance: #skips spectra outside peak interval of peaks found
+                        continue
+                if abs((k[l]['precursorMz'][0]['precursorMz']) - analyzed_data[0][i]['Adducts_mz'][j]) <= (1.0074/General_Functions.form_to_charge(j))+General_Functions.tolerance_calc(tolerance[0], tolerance[1], analyzed_data[0][i]['Adducts_mz'][j]): #checks if precursor matches adduct mz
+                    found_count = 0
+                    total = sum(k[l]['intensity array'])
+                    former_peak_mz = 0
+                    max_int = max(k[l]['intensity array'])
+                    for m_m, m in enumerate(k[l]['m/z array']):
+                    
+                        if k[l]['intensity array'][m_m] < max_int*0.1: #this avoids picking on super small intensity peaks... since MS2 data noise is sometimes almost boolean, it's easier to just filter by intensity related to base peak
+                            continue
+                            
+                        if abs(m+former_peak_mz+General_Functions.h_mass) < General_Functions.tolerance_calc(tolerance[0], tolerance[1], m) or abs(m-former_peak_mz+(General_Functions.h_mass/2)) < General_Functions.tolerance_calc(tolerance[0], tolerance[1], m): #this stack makes it so that fragments are not picked as peaks of the envelope of former peaks. checks for singly or doubly charged fragments only
+                            former_peak_mz = m
+                            continue
+                        former_peak_mz = m
+                        
+                        found = False
+                        for n_n, n in enumerate(fragments):
+                            if 'Monos_Composition' in list(n.keys()):
+                                if lactonized_ethyl_esterified:
+                                    if (n['Monos_Composition']['H'] == analyzed_data[0][i]['Monos_Composition']['H']
+                                        and n['Monos_Composition']['N'] == analyzed_data[0][i]['Monos_Composition']['N']
+                                        and n['Monos_Composition']['lS'] == analyzed_data[0][i]['Monos_Composition']['lS']
+                                        and n['Monos_Composition']['eS'] == analyzed_data[0][i]['Monos_Composition']['eS']
+                                        and n['Monos_Composition']['F'] == analyzed_data[0][i]['Monos_Composition']['F']
+                                        and n['Monos_Composition']['G'] == analyzed_data[0][i]['Monos_Composition']['G']):
+                                        continue
+                                else:
+                                    if (n['Monos_Composition']['H'] == analyzed_data[0][i]['Monos_Composition']['H']
+                                        and n['Monos_Composition']['N'] == analyzed_data[0][i]['Monos_Composition']['N']
+                                        and n['Monos_Composition']['S'] == analyzed_data[0][i]['Monos_Composition']['S']
+                                        and n['Monos_Composition']['F'] == analyzed_data[0][i]['Monos_Composition']['F']
+                                        and n['Monos_Composition']['G'] == analyzed_data[0][i]['Monos_Composition']['G']):
+                                        continue
+                            if found:
+                                break
+                            combo = False
+                            if filter_output:
+                                if "/" in n['Formula']:
+                                    combo = True
+                                    fragments_comp = []
+                                    formula_splitted = n['Formula'].split("/")
+                                    for o in formula_splitted:
+                                        for p_p, p in enumerate(o):
+                                            if p == "-" or p == "+" or p == "_":
+                                                fragments_comp.append(o[:p_p])
+                                                break
+                                    for o_o, o in enumerate(fragments_comp):
+                                        fragments_comp[o_o] = General_Functions.form_to_comp(o)
+                                    viable = []
+                                    for o in fragments_comp:
+                                        if lactonized_ethyl_esterified:
+                                            if 'H' not in o.keys():
+                                                o['H'] = 0
+                                            if 'N' not in o.keys():
+                                                o['N'] = 0
+                                            if 'lS' not in o.keys():
+                                                o['lS'] = 0
+                                            if 'eS' not in o.keys():
+                                                o['eS'] = 0
+                                            if 'F' not in o.keys():
+                                                o['F'] = 0
+                                            if 'G' not in o.keys():
+                                                o['G'] = 0
+                                            if (o['H'] > analyzed_data[0][i]['Monos_Composition']['H']
+                                                or o['N'] > analyzed_data[0][i]['Monos_Composition']['N']
+                                                or o['lS'] > analyzed_data[0][i]['Monos_Composition']['lS']
+                                                or o['eS'] > analyzed_data[0][i]['Monos_Composition']['eS']
+                                                or o['F'] > analyzed_data[0][i]['Monos_Composition']['F']
+                                                or o['G'] > analyzed_data[0][i]['Monos_Composition']['G']):
+                                                viable.append(False)
+                                                break
+                                            else:
+                                                viable.append(True)
+                                        else:
+                                            if 'H' not in o.keys():
+                                                o['H'] = 0
+                                            if 'N' not in o.keys():
+                                                o['N'] = 0
+                                            if 'S' not in o.keys():
+                                                o['S'] = 0
+                                            if 'F' not in o.keys():
+                                                o['F'] = 0
+                                            if 'G' not in o.keys():
+                                                o['G'] = 0
+                                            if (o['H'] > analyzed_data[0][i]['Monos_Composition']['H']
+                                                or o['N'] > analyzed_data[0][i]['Monos_Composition']['N']
+                                                or o['S'] > analyzed_data[0][i]['Monos_Composition']['S']
+                                                or o['F'] > analyzed_data[0][i]['Monos_Composition']['F']
+                                                or o['G'] > analyzed_data[0][i]['Monos_Composition']['G']):
+                                                viable.append(False)
+                                                break
+                                            else:
+                                                viable.append(True)
+                                    if True not in viable:
+                                        continue
+                                    else:
+                                        count = 0
+                                        new_formula = ""
+                                        for o_o, o in enumerate(viable):
+                                            if count == 0:
+                                                if o:
+                                                    new_formula = formula_splitted[o_o]
+                                                    count+= 1
+                                            else:
+                                                if o:
+                                                    new_formula+= "/"+formula_splitted[o_o]
+                                                    count+= 1
+                                elif "/" not in n['Formula'] and not combo:
+                                    if lactonized_ethyl_esterified:
+                                        if (n['Monos_Composition']['H'] > analyzed_data[0][i]['Monos_Composition']['H'] or n['Monos_Composition']['N'] > analyzed_data[0][i]['Monos_Composition']['N'] or n['Monos_Composition']['lS'] > analyzed_data[0][i]['Monos_Composition']['lS'] or n['Monos_Composition']['eS'] > analyzed_data[0][i]['Monos_Composition']['eS'] or n['Monos_Composition']['F'] > analyzed_data[0][i]['Monos_Composition']['F'] or n['Monos_Composition']['G'] > analyzed_data[0][i]['Monos_Composition']['G']):
+                                            continue
+                                    else:
+                                        if (n['Monos_Composition']['H'] > analyzed_data[0][i]['Monos_Composition']['H'] or n['Monos_Composition']['N'] > analyzed_data[0][i]['Monos_Composition']['N'] or n['Monos_Composition']['S'] > analyzed_data[0][i]['Monos_Composition']['S'] or n['Monos_Composition']['F'] > analyzed_data[0][i]['Monos_Composition']['F'] or n['Monos_Composition']['G'] > analyzed_data[0][i]['Monos_Composition']['G']):
+                                            continue
+                            for o in n['Adducts_mz']:
+                                if abs(n['Adducts_mz'][o]-m) <= General_Functions.tolerance_calc(tolerance[0], tolerance[1], n['Adducts_mz'][o]): #fragments data outputted in the form of (Glycan, Adduct, Fragment, Fragment mz, intensity, retention time, precursor)
+                                    if "_" not in n['Formula']:
+                                        fragments_data[j][k_k].append((i, j, n['Formula']+'_'+o, n['Adducts_mz'][o], k[l]['intensity array'][m_m], k[l]['retentionTime'], k[l]['precursorMz'][0]['precursorMz'], total))
+                                    elif "_" in n['Formula'] and combo:
+                                        fragments_data[j][k_k].append((i, j, new_formula, n['Adducts_mz'][o], k[l]['intensity array'][m_m], k[l]['retentionTime'], k[l]['precursorMz'][0]['precursorMz'], total))
+                                    else:
+                                        fragments_data[j][k_k].append((i, j, n['Formula'], n['Adducts_mz'][o], k[l]['intensity array'][m_m], k[l]['retentionTime'], k[l]['precursorMz'][0]['precursorMz'], total))
+                                    found = True
+                                    found_count += k[l]['intensity array'][m_m]
+                                    break
+    print('Analyzing glycan '+str(i)+': '+str(i_i+1)+'/'+str(len(analyzed_data[0])))
+    return fragments_data, i

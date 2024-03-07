@@ -50,7 +50,7 @@ def main():
     imp_exp_library = (False, False)
     only_gen_lib = False
 
-    multithreaded_analysis = (False, 1)
+    multithreaded_analysis = True
     analyze_ms2 = (False, False, False)
     reporter_ions = []
     accuracy_unit = 'mz'
@@ -75,15 +75,12 @@ def main():
     reanalysis = False
     output_plot_data = False
 
-    multithreaded_execution = (False, 0, 0) #editted by multithreaded 1
-    sneakpeek = (False, 0)
-
-    if not os.isatty(0) or multithreaded_execution[0]: #If multithreaded execution or pipelined parameters file
+    if not os.isatty(0):
         Execution_Functions.print_header(False)
         config = configparser.ConfigParser()
         configs = ""
-        for line in sys.stdin:              #editted by multithreaded 2
-            configs+=line                   #editted by multithreaded 3
+        for line in sys.stdin:
+            configs+=line
         config.read_string(configs)
         custom_glycans_boolean = config['library_building'].getboolean('use_custom_glycans_list')
         if custom_glycans_boolean:
@@ -149,7 +146,7 @@ def main():
             internal_standard = float(internal_standard)
         imp_exp_library = (config['library_building'].getboolean('imp_library'), config['library_building'].getboolean('exp_library'))
         only_gen_lib = config['library_building'].getboolean('only_gen_lib')
-        multithreaded_analysis = (config['analysis_parameters'].getboolean('multithreaded_analysis'), int(config['analysis_parameters']['threads_number']))
+        multithreaded_analysis = config['analysis_parameters'].getboolean('multithreaded_analysis')
         analyze_ms2 = (config['analysis_parameters'].getboolean('analyze_ms2'), config['analysis_parameters'].getboolean('force_fragments_to_glycans'), config['analysis_parameters'].getboolean('unrestricted_fragments'))
         reporter_ions = config['analysis_parameters']['reporter_ions'].split(",")
         for i_i, i in enumerate(reporter_ions):
@@ -206,22 +203,6 @@ def main():
     else: #If no parameters file pipelines, run CLI
         parameters = Execution_Functions.interactive_terminal()
         Execution_Functions.print_sep()
-        if parameters[0][0] == 69: #sneakpeek feature
-            sneakpeek = (True, parameters[2])
-            config = configparser.ConfigParser()
-            configs = ""
-            with open(parameters[1]+'glycogenius_parameters.ini', 'r') as f:
-                for line in f:
-                    configs+=line
-            config.read_string(configs)
-            force_nglycan = config['library_building'].getboolean('force_nglycan')
-            max_ppm = int(config['analysis_parameters']['max_ppm'])
-            iso_fit_score = float(config['analysis_parameters']['isotopic_fitting_score'])
-            curve_fit_score = float(config['analysis_parameters']['curve_fitting_score'])
-            s_to_n = int(config['analysis_parameters']['signal_to_noise'])
-            analyze_ms2 = (config['analysis_parameters'].getboolean('analyze_ms2'), config['analysis_parameters'].getboolean('force_fragments_to_glycans'), config['analysis_parameters'].getboolean('unrestricted_fragments'))
-            save_path = parameters[1]
-            reanalysis = (True, True)
         if parameters[0][0] == 1 or parameters[0][0] == 2:
             if parameters[0][1] == 1:
                 custom_glycans_list = (True, parameters[1])
@@ -297,8 +278,6 @@ def main():
                                                  percentage_auc,
                                                  reanalysis,
                                                  save_path,
-                                                 multithreaded_analysis,
-                                                 multithreaded_execution,
                                                  analyze_ms2[0],
                                                  analyze_ms2[2],
                                                  reporter_ions,
@@ -309,21 +288,16 @@ def main():
                                                  ret_time_interval[2],
                                                  rt_tolerance_frag,
                                                  iso_fittings,
-                                                 output_plot_data,
-                                                 sneakpeek)
+                                                 output_plot_data)
 
     else:
-        if multithreaded_execution[0]:
-            print('Multithreaded Execution: '+str(multithreaded_execution[1]))
         samples_names = Execution_Functions.sample_names(samples_list)
         if not only_gen_lib and not reanalysis:
             print("Sample files detected: "+str(len(samples_names)))
             for i in samples_names:
                 print("--> "+i)
             Execution_Functions.print_sep()
-        library = Execution_Functions.imp_exp_gen_library(multithreaded_analysis,
-                                                          multithreaded_execution,
-                                                          samples_names,
+        library = Execution_Functions.imp_exp_gen_library(samples_names,
                                                           custom_glycans_list,
                                                           min_max_monos,
                                                           min_max_hex,
@@ -355,9 +329,6 @@ def main():
                 Execution_Functions.print_sep()
                 input("No sample files to analyzed. Press Enter\nto exit.")
                 os._exit(1)
-#line to add multithreaded library
-        if multithreaded_execution[0]:
-            library = full_library
         print('Library length: '+str(len(library)))
         Execution_Functions.print_sep()
         tolerance = (accuracy_unit, accuracy_value)
@@ -382,7 +353,8 @@ def main():
                                                           max_charges,
                                                           custom_noise,
                                                           close_peaks,
-                                                          fast_iso)
+                                                          fast_iso,
+                                                          multithreaded_analysis)
         if analyze_ms2[0]:
             Execution_Functions.print_sep()
             analyzed_data = Execution_Functions.analyze_ms2(ms2_index, 
@@ -405,12 +377,11 @@ def main():
                                                             lactonized_ethyl_esterified,
                                                             analyze_ms2[1],
                                                             analyze_ms2[2],
-                                                            ret_time_interval[2])
+                                                            ret_time_interval[2],
+                                                            multithreaded_analysis)
         Execution_Functions.print_sep()
         Execution_Functions.arrange_raw_data(analyzed_data,
                                              samples_names,
-                                             multithreaded_analysis,
-                                             multithreaded_execution,
                                              analyze_ms2[0],
                                              save_path)
         Execution_Functions.print_sep()
@@ -421,8 +392,6 @@ def main():
                                                  percentage_auc,
                                                  reanalysis,
                                                  save_path,
-                                                 multithreaded_analysis,
-                                                 multithreaded_execution,
                                                  analyze_ms2[0],
                                                  analyze_ms2[2],
                                                  reporter_ions,
@@ -433,8 +402,7 @@ def main():
                                                  ret_time_interval[2],
                                                  rt_tolerance_frag,
                                                  iso_fittings,
-                                                 output_plot_data,
-                                                 sneakpeek)
+                                                 output_plot_data)
                                                  
     if not os.isatty(0):
         print('Execution complete. Time elapsed: '+str(datetime.datetime.now() - begin_time))

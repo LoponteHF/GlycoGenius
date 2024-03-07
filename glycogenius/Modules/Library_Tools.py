@@ -18,16 +18,7 @@
 
 import pathlib
 import importlib
-import_path = str(pathlib.Path(__file__).parent.resolve())
-for i_i, i in enumerate(import_path):
-    if i == "\\":
-        import_path = import_path[:i_i]+"/"+import_path[i_i+1:]
-        
-#Absolute import of General_Functions
-spec1 = importlib.util.spec_from_file_location("General_Functions", import_path+'/General_Functions.py')
-General_Functions = importlib.util.module_from_spec(spec1)
-spec1.loader.exec_module(General_Functions)
-
+from . import General_Functions
 from pyteomics import mzxml, mzml, mass, auxiliary
 from itertools import combinations_with_replacement
 from re import split

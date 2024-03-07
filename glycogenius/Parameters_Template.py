@@ -46,9 +46,8 @@ only_gen_lib = no
 ; 	Determines if the script should stop after generating library or proceed with data analysis. If used, will also make a file compatible with Skyline's transition list model.
 
 [analysis_parameters]
-multithreaded_analysis = no
-threads_number = 20
-; 	Allows you to split the execution and generated library into multiple pieces for multithreaded execution. After running GlycoGenius, there will be several .py files in working directory. Run the ones named Multithreaded_0.py-Multithreaded_n.py in whatever time you want, in how many amounts at a time you want.
+multithreaded_analysis = yes
+; 	Allows to use multiple cores for the processing of the data. Uses total_cores-1 (ie. if you have a CPU with 20 cores, it will use 19 cores).
 analyze_ms2 = yes
 force_fragments_to_glycans = yes
 unrestricted_fragments = no
