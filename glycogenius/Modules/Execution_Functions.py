@@ -911,7 +911,9 @@ def list_of_data(samples_list): ##complete
             data.append(mzml_data)
     return data
 
-def index_ms1_from_file(files):
+def index_spectra_from_file(files,
+                            ms_level,
+                            multithreaded):
     '''Scans the mz(X)ML file and indexes all the MS1 scans, so that you don't have to
     go through the MSn scans as well when doing something only with the MS1.
 
@@ -928,46 +930,40 @@ def index_ms1_from_file(files):
         list of indexes of the MS1 spectra.
     '''
     indexes = {}
-    for i_i, i in enumerate(files):
-        temp_indexes = []
-        for j_j, j in enumerate(i):
-            try:
-                if j['msLevel'] == 1:
-                    temp_indexes.append(j_j)
-            except:
-                if j['ms level'] == 1:
-                    temp_indexes.append(j_j)
-        indexes[i_i] = temp_indexes
+    
+    results = []
+    if multithreaded:
+        cpu_count = (os.cpu_count())-1
+    else:
+        cpu_count = 1
+    
+    with concurrent.futures.ProcessPoolExecutor(max_workers = cpu_count) as executor:
+        for i_i, i in enumerate(files):
+            result = executor.submit(get_indexes,
+                                     i,
+                                     ms_level,
+                                     i_i)
+            results.append(result)
+    
+    for i in results:
+        result_data = i.result()
+        indexes[result_data[1]] = result_data[0]
     return indexes
-
-def index_ms2_from_file(files):
-    '''Scans the mz(X)ML file and indexes all the MS2 scans, so that you don't have to
-    go through the MS1 scans as well when doing something only with the MS2.
-
-    Parameters
-    ----------
-    files : list
-        List with each index containing a generator created by the pyteomics function
-        pyteomics.mzxml.MzXML() or File_Accessing.make_mzxml.
-
-    Returns
-    -------
-    indexes : dict
-        Returns a dictionary with each key pointing to a index of a file in the files
-        list and each key containing a list of indexes of the MS2 spectra.
+    
+def get_indexes(file,
+                ms_level,
+                file_id):
     '''
-    indexes = {}
-    for i_i, i in enumerate(files):
-        temp_indexes = []
-        for j_j, j in enumerate(i):
-            try:
-                if j['msLevel'] == 2:
-                    temp_indexes.append(j_j)
-            except:
-                if j['ms level'] == 2:
-                    temp_indexes.append(j_j)
-        indexes[i_i] = temp_indexes
-    return indexes
+    '''
+    temp_indexes = []
+    for j_j, j in enumerate(file):
+        try:
+            if j['msLevel'] == ms_level:
+                temp_indexes.append(j_j)
+        except:
+            if j['ms level'] == ms_level:
+                temp_indexes.append(j_j)
+    return temp_indexes, file_id
 
 def sample_names(samples_list):
     '''Extracts the sample names from the file path.
@@ -2712,6 +2708,40 @@ def print_sep(): ##Complete
     '''
     print('------------------------------------------------')
     
+def pre_processing(data,
+                   ms1_index,
+                   ret_time_interval,
+                   custom_noise,
+                   data_id):
+    '''
+    '''
+    zeroes_arrays= []
+    inf_arrays = []
+    threads_arrays = []
+    ms1_id = []
+    rt_array_report = []
+    temp_noise = []
+    temp_avg_noise = []
+    for j_j, j in enumerate(ms1_index[data_id]):
+        zeroes_arrays.append(0.0)
+        inf_arrays.append(inf)
+        rt_array_report.append(data[j]['retentionTime'])
+        mz_ints = [data[j]['m/z array'], data[j]['intensity array']]
+        if custom_noise[0]:
+            temp_noise.append(custom_noise[1][data_id])
+            temp_avg_noise.append(custom_noise[1][data_id])
+        elif data[j]['retentionTime'] >= ret_time_interval[0] and data[j]['retentionTime'] <= ret_time_interval[1]:
+            if len(data[j]['intensity array']) != 0:
+                threads_arrays.append(j)
+                ms1_id.append(j_j)
+            temp_noise.append(General_Functions.rt_noise_level_parameters_set(mz_ints, "segments"))
+            temp_avg_noise.append(General_Functions.rt_noise_level_parameters_set(mz_ints, "whole"))
+        else:
+            temp_noise.append((1.0, 0.0, 0.0))
+            temp_avg_noise.append(1.0)
+    
+    return zeroes_arrays, inf_arrays, threads_arrays, ms1_id, rt_array_report, temp_noise, temp_avg_noise, data_id
+    
 def analyze_files(library,
                   lib_size,
                   data,
@@ -2828,44 +2858,47 @@ def analyze_files(library,
     noise = {}
     noise_avg = {}
     rt_array_report = {}
-    if not custom_noise[0]:
-        print('Analyzing noise level of samples...', end='', flush = True)
-    for i_i, i in enumerate(data):
-        rt_array_report[i_i] = []
-        temp_noise = []
-        temp_avg_noise = []
-        if custom_noise[0]:
-            temp_noise.append(custom_noise[1][i_i])
-            continue
-        for j_j, j in enumerate(ms1_index[i_i]):
-            rt_array_report[i_i].append(i[j]['retentionTime'])
-            mz_ints = [i[j]['m/z array'], i[j]['intensity array']]
-            if i[j]['retentionTime'] >= ret_time_interval[0] and i[j]['retentionTime'] <= ret_time_interval[1]:
-                temp_noise.append(General_Functions.rt_noise_level_parameters_set(mz_ints, "segments"))
-                temp_avg_noise.append(General_Functions.rt_noise_level_parameters_set(mz_ints, "whole"))
-            else:
-                temp_noise.append((1.0, 0.0, 0.0))
-        noise[i_i] = temp_noise
-        noise_avg[i_i] = percentile(temp_avg_noise, 66.8)
-    print('Done!')
-    print('Checking array lengths of samples...', end='', flush = True)
     zeroes_arrays = []
     inf_arrays = []
     threads_arrays = []
     ms1_id = []
-    rt_arrays = rt_array_report
-    for i_i, i in enumerate(data):
-        zeroes_arrays.append([])
-        inf_arrays.append([])
-        threads_arrays.append([])
-        ms1_id.append([])
-        for j_j, j in enumerate(ms1_index[i_i]):
-            zeroes_arrays[i_i].append(0.0)
-            inf_arrays[i_i].append(inf)
-            if i[j]['retentionTime'] >= ret_time_interval[0] and i[j]['retentionTime'] <= ret_time_interval[1] and len(i[j]['intensity array']) != 0:
-                threads_arrays[i_i].append(j)
-                ms1_id[i_i].append(j_j)
+    
+    if not custom_noise[0]:
+        print('Analyzing noise level of samples...', end='', flush = True)
+    
+    results = []
+    if multithreaded:
+        cpu_count = (os.cpu_count())-1
+    else:
+        cpu_count = 1
+    
+    with concurrent.futures.ProcessPoolExecutor(max_workers = cpu_count) as executor:
+        for i_i, i in enumerate(data):
+            zeroes_arrays.append([])
+            inf_arrays.append([])
+            threads_arrays.append([])
+            ms1_id.append([])
+            result = executor.submit(pre_processing,
+                                     i,
+                                     ms1_index,
+                                     ret_time_interval,
+                                     custom_noise,
+                                     i_i)
+            results.append(result)
+            
+    for i in results:
+        result_data = i.result()
+        zeroes_arrays[result_data[7]] = result_data[0]
+        inf_arrays[result_data[7]] = result_data[1]
+        threads_arrays[result_data[7]] = result_data[2]
+        ms1_id[result_data[7]] = result_data[3]
+        rt_array_report[result_data[7]] = result_data[4]
+        noise[result_data[7]] = result_data[5]
+        noise_avg[result_data[7]] = percentile(result_data[6], 66.8)
+        
+        
     print('Done!')
+    print("Pre-processing done!")
     print_sep()
     print("Analyzing glycans in samples' MS1 spectra...")
     
@@ -2895,7 +2928,7 @@ def analyze_files(library,
                                      zeroes_arrays,
                                      inf_arrays,
                                      threads_arrays,
-                                     rt_arrays,
+                                     rt_array_report,
                                      ms1_id,
                                      i,
                                      i_i,
@@ -3185,6 +3218,7 @@ def analyze_glycan_ms2(ms2_index,
                        i):
     '''
     '''
+    print('Analyzing glycan '+str(i)+': '+str(i_i+1)+'/'+str(len(analyzed_data[0])))
     fragments_data = {}
     for j_j, j in enumerate(analyzed_data[0][i]['Adducts_mz_data']): #goes through each adduct
         fragments_data[j] = {}
@@ -3328,5 +3362,4 @@ def analyze_glycan_ms2(ms2_index,
                                     found = True
                                     found_count += k[l]['intensity array'][m_m]
                                     break
-    print('Analyzing glycan '+str(i)+': '+str(i_i+1)+'/'+str(len(analyzed_data[0])))
     return fragments_data, i

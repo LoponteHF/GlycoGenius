@@ -332,14 +332,19 @@ def main():
         print('Library length: '+str(len(library)))
         Execution_Functions.print_sep()
         tolerance = (accuracy_unit, accuracy_value)
+        print("Starting pre-processing...")
         print("Preparing files for analysis...", end = "", flush = True)
         data = Execution_Functions.list_of_data(samples_list)
         print("Done!")
         print("Indexing spectra...", end = "", flush = True)
-        ms1_index = Execution_Functions.index_ms1_from_file(data)
+        ms1_index = Execution_Functions.index_spectra_from_file(data,
+                                                                1,
+                                                                multithreaded_analysis)
         if analyze_ms2[0]:
             data = Execution_Functions.list_of_data(samples_list)
-            ms2_index = Execution_Functions.index_ms2_from_file(data)
+            ms2_index = Execution_Functions.index_spectra_from_file(data,
+                                                                    2,
+                                                                    multithreaded_analysis)
         print("Done!")
         lib_size = len(library)
         analyzed_data = Execution_Functions.analyze_files(library,
