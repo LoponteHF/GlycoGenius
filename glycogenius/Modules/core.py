@@ -18,6 +18,7 @@
 
 from . import Execution_Functions
 from . import General_Functions
+from . import CLI
 from pathlib import Path
 from pyteomics import mass
 import sys
@@ -76,7 +77,7 @@ def main():
     output_plot_data = False
 
     if not os.isatty(0):
-        Execution_Functions.print_header(False)
+        CLI.print_header(False)
         config = configparser.ConfigParser()
         configs = ""
         for line in sys.stdin:
@@ -201,7 +202,7 @@ def main():
         reanalysis = config['analysis_parameters'].getboolean('reanalysis')
         
     else: #If no parameters file pipelines, run CLI
-        parameters = Execution_Functions.interactive_terminal()
+        parameters = CLI.interactive_terminal()
         Execution_Functions.print_sep()
         if parameters[0][0] == 1 or parameters[0][0] == 2:
             if parameters[0][1] == 1:
@@ -358,7 +359,6 @@ def main():
                                                           max_charges,
                                                           custom_noise,
                                                           close_peaks,
-                                                          fast_iso,
                                                           multithreaded_analysis)
         if analyze_ms2[0]:
             Execution_Functions.print_sep()

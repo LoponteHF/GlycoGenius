@@ -72,6 +72,11 @@ def generate_glycans_library(min_max_mono,
     min_max_gc : tuple
         Minimum and maximum amount of N-Glicolyl Neuraminic acids for the hypotethical
         glycans in the library. ie. (5, 20).
+        
+    lactonized_ethyl_esterified : boolean
+        Whether the glycans were submitted to lactonization/ethyl-esterification
+        derivatization, which differentiates the mass of alpha2-3 and alpha2-6 -bound 
+        sialic acids.
 
     n_glycan : boolean
         Indicates whether the function should force strict conditions based on the
@@ -169,6 +174,10 @@ def full_glycans_library(library,
     max_adducts : dict
         A dictionary with keys containing each possible atomic adducts (ie. 'H', 'Na',
         'K', etc.) and the maximum amount of such adducts as the values.
+        
+    adducts_exclusion : list
+        A list containing undesired adducts combinations to be excluded from the function
+        result.
 
     max_charges : int
         The maximum amount of charges to calculate per glycan.
@@ -177,8 +186,9 @@ def full_glycans_library(library,
         First index contains the unit of the tolerance and the second one is the value of 
         that unit.
 
-    tag_mass : float
-        The tag's added mass to the glycans, if the glycans are tagged.
+    tag_mass : float, dict or str
+        The tag's added mass, molecular formula or peptide sequence, if the glycans 
+        are tagged or bound to a peptide.
         Default = 0 (No Tag).
 
     fast : boolean
@@ -190,6 +200,11 @@ def full_glycans_library(library,
         Decides whether to clump (if set to False) or not (if set to True) the neighbouring
         isotopic envelope peaks. Only works if fast is set to False.
         Default = False
+        
+    internal_standard : float
+        If a internal standard is added to the sample, this allows the function
+        to calculate its mass based on adducts combination, as well as adding the tag to
+        it.
         
     permethylated : boolean
         Whether or not the sample was permethylated.
@@ -399,7 +414,17 @@ def fragments_library(min_max_mono,
         
     reduced : boolean
         Whether the glycan is reduced or not.
-
+        
+    lactonized_ethyl_esterified : boolean
+        Whether the glycans were submitted to lactonization/ethyl-esterification
+        derivatization, which differentiates the mass of alpha2-3 and alpha2-6 -bound 
+        sialic acids.
+        
+    n_glycan : boolean
+        Indicates whether the function should force strict conditions based on the
+        biological knowledge of glycans in order to avoid possible false positives when
+        analysing N-glycans.
+        
     Uses
     ----
     General_Functions.count_seq_letters(string) : string

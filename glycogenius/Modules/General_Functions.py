@@ -56,7 +56,40 @@ times during a run.
 ##pyteomics).
 
 def linear_regression(x, y, th = 2.5):
-    '''
+    '''Traces a linear regression of supplied 2d data points and returns the slope,
+    y-intercept and the indices of the outliers outside the determined threshold.
+       
+    Parameters
+    ----------
+    x : list
+        A list containing the x elements of the datapoints.
+        
+    y : list
+        A list containing the y elements of the datapoints.
+        
+    th : float
+        The threshold for calculating outliers.
+        
+    Uses
+    ----
+    numpy.array : ndarray
+        Transforms a list into a numpy array.
+        
+    scipy.stats.linregress : tuple
+        Takes the x and y arrays as inputs and returns a series of results in a
+        tuple, such as the slope and the y-intercept of the fit of the datapoints
+        to a linear equation.
+        
+    Returns
+    -------
+    m : float
+        Slope of the fitted linear equation curve.
+        
+    b : float
+        y-intercept of the fitted linear equation curve.
+        
+    outlier_indices : list
+        A list of the residuals outside the given threshold of the linear equation.
     '''
     if len(x) != len(y): # Ensure x and y have the same length
         raise ValueError("Input arrays x and y must have the same length.")
@@ -94,9 +127,9 @@ def calculate_ppm_diff(mz, target):
     
 def tolerance_calc(unit,
                    value, 
-                   mz = 1000):
-    '''A fast, but not super accurate way to convert 'ppm' mass accuracy into 'pw' (peak
-    width, aka. mz tolerance).
+                   mz = 1000.0):
+    '''An accurate way to convert 'ppm' mass accuracy into 'pw' (peak width, aka. mz
+    tolerance).
 
     Parameters
     ----------
@@ -140,15 +173,18 @@ def speyediff(N, d, format='csc'):
         
     Uses
     ----
-    np.zeros
+    numpy.zeros : ndarray
+        Return a new array of given shape and type, filled with zeros.
     
-    np.arange
+    numpy.arange : ndarray
+        Return evenly spaced values within a given interval.
     
-    scipy.sparse.diags
+    scipy.sparse.diags :  ndarrays
+        Construct a sparse matrix from diagonals.
     
     Returns
     -------
-    spmat
+    spmat : ndarray
         Final matrix (N-d) x N
     '''
     
@@ -163,9 +199,9 @@ def speyediff(N, d, format='csc'):
     spmat = sparse.diags(diagonals, offsets, shape, format=format)
     return spmat        
     
-def rt_noise_level_parameters_set(mz_int, mode): #outdated description
-    '''Gathers the int at the 95th percentile of the mz/int array (which is 
-    equivalent to the 3rd SD from the mean.
+def rt_noise_level_parameters_set(mz_int, mode):
+    '''Receives 2 combined arrays containing the x and y information of a spectrum
+    and calculate parameters for dynamic noise calculation down the pipeline.
     
     Parameters
     ----------
@@ -173,15 +209,22 @@ def rt_noise_level_parameters_set(mz_int, mode): #outdated description
         A list containing two synchronized lists: the first one contains the
         mzs and the second one the intensity.
         
+    mode : string
+        Whether you're analyzing segments or the whole mz_int.
+        
     Uses
     ----
-    numpy.percentile : scalar or ndarray
-        Compute the q-th percentile of the data along the specified axis.
+    numpy.std : ndarray
+        Compute the standard deviation along the specified axis.
         
     Returns
     -------
-    scalar
-        The intensity of the 95th percentile of the intensity array.
+    float
+        Returns a noise threshold if the operation runs on the whole array.
+        
+    tuple
+        If analyzing segments, gives the noise threshold of the first quarter and
+        the last quarter, as well as the last mz in the spectrum.
     '''
     if mode == "segments":
         first_quarter_end = int(len(mz_int[1])/4)
@@ -519,11 +562,6 @@ def calculate_isotopic_pattern(glycan_atoms,
     glycan_atoms : dict
         A dictionary containing glycan atomic composition in the form of {"C": 4, "O": 2,
         "N": 1, "H": 1}.
-
-    tolerance : float
-        Mass tolerance for isotopologues clumping. ie. 0.1 means an isotopologue with
-        mass 310.00 and another one with a mass of 310.09 will be clumped as a single
-        peak.
     
     fast : boolean
         If True, only calculates the isotopic pattern based on isotopes of carbon and
@@ -531,6 +569,10 @@ def calculate_isotopic_pattern(glycan_atoms,
         will take a significantly higher amount of time to produce results (from 10x to
         1000x longer, depending on number of atoms).
         Default = True.
+    
+    high_res : boolean
+        If True, doesn't clump similar masses together. Useful for analysis of data
+        obtained on FT MS instruments.
 
     Uses
     ----
@@ -548,6 +590,9 @@ def calculate_isotopic_pattern(glycan_atoms,
         A list with the isotopic pattern, with the first element being the abundance of
         the monoisotopic peak (1.0, or 100%) and the following ones are the isotopologues
         relative abundance in relation to the monoisotopic peak (around 1 Da apart).
+        
+    relative_isotop_mass : list
+        A list of isotopologue masses synchronized with relative_isotop_pattern list.
     '''
     if fast:
         isotopologue = mass.isotopologues(glycan_atoms, report_abundance = True,
@@ -594,6 +639,10 @@ def gen_adducts_combo(adducts,
     adducts : dict
         A dictionary with each key containing a single atom adduct and its value
         containing the maximum amount of such adduct.
+        
+    exclusions : list
+        A list containing undesired adducts combinations to be excluded from the function
+        result.
 
     max_charge : int
         The maximum amount of charges for the adducts.
