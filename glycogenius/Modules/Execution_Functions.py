@@ -190,7 +190,8 @@ def list_of_data(samples_list):
 
 def index_spectra_from_file(files,
                             ms_level,
-                            multithreaded):
+                            multithreaded,
+                            number_cores):
     '''Scans the mz(X)ML file and indexes all the MS1 scans, so that you don't have to
     go through the MSn scans as well when doing something only with the MS1.
 
@@ -205,6 +206,9 @@ def index_spectra_from_file(files,
         
     multithreaded : boolean
         Whether or not to multithread the indexing.
+        
+    number_cores : string or int
+        Number of cores to be used.
 
     Returns
     -------
@@ -216,7 +220,14 @@ def index_spectra_from_file(files,
     
     results = []
     if multithreaded:
-        cpu_count = (os.cpu_count())-1
+        if number_cores == 'all':
+            cpu_count = (os.cpu_count())-1
+        else:
+            number_cores = int(number_cores)
+            if number_cores > (os.cpu_count())-1:
+                cpu_count = (os.cpu_count())-1
+            else:
+                cpu_count = number_cores
     else:
         cpu_count = 1
     
@@ -2140,7 +2151,8 @@ def analyze_files(library,
                   max_charges,
                   custom_noise,
                   close_peaks,
-                  multithreaded): ##Complete
+                  multithreaded,
+                  number_cores): ##Complete
     '''Integrates all the file-accessing associated functions in this script to go
     through the files data, draw and process eic of hypothetical glycans, does 
     peak-picking and calculates AUC of the peaks.
@@ -2227,7 +2239,14 @@ def analyze_files(library,
     
     results = []
     if multithreaded:
-        cpu_count = (os.cpu_count())-1
+        if number_cores == 'all':
+            cpu_count = (os.cpu_count())-1
+        else:
+            number_cores = int(number_cores)
+            if number_cores > (os.cpu_count())-1:
+                cpu_count = (os.cpu_count())-1
+            else:
+                cpu_count = number_cores
     else:
         cpu_count = 1
     
@@ -2262,10 +2281,6 @@ def analyze_files(library,
     print("Analyzing glycans in samples' MS1 spectra...")
     
     results = []
-    if multithreaded:
-        cpu_count = (os.cpu_count())-1
-    else:
-        cpu_count = 1
     with concurrent.futures.ProcessPoolExecutor(max_workers = cpu_count) as executor:
         for i_i, i in enumerate(library):
             

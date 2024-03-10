@@ -53,6 +53,7 @@ def main():
     only_gen_lib = False
 
     multithreaded_analysis = True
+    number_cores = 'all'
     analyze_ms2 = (False, False, False)
     reporter_ions = []
     accuracy_unit = 'mz'
@@ -149,6 +150,7 @@ def main():
         imp_exp_library = (config['library_building'].getboolean('imp_library'), config['library_building'].getboolean('exp_library'))
         only_gen_lib = config['library_building'].getboolean('only_gen_lib')
         multithreaded_analysis = config['analysis_parameters'].getboolean('multithreaded_analysis')
+        number_cores = (config['analysis_parameters']['number_cores']).strip()
         analyze_ms2 = (config['analysis_parameters'].getboolean('analyze_ms2'), config['analysis_parameters'].getboolean('force_fragments_to_glycans'), config['analysis_parameters'].getboolean('unrestricted_fragments'))
         reporter_ions = config['analysis_parameters']['reporter_ions'].split(",")
         for i_i, i in enumerate(reporter_ions):
@@ -342,12 +344,14 @@ def main():
         print("Indexing spectra...", end = "", flush = True)
         ms1_index = Execution_Functions.index_spectra_from_file(data,
                                                                 1,
-                                                                multithreaded_analysis)
+                                                                multithreaded_analysis,
+                                                                number_cores)
         if analyze_ms2[0]:
             data = Execution_Functions.list_of_data(samples_list)
             ms2_index = Execution_Functions.index_spectra_from_file(data,
                                                                     2,
-                                                                    multithreaded_analysis)
+                                                                    multithreaded_analysis,
+                                                                    number_cores)
         print("Done!")
         lib_size = len(library)
         analyzed_data = Execution_Functions.analyze_files(library,
@@ -361,7 +365,8 @@ def main():
                                                           max_charges,
                                                           custom_noise,
                                                           close_peaks,
-                                                          multithreaded_analysis)
+                                                          multithreaded_analysis,
+                                                          number_cores)
         if analyze_ms2[0]:
             Execution_Functions.print_sep()
             analyzed_data = Execution_Functions.analyze_ms2(ms2_index, 
@@ -385,7 +390,8 @@ def main():
                                                             analyze_ms2[1],
                                                             analyze_ms2[2],
                                                             ret_time_interval[2],
-                                                            multithreaded_analysis)
+                                                            multithreaded_analysis,
+                                                            number_cores)
         Execution_Functions.print_sep()
         Execution_Functions.arrange_raw_data(analyzed_data,
                                              samples_names,

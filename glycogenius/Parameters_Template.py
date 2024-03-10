@@ -120,9 +120,11 @@ only_gen_lib = no
 
 [analysis_parameters]
 multithreaded_analysis = yes
+number_cores = all
 ; 	Allows to use multiple cores for the processing 
-;	of the data. Uses total_cores-1 (ie. if you have 
-;	a CPU with 20 cores, it will use 19 cores).
+;	of the data. If number_cores = all, uses 
+;	total_cores-1 (ie. if you have a CPU with 20 
+;	cores, it will use 19 cores).
 ;
 analyze_ms2 = yes
 force_fragments_to_glycans = yes
