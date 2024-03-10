@@ -230,10 +230,11 @@ def interactive_terminal():
                 print("Warning: Glycans must be inputted in the format\nof 'H5N4S1F1G1' where 'H' = Hexose,'N' =\nN-Acetylhexosamine, 'S' = N-Acetyl-Neuraminic\nAcid, 'F' = Deoxyhexose, 'G' =\nN-Glycolyl-Neuraminic Acid and each number next\nto it corresponds to the amount of said\nmonosaccharide\n")
                 while True:
                     var = input("Insert a glycan, leave blank to end list: ")
+                    var = var.strip()
                     if var == "":
                         print(glycans_list)
                         var2 = input("Proceed with this list? (y/n): ")
-                        if var2 == 'y':
+                        if var2 == 'y' or var2 == "":
                             break
                         if var2 == 'n':
                             print("Emptied glycans list.")
@@ -250,6 +251,20 @@ def interactive_terminal():
                             continue
                     glycans_list.append(var)
                     print("Current glycans: ", glycans_list)
+                n_glycan = True
+                while True:
+                    var = input("Force compositions to N-glycans structure\n (default: yes) (y/n): ")
+                    if var == '':
+                        n_glycan = True
+                        break
+                    if var == 'y':
+                        n_glycan = True
+                        break
+                    if var == 'n':
+                        n_glycan = False
+                        break
+                    else:
+                        continue
             if input_order[1] == 2:
                 lib_settings = [None, None, None, None, None, None, None, None, None, None, None, None, None, None, None]
                 for i in range(len(lib_settings)):
@@ -702,7 +717,7 @@ def interactive_terminal():
                         path = var
                         break
                 if input_order[1] == 1:
-                    return input_order, glycans_list, adducts, max_charges, tag_mass, fast_iso, high_res, ms2, accuracy_unit, accuracy_value, rt_int, min_isotop, max_ppm, iso_fit, curve_fit, sn, files, path, permethylated, reduced
+                    return input_order, glycans_list, adducts, max_charges, tag_mass, fast_iso, high_res, ms2, accuracy_unit, accuracy_value, rt_int, min_isotop, max_ppm, iso_fit, curve_fit, sn, files, path, permethylated, reduced, n_glycan
                 if input_order[1] == 2:
                     return input_order, lib_settings, adducts, max_charges, tag_mass, fast_iso, high_res, ms2, accuracy_unit, accuracy_value, rt_int, min_isotop, max_ppm, iso_fit, curve_fit, sn, files, path, permethylated, reduced
         if input_order[0] == 3:

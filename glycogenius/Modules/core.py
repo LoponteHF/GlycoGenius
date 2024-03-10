@@ -21,6 +21,7 @@ from . import General_Functions
 from . import CLI
 from pathlib import Path
 from pyteomics import mass
+import time
 import sys
 import os
 import datetime
@@ -71,7 +72,7 @@ def main():
     samples_path = ''
     save_path = ''
     plot_metaboanalyst = (False, [])
-    compositions = False
+    compositions = True
     iso_fittings = False
     reanalysis = False
     output_plot_data = False
@@ -214,6 +215,7 @@ def main():
                 high_res = parameters[6]
                 permethylated = parameters[8]
                 reduced = parameters[9]
+                force_nglycan = parameters[20]
             if parameters[0][1] == 2:
                 min_max_monos = (parameters[1][0], parameters[1][1])
                 min_max_hex = (parameters[1][2], parameters[1][3])
@@ -409,8 +411,13 @@ def main():
                                                  iso_fittings,
                                                  output_plot_data)
                                                  
-    if not os.isatty(0):
-        print('Execution complete. Time elapsed: '+str(datetime.datetime.now() - begin_time))
-    else:
+    if os.isatty(0):
         input('Execution complete. Time elapsed: '+str(datetime.datetime.now() - begin_time)+'\nPress Enter to exit.')
-#here multithreaded prints execution of main()
+    else:
+        print('Execution complete. Time elapsed: '+str(datetime.datetime.now() - begin_time))
+        print("Close the window or press CTRL+C to exit.")
+        try:
+            while True:
+                time.sleep(3600)
+        except KeyboardInterrupt:
+            os._exit(1)

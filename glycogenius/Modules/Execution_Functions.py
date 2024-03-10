@@ -28,8 +28,8 @@ from numpy import percentile
 from re import split
 from math import inf, isnan
 from statistics import mean, median
-from time import sleep
 import concurrent.futures
+import time
 import os
 import dill
 import sys
@@ -63,7 +63,7 @@ else:
 ##Functions to be used for execution and organizing results data
     
 def generate_cfg_file(path, comments):
-    '''Generates a parameter file based on parameters set.
+    '''Generates a .ini file and a .bat file at the indicated directory, with or without comments.
     
     Parameters
     ----------
@@ -72,9 +72,19 @@ def generate_cfg_file(path, comments):
         
     comments : boolean
         Whether the output file will contain comments or not.
+        
+    Uses
+    ----
+    nothing
+    
+    Returns
+    -------
+    nothing
+        Creates 2 files: a .ini and a .bat file.
     '''
-    print("Creating settings file...")
+    print("Creating parameters file...")
     glycogenius_path = str(pathlib.Path(__file__).parent.parent.resolve())
+    curr_os = platform.system()
     for i_i, i in enumerate(glycogenius_path):
         if i == "\\":
             glycogenius_path = glycogenius_path[:i_i]+"/"+glycogenius_path[i_i+1:]
@@ -92,7 +102,14 @@ def generate_cfg_file(path, comments):
                 g.write(line)
         f.close()
     g.close()
-    input("Done! Press Enter to exit.")
+    if curr_os == "Windows":
+        with open(path+'Run Glycogenius.bat', 'w') as f:
+            f.write("@echo off\n")
+            f.write("type .\\glycogenius_parameters.ini | glycogenius")
+        f.close()
+    print("Done!")
+    print("Set your parameters in the file\n'glycogenius_parameters.ini' and\nrun 'Run Glycogenius.bat' to run Glycogenius\nwith the set parameters.")
+    input("Press Enter to exit.")
     os._exit(1)
                 
 def samples_path_to_list(path):
@@ -521,11 +538,16 @@ def imp_exp_gen_library(samples_names,
         print("If you wish to analyze files,")
         print("set 'only_gen_lib' to False and input")
         print("remaining parameters.")
-        try:
+        if os.isatty(0):
             input("\nPress Enter to exit.")
             os._exit(1)
-        except:
-            os._exit(1)
+        else:
+            print("Close the window or press CTRL+C to exit.")
+            try:
+                while True:
+                    time.sleep(3600)
+            except KeyboardInterrupt:
+                os._exit(1)
     return full_library
     
 def align_assignments(df, df_type, deltas = None, rt_tol = None):
@@ -2025,7 +2047,7 @@ def arrange_raw_data(analyzed_data,
     print("Done!")
 
 def print_sep(): ##Complete
-    '''Prints a separator consisting of multiple '-' character.
+    '''Prints a separator consisting of 48 '-' character.
     
     Parameters
     ----------
@@ -2093,11 +2115,14 @@ def pre_processing(data,
             temp_noise.append(custom_noise[1][data_id])
             temp_avg_noise.append(custom_noise[1][data_id])
         elif data[j]['retentionTime'] >= ret_time_interval[0] and data[j]['retentionTime'] <= ret_time_interval[1]:
+            if len(data[j]['intensity array']) == 0:
+                temp_noise.append((1.0, 0.0, 0.0))
+                temp_avg_noise.append(1.0)
             if len(data[j]['intensity array']) != 0:
                 threads_arrays.append(j)
                 ms1_id.append(j_j)
-            temp_noise.append(General_Functions.rt_noise_level_parameters_set(mz_ints, "segments"))
-            temp_avg_noise.append(General_Functions.rt_noise_level_parameters_set(mz_ints, "whole"))
+                temp_noise.append(General_Functions.rt_noise_level_parameters_set(mz_ints, "segments"))
+                temp_avg_noise.append(General_Functions.rt_noise_level_parameters_set(mz_ints, "whole"))
         else:
             temp_noise.append((1.0, 0.0, 0.0))
             temp_avg_noise.append(1.0)
