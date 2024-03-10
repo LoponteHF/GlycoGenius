@@ -2527,7 +2527,8 @@ def analyze_ms2(ms2_index,
                 filter_output,
                 unrestricted_fragments,
                 rt_tolerance,
-                multithreaded):
+                multithreaded,
+                number_cores):
     '''Analyzes the MS2 data in the sample files, outputting the found matches.
     
     Parameters
@@ -2673,7 +2674,14 @@ def analyze_ms2(ms2_index,
     
     results = []
     if multithreaded:
-        cpu_count = (os.cpu_count())-1
+        if number_cores == 'all':
+            cpu_count = (os.cpu_count())-1
+        else:
+            number_cores = int(number_cores)
+            if number_cores > (os.cpu_count())-1:
+                cpu_count = (os.cpu_count())-1
+            else:
+                cpu_count = number_cores
     else:
         cpu_count = 1
     with concurrent.futures.ProcessPoolExecutor(max_workers = cpu_count) as executor:
