@@ -39,14 +39,25 @@ import pkg_resources
 import platform
 import copy
 
+#fetches the version from package info or setup file, depending on use mode
+version1 = "0.0.0"
+version2 = "0.0.0"
 try:
-    version = pkg_resources.get_distribution("glycogenius").version
+    version1 = pkg_resources.get_distribution("glycogenius").version
 except:
+    pass
+try:
     version_path = str(pathlib.Path(__file__).parent.parent.parent.resolve())
     with open(version_path+"/Setup.py", "r") as f: #grabs version from setup.py to add to raw_data files
         for lines in f:
             if lines[:12] == "    version=":
-                version = lines[13:-2].strip("'")
+                version2 = lines[13:-2].strip("'")
+except:
+    pass
+if version2 > version1:
+    version = version2
+else:
+    version = version1
 
 ##---------------------------------------------------------------------------------------
 ##Functions to be used for execution and organizing results data
