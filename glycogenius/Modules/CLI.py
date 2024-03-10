@@ -161,7 +161,8 @@ def interactive_terminal():
         input_order = [None]
         curr_os = platform.system()
         if curr_os == "Linux":
-            default_path = "/home/GlycoGenius/"
+            home = str(Path.home())
+            default_path = home+"/GlycoGenius/"
         if curr_os == "Windows":
             default_path = "C:/GlycoGenius/"
         if curr_os == "Darwin":
