@@ -107,8 +107,11 @@ def generate_cfg_file(path, comments):
             f.write("@echo off\n")
             f.write("type .\\glycogenius_parameters.ini | glycogenius")
         f.close()
-    print("Done!")
-    print("Set your parameters in the file\n'glycogenius_parameters.ini' and\nrun 'Run Glycogenius.bat' to run Glycogenius\nwith the set parameters.")
+        print("Done!")
+        print("Set your parameters in the file\n'glycogenius_parameters.ini' and\nrun 'Run Glycogenius.bat' to run Glycogenius\nwith the set parameters.")
+    else:
+        print("Done!")
+        print("Set your parameters in the file\n'glycogenius_parameters.ini' and\ncat-pipeline it to glycogenius.")
     input("Press Enter to exit.")
     os._exit(1)
                 
@@ -2204,6 +2207,9 @@ def analyze_files(library,
         
     multithreaded : boolean
         Whether or not to use multiple threads.
+        
+    number_cores : string or int
+        Number of cores to be used.
 
     Uses
     ----
@@ -2613,6 +2619,9 @@ def analyze_ms2(ms2_index,
         
     multithreaded : boolean
         Whether or not to use multiple threads.
+        
+    number_cores : string or int
+        Number of cores to be used.
         
     Uses
     ----

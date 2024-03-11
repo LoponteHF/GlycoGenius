@@ -165,8 +165,9 @@ def interactive_terminal():
     if curr_os == "Windows":
         default_path = "C:/GlycoGenius/"
     if curr_os == "Darwin":
+        home = "/home/"+str(os.path.expanduser("~" if "SUDO_USER" not in os.environ else os.environ["SUDO_USER"]))
         print("OS not tested for compatibility.")
-        default_path = "/home/GlycoGenius/"
+        default_path = home+"/GlycoGenius/"
     while input_order[0] == None:
         print_header()
         print("1 - Build and output glycans library.\n2 - Analyze sample files\n3 - Reanalyze raw results files with new\n    parameters\n4 - Create template parameters file for command-\n    line execution\n5 - Exit")
@@ -476,6 +477,17 @@ def interactive_terminal():
                         var2['O'] -= 1
                 tag_mass = var2
                 break
+        lacto_eesterified = False
+        while True:
+            var = input("Is the sample lactonized/ethyl-esterified? (y/n): ")
+            if var == 'y' or var == '':
+                lacto_eesterified = True
+                break
+            elif var == 'n':
+                break
+            else:
+                print("Wrong Input")
+                continue
         permethylated = False
         reduced = False
         if tag_mass == 0:
@@ -717,9 +729,9 @@ def interactive_terminal():
                     path = var
                     break
             if input_order[1] == 1:
-                return input_order, glycans_list, adducts, max_charges, tag_mass, fast_iso, high_res, ms2, accuracy_unit, accuracy_value, rt_int, min_isotop, max_ppm, iso_fit, curve_fit, sn, files, path, permethylated, reduced, n_glycan
+                return input_order, glycans_list, adducts, max_charges, tag_mass, fast_iso, high_res, ms2, accuracy_unit, accuracy_value, rt_int, min_isotop, max_ppm, iso_fit, curve_fit, sn, files, path, permethylated, reduced, n_glycan, lacto_eesterified
             if input_order[1] == 2:
-                return input_order, lib_settings, adducts, max_charges, tag_mass, fast_iso, high_res, ms2, accuracy_unit, accuracy_value, rt_int, min_isotop, max_ppm, iso_fit, curve_fit, sn, files, path, permethylated, reduced
+                return input_order, lib_settings, adducts, max_charges, tag_mass, fast_iso, high_res, ms2, accuracy_unit, accuracy_value, rt_int, min_isotop, max_ppm, iso_fit, curve_fit, sn, files, path, permethylated, reduced, lacto_eesterified
     if input_order[0] == 3:
         path = default_path
         while True:

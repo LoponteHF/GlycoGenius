@@ -219,6 +219,7 @@ def main():
                     permethylated = parameters[8]
                     reduced = parameters[9]
                     force_nglycan = parameters[20]
+                    lactonized_ethyl_esterified = parameters[21]
                 if parameters[0][1] == 2:
                     min_max_monos = (parameters[1][0], parameters[1][1])
                     min_max_hex = (parameters[1][2], parameters[1][3])
@@ -254,6 +255,7 @@ def main():
                     save_path = parameters[17]
                     permethylated = parameters[18]
                     reduced = parameters[19]
+                    lactonized_ethyl_esterified = parameters[20]
             if parameters[0][0] == 3:
                 save_path = parameters[1]
                 max_ppm = parameters[2]
