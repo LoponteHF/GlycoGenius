@@ -269,7 +269,6 @@ def main():
             if parameters[0][0] == 4:
                 comments = parameters[1]
                 save_path = parameters[2]
-                Path(save_path).mkdir(exist_ok = True, parents = True)
                 Execution_Functions.generate_cfg_file(save_path, comments)
 
         Path(save_path).mkdir(exist_ok = True, parents = True)

@@ -256,7 +256,7 @@ metaboanalyst_groups = CONTROL, TREATED
 ;	filenames for proper identification. If none is 
 ;	set, samples are defaulted to "ungrouped". Case sensitive. 
 ;
-analyze_compositions = no
+analyze_compositions = yes
 ; 	If used, also plots data related to the whole 
 ;	composition of each identified glycan in the 
 ;	analysis, in addition to the peak-separated data.

@@ -85,6 +85,8 @@ def generate_cfg_file(path, comments):
     print("Creating parameters file...")
     glycogenius_path = str(pathlib.Path(__file__).parent.parent.resolve())
     curr_os = platform.system()
+    pathlib.Path(path).mkdir(exist_ok = True, parents = True)
+    pathlib.Path(path+"Sample Files").mkdir(exist_ok = True, parents = True)
     for i_i, i in enumerate(glycogenius_path):
         if i == "\\":
             glycogenius_path = glycogenius_path[:i_i]+"/"+glycogenius_path[i_i+1:]
@@ -2140,6 +2142,14 @@ def pre_processing(data,
         else:
             temp_noise.append((1.0, 0.0, 0.0))
             temp_avg_noise.append(1.0)
+    list_for_avg = []        
+    for i_i, i in enumerate(temp_avg_noise):
+        if i != 1.0:
+            list_for_avg.append(i)
+    avg = sum(list_for_avg)/len(list_for_avg)        
+    for i_i, i in enumerate(temp_avg_noise):
+        if i == 1.0:
+            temp_avg_noise[i_i] = avg
     
     return zeroes_arrays, inf_arrays, threads_arrays, ms1_id, rt_array_report, temp_noise, temp_avg_noise, data_id
     
