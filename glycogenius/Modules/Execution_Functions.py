@@ -107,6 +107,7 @@ def generate_cfg_file(path, comments):
     if curr_os == "Windows":
         with open(path+'Run Glycogenius.bat', 'w') as f:
             f.write("@echo off\n")
+            f.write("cd %~dp0\n")
             f.write("type .\\glycogenius_parameters.ini | glycogenius")
         f.close()
         print("Done!")
