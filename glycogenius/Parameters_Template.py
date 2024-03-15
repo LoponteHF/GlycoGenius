@@ -12,7 +12,7 @@ custom_glycans_list = H3N2, H5N2, H5N4S2F1
 ;	containing the list (line or comma separated).
 ;
 min_monos = 5
-max_monos = 18
+max_monos = 22
 min_hex = 3
 max_hex = 10
 min_hexnac = 2
@@ -165,7 +165,7 @@ accuracy_value = 0.01
 ;	false positives.
 ;
 ret_time_begin = 1
-ret_time_end = 80
+ret_time_end = 999
 ret_time_tolerance = 0.2
 ; 	The minimum and maximum retention time, in minutes, 
 ;	used for various portions of the script. A shorter 

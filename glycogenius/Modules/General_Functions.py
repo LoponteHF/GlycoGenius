@@ -238,6 +238,9 @@ def rt_noise_level_parameters_set(mz_int, mode):
     
     noise = []
     for j_j, j in enumerate(segments_list):
+        if len(j) == 0:
+            noise.append(1.0)
+            continue
         intensity_std = numpy.std(j)
         noise_threshold = 2.0 * intensity_std
         if (min(j) != 0 and noise_threshold > min(j)*5) or noise_threshold > max(j)*0.5: #this means that the data is denoised already, so it picks really high intensity as possible noise
