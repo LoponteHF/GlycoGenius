@@ -469,12 +469,25 @@ def imp_exp_gen_library(samples_names,
         print('Done!')
     if imp_exp_library[0]:
         print('Importing existing library...', end = '', flush = True)
-        spec = importlib.util.spec_from_file_location("glycans_library", save_path+'glycans_library.py')
-        lib_module = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(lib_module)
-        full_library = lib_module.full_library
-        print("Done!")
-        return full_library
+        try:
+            spec = importlib.util.spec_from_file_location("glycans_library", save_path+'glycans_library.py')
+            lib_module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(lib_module)
+            full_library = lib_module.full_library
+            print("Done!")
+            return full_library
+        except:
+            print("\n\nNo glycan_library.py file found in the working\ndirectory. Make sure you have set the working\ndirectly correctly or change imp_lib to 'no'.\n")
+            if os.isatty(0):
+                input("\nPress Enter to exit.")
+                os._exit(1)
+            else:
+                print("Close the window or press CTRL+C to exit.")
+                try:
+                    while True:
+                        time.sleep(3600)
+                except KeyboardInterrupt:
+                    os._exit(1)
     if not custom_glycans_list[0]:
         print('Building glycans library...', end = "", flush = True)
         monos_library = Library_Tools.generate_glycans_library(min_max_monos,
@@ -1062,6 +1075,18 @@ def output_filtered_data(curve_fit_score,
                     del temp_fit[k_k]
                     del temp_curve[k_k]
                     if analyze_ms2:
+                        if "Detected_Fragments" not in list(df1[i_i].keys()):
+                            print("\nThe data you are trying to reanalyze doesn't\ncontain MS2 data. Set 'analyze_ms2' to 'no' and\ntry again.\n")
+                            if os.isatty(0):
+                                input("\nPress Enter to exit.")
+                                os._exit(1)
+                            else:
+                                print("Close the window or press CTRL+C to exit.")
+                                try:
+                                    while True:
+                                        time.sleep(3600)
+                                except KeyboardInterrupt:
+                                    os._exit(1)
                         if len(temp_rt) == 0:
                             df1[i_i]["Detected_Fragments"][j_j] = ""
                             for k in range(len(fragments_dataframes[i_i]["Glycan"])-1, -1, -1):
@@ -1673,13 +1698,60 @@ def output_filtered_data(curve_fit_score,
                 f.close()
                 
         print("Done!") #end of metaboanalyst plot
+        
+        
+    total_glycans_compositions = []  #start to build meta_dataframe
+    for i_i, i in enumerate(compositions_dataframes): #get all possible compositions
+        for j_j, j in enumerate(i['Glycan']):
+            if j not in total_glycans_compositions and j != 'Internal Standard':
+                total_glycans_compositions.append(j)
+    for i_i, i in enumerate(df1_refactor): #get all possible adducts
+        adducts = []
+        for j_j, j in enumerate(i['Adduct']):
+            if j not in adducts and i['Glycan'][j_j] != 'Internal Standard':
+                adducts.append(j)
+    meta_dataframe = {'No.' : [], 'Composition' : []}
+    for i_i, i in enumerate(sorted(adducts)):
+        meta_dataframe['[M+'+i+']'] = []
+        meta_dataframe['PPM Error - '+i] = []
+        meta_dataframe['Replicates Found - '+i] = []
+    for i_i, i in enumerate(sorted(total_glycans_compositions)):
+        meta_dataframe['No.'].append(i_i+1)
+        meta_dataframe['Composition'].append(i)
+        for j_j, j in enumerate(sorted(adducts)):
+            meta_dataframe['[M+'+j+']'].append(None)
+            current_adduct_PPM_Error = []
+            replicates_present = 0
+            for k_k, k in enumerate(df1_refactor):
+                found_replicate = False
+                ppm_error_data = []
+                for l_l, l in enumerate(k['Glycan']):
+                    if l == i and k['Adduct'][l_l] == j:
+                        if meta_dataframe['[M+'+j+']'][i_i] == None:
+                            meta_dataframe['[M+'+j+']'][i_i] = k['mz'][l_l]
+                        found_replicate = True
+                        ppm_error_data.append(k['PPM'][l_l])
+                if found_replicate:
+                    replicates_present += 1
+                if len(ppm_error_data) != 0:
+                    current_adduct_PPM_Error.append(sum(ppm_error_data)/len(ppm_error_data))
+            if len(current_adduct_PPM_Error) != 0:
+                meta_dataframe['PPM Error - '+j].append(sum(current_adduct_PPM_Error)/len(current_adduct_PPM_Error))
+            else:
+                meta_dataframe['PPM Error - '+j].append(None)
+            if replicates_present != 0:
+                meta_dataframe['Replicates Found - '+j].append(replicates_present)
+            else:
+                meta_dataframe['Replicates Found - '+j].append(None)  #end of meta_dataframe building
     
     #start of excel data printing
     df2 = DataFrame(df2) 
+    meta_df = DataFrame(meta_dataframe)
     
     with ExcelWriter(save_path+begin_time+'_Results_'+str(max_ppm)+'_'+str(iso_fit_score)+'_'+str(curve_fit_score)+'_'+str(sn)+'.xlsx') as writer:
         print("Creating results file...", end="", flush=True)
         df2.to_excel(writer, sheet_name="Index references", index = False)
+        meta_df.to_excel(writer, sheet_name="Detected Glycans", index = False)
         for i_i, i in enumerate(df1_refactor):
             result_df = DataFrame(i)
             result_df.to_excel(writer, sheet_name="Sample_"+str(i_i), index = False)
