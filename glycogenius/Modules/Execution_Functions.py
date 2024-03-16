@@ -1711,15 +1711,19 @@ def output_filtered_data(curve_fit_score,
             if j not in adducts and i['Glycan'][j_j] != 'Internal Standard':
                 adducts.append(j)
     meta_dataframe = {'No.' : [], 'Composition' : []}
+    if nglycan:
+        meta_dataframe['Class'] = []
     for i_i, i in enumerate(sorted(adducts)):
         meta_dataframe['[M+'+i+']'] = []
-        meta_dataframe['PPM Error - '+i] = []
-        meta_dataframe['Replicates Found - '+i] = []
+        meta_dataframe['Avg PPM Error - '+i] = []
+        meta_dataframe['No. Samples - '+i] = []
     for i_i, i in enumerate(sorted(total_glycans_compositions)):
+        if nglycan:
+            meta_dataframe['Class'].append(glycan_class[i])
         meta_dataframe['No.'].append(i_i+1)
         meta_dataframe['Composition'].append(i)
         for j_j, j in enumerate(sorted(adducts)):
-            meta_dataframe['[M+'+j+']'].append(None)
+            meta_dataframe['[M+'+j+']'].append("-")
             current_adduct_PPM_Error = []
             replicates_present = 0
             for k_k, k in enumerate(df1_refactor):
@@ -1727,7 +1731,7 @@ def output_filtered_data(curve_fit_score,
                 ppm_error_data = []
                 for l_l, l in enumerate(k['Glycan']):
                     if l == i and k['Adduct'][l_l] == j:
-                        if meta_dataframe['[M+'+j+']'][i_i] == None:
+                        if meta_dataframe['[M+'+j+']'][i_i] == "-":
                             meta_dataframe['[M+'+j+']'][i_i] = k['mz'][l_l]
                         found_replicate = True
                         ppm_error_data.append(k['PPM'][l_l])
@@ -1736,13 +1740,13 @@ def output_filtered_data(curve_fit_score,
                 if len(ppm_error_data) != 0:
                     current_adduct_PPM_Error.append(sum(ppm_error_data)/len(ppm_error_data))
             if len(current_adduct_PPM_Error) != 0:
-                meta_dataframe['PPM Error - '+j].append(sum(current_adduct_PPM_Error)/len(current_adduct_PPM_Error))
+                meta_dataframe['Avg PPM Error - '+j].append(float("%.3f" % round(sum(current_adduct_PPM_Error)/len(current_adduct_PPM_Error), 3)))
             else:
-                meta_dataframe['PPM Error - '+j].append(None)
+                meta_dataframe['Avg PPM Error - '+j].append("-")
             if replicates_present != 0:
-                meta_dataframe['Replicates Found - '+j].append(replicates_present)
+                meta_dataframe['No. Samples - '+j].append(replicates_present)
             else:
-                meta_dataframe['Replicates Found - '+j].append(None)  #end of meta_dataframe building
+                meta_dataframe['No. Samples - '+j].append("-")  #end of meta_dataframe building
     
     #start of excel data printing
     df2 = DataFrame(df2) 

@@ -88,28 +88,37 @@ def main():
             config.read_string(configs)
             custom_glycans_boolean = config['library_building'].getboolean('use_custom_glycans_list')
             if custom_glycans_boolean:
-                try:
-                    temp_path_custom_glycans = config['library_building']['custom_glycans_list']
-                    for i_i, i in enumerate(temp_path_custom_glycans):
-                        if i == "\\":
-                            temp_path_custom_glycans = temp_path_custom_glycans[:i_i]+"/"+temp_path_custom_glycans[i_i+1:]
-                    temp_custom_glycans_list = ""
-                    with open(temp_path_custom_glycans.strip("\""), 'r') as f:
-                        for i in f:
-                            temp_custom_glycans_list += i
-                    f.close()
-                    custom_glycans = temp_custom_glycans_list.split(",")
-                    if len(custom_glycans) == 1:
-                        custom_glycans = temp_custom_glycans_list.split("\n")
-                    to_remove = []
-                    if len(custom_glycans) > 1:
-                        for i_i, i in enumerate(custom_glycans):
-                            custom_glycans[i_i] = i.strip()
-                            if len(i) == 0:
-                                to_remove.append(i_i)
-                    for i in sorted(to_remove, reverse = True):
-                        del custom_glycans[i]
-                except:
+                if len(config['library_building']['custom_glycans_list'].split("\\")) > 1 or len(config['library_building']['custom_glycans_list'].split("/")) > 1:
+                    try:
+                        temp_path_custom_glycans = config['library_building']['custom_glycans_list']
+                        for i_i, i in enumerate(temp_path_custom_glycans):
+                            if i == "\\":
+                                temp_path_custom_glycans = temp_path_custom_glycans[:i_i]+"/"+temp_path_custom_glycans[i_i+1:]
+                        temp_custom_glycans_list = ""
+                        with open(temp_path_custom_glycans.strip("\""), 'r') as f:
+                            for i in f:
+                                temp_custom_glycans_list += i
+                        f.close()
+                        custom_glycans = temp_custom_glycans_list.split(",")
+                        if len(custom_glycans) == 1:
+                            custom_glycans = temp_custom_glycans_list.split("\n")
+                        to_remove = []
+                        if len(custom_glycans) > 1:
+                            for i_i, i in enumerate(custom_glycans):
+                                custom_glycans[i_i] = i.strip()
+                                if len(i) == 0:
+                                    to_remove.append(i_i)
+                        for i in sorted(to_remove, reverse = True):
+                            del custom_glycans[i]
+                    except:
+                        print("Custom glycans file not found. Check the path to\nthe file you've inputted in the parameters file.")
+                        print("Close the window or press CTRL+C to exit.")
+                        try:
+                            while True:
+                                time.sleep(3600)
+                        except KeyboardInterrupt:
+                            os._exit(1)
+                else:
                     custom_glycans = config['library_building']['custom_glycans_list'].split(",")
                     for i_i, i in enumerate(custom_glycans):
                         custom_glycans[i_i] = i.strip()
