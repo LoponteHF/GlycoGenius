@@ -28,6 +28,7 @@ from scipy import sparse
 import numpy
 import sys
 import datetime
+import xlsxwriter
 
 ##---------------------------------------------------------------------------------------
 ##Hard-coded permanent information
@@ -154,6 +155,35 @@ def tolerance_calc(unit,
         return value
     else:
         return("Unit for tolerance not 'ppm' or 'mz'.")
+        
+def autofit_columns_excel(df, worksheet):
+    '''Autofits the column width in a excel worksheet based on a dataframe used to make it.
+    
+    Parameters
+    ----------
+    df : Pandas Dataframe
+        Dataframe containing the data used to make the worksheet with Pandas.
+        
+    worksheet : Worksheet XLSXwriter object
+        The worksheet to autofit the columns.
+        
+    Uses
+    ----
+    xlsxwriter
+        Library to write and edit excel files and objects.
+        
+    Returns
+    -------
+    nothing
+        Directly edits the worksheet.
+    '''
+    for idx, col in enumerate(df):  # loop through all columns
+        series = df[col]
+        max_len = max((
+            series.astype(str).map(len).max(),  # len of largest item
+            len(str(series.name))  # len of column name/header
+            )) + 1  # adding a little extra space
+        worksheet.set_column(idx, idx, max_len)
         
 def speyediff(N, d, format='csc'):
     '''Construct a d-th order sparse difference matrix based on an initial 

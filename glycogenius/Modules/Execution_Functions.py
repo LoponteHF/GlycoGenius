@@ -1716,8 +1716,10 @@ def output_filtered_data(curve_fit_score,
     for i_i, i in enumerate(sorted(adducts)):
         meta_dataframe['[M+'+i+']'] = []
         meta_dataframe['Avg PPM Error - '+i] = []
-        meta_dataframe['No. Samples - '+i] = []
+        meta_dataframe['In Samples - '+i] = []
+    meta_dataframe['No. Samples'] = []
     for i_i, i in enumerate(sorted(total_glycans_compositions)):
+        total_replicates = []
         if nglycan:
             meta_dataframe['Class'].append(glycan_class[i])
         meta_dataframe['No.'].append(i_i+1)
@@ -1725,7 +1727,7 @@ def output_filtered_data(curve_fit_score,
         for j_j, j in enumerate(sorted(adducts)):
             meta_dataframe['[M+'+j+']'].append("-")
             current_adduct_PPM_Error = []
-            replicates_present = 0
+            replicates_present = []
             for k_k, k in enumerate(df1_refactor):
                 found_replicate = False
                 ppm_error_data = []
@@ -1736,23 +1738,27 @@ def output_filtered_data(curve_fit_score,
                         found_replicate = True
                         ppm_error_data.append(k['PPM'][l_l])
                 if found_replicate:
-                    replicates_present += 1
+                    replicates_present.append(k_k)
+                    if k_k not in total_replicates:
+                        total_replicates.append(k_k)
                 if len(ppm_error_data) != 0:
                     current_adduct_PPM_Error.append(sum(ppm_error_data)/len(ppm_error_data))
             if len(current_adduct_PPM_Error) != 0:
                 meta_dataframe['Avg PPM Error - '+j].append(float("%.3f" % round(sum(current_adduct_PPM_Error)/len(current_adduct_PPM_Error), 3)))
             else:
                 meta_dataframe['Avg PPM Error - '+j].append("-")
-            if replicates_present != 0:
-                meta_dataframe['No. Samples - '+j].append(replicates_present)
+            if len(replicates_present) != 0:
+                meta_dataframe['In Samples - '+j].append(str(replicates_present)[1:-1])
             else:
-                meta_dataframe['No. Samples - '+j].append("-")  #end of meta_dataframe building
+                meta_dataframe['In Samples - '+j].append("-")
+        meta_dataframe['No. Samples'].append(len(total_replicates))  #end of meta_dataframe building
     
     #start of excel data printing
     df2 = DataFrame(df2) 
     meta_df = DataFrame(meta_dataframe)
-    
     with ExcelWriter(save_path+begin_time+'_Results_'+str(max_ppm)+'_'+str(iso_fit_score)+'_'+str(curve_fit_score)+'_'+str(sn)+'.xlsx') as writer:
+        dfs = [df2, meta_df]
+        sheets_names = ['Index references', 'Detected Glycans']
         print("Creating results file...", end="", flush=True)
         df2.to_excel(writer, sheet_name="Index references", index = False)
         meta_df.to_excel(writer, sheet_name="Detected Glycans", index = False)
@@ -1761,17 +1767,29 @@ def output_filtered_data(curve_fit_score,
             result_df.to_excel(writer, sheet_name="Sample_"+str(i_i), index = False)
             total_aucs_df = DataFrame(total_dataframes[i_i])
             total_aucs_df.to_excel(writer, sheet_name="Sample_"+str(i_i)+"_Total_AUCs", index = False)
+            dfs.append(result_df)
+            dfs.append(total_aucs_df)
+            sheets_names.append("Sample_"+str(i_i))
+            sheets_names.append("Sample_"+str(i_i)+"_Total_AUCs")
             if compositions:
                 compositions_df = DataFrame(compositions_dataframes[i_i])
                 compositions_df.to_excel(writer, sheet_name="Sample_"+str(i_i)+"_Compositions_AUCs", index = False)
+                dfs.append(compositions_df)
+                sheets_names.append("Sample_"+str(i_i)+"_Compositions_AUCs")
             if analyze_ms2:
                 if len(fragments_dataframes[i_i]["Glycan"]) > 0:
                     fragments_df = DataFrame(fragments_refactor_dataframes[i_i])
                     fragments_df.to_excel(writer, sheet_name="Sample_"+str(i_i)+"_Fragments", index = False)
+                    dfs.append(fragments_df)
+                    sheets_names.append("Sample_"+str(i_i)+"_Fragments")
+        for index, sheet in enumerate(sheets_names):
+            General_Functions.autofit_columns_excel(dfs[index], writer.sheets[sheet])
     del df1
     del result_df
     del total_dataframes
     del total_aucs_df
+    del dfs
+    del sheets_names
     if compositions:
         del compositions_dataframes
         del compositions_df
