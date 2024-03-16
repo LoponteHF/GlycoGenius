@@ -1804,10 +1804,10 @@ def output_filtered_data(curve_fit_score,
     found_eic_raw_dataframes = [] #This creates a file with only the found glycan's EIC
     found_eic_processed_dataframes = []
 
-    with open(save_path+'raw_data_5', 'rb') as f:
+    with open(save_path+'raw_data_2', 'rb') as f:
         raw_eic_dataframes = dill.load(f)
         f.close()
-    with open(save_path+'raw_data_3', 'rb') as f:
+    with open(save_path+'raw_data_4', 'rb') as f:
         smoothed_eic_dataframes = dill.load(f)
         f.close()
             
@@ -1896,7 +1896,7 @@ def output_filtered_data(curve_fit_score,
         del isotopic_fits_dataframes_arranged
         del isotopic_fits_df
         
-        with open(save_path+'raw_data_4', 'rb') as f:
+        with open(save_path+'raw_data_5', 'rb') as f:
             curve_fitting_dataframes = dill.load(f)
             f.close()
         with ExcelWriter(save_path+begin_time+'_curve_fitting_Plot_Data.xlsx') as writer:
@@ -1922,16 +1922,6 @@ def output_filtered_data(curve_fit_score,
         
     
     if output_plot_data:
-        # with open(save_path+'raw_data_2', 'rb') as f:
-            # eic_dataframes = dill.load(f)
-            # f.close()
-        # with ExcelWriter(save_path+begin_time+'_processed_EIC_Plot_Data.xlsx') as writer:
-            # for i_i, i in enumerate(eic_dataframes):
-                # eic_df = DataFrame(i)
-                # eic_df.to_excel(writer, sheet_name="Sample_"+str(i_i), index = False)
-            # df2.to_excel(writer, sheet_name="Index references", index = False)
-        # del eic_dataframes
-        # del eic_df
         with ExcelWriter(save_path+begin_time+'_processed_EIC_Plot_Data.xlsx') as writer: #smoothed eic, now changed to processed to avoid TMI
             for i_i, i in enumerate(smoothed_eic_dataframes):
                 smoothed_eic_df = DataFrame(i)
@@ -2136,20 +2126,20 @@ def arrange_raw_data(analyzed_data,
             del df2
         f.close()
     with open(save_path+'raw_data_2', 'wb') as f:
+        dill.dump(raw_eic_dataframes, f)
+        del raw_eic_dataframes
+        f.close()
+    with open(save_path+'raw_data_3', 'wb') as f:
         dill.dump(eic_dataframes, f)
         del eic_dataframes
         f.close()
-    with open(save_path+'raw_data_3', 'wb') as f:
+    with open(save_path+'raw_data_4', 'wb') as f:
         dill.dump(smoothed_eic_dataframes, f)
         del smoothed_eic_dataframes
         f.close()
-    with open(save_path+'raw_data_4', 'wb') as f:
+    with open(save_path+'raw_data_5', 'wb') as f:
         dill.dump(curve_fitting_dataframes, f)
         del curve_fitting_dataframes
-        f.close()
-    with open(save_path+'raw_data_5', 'wb') as f:
-        dill.dump(raw_eic_dataframes, f)
-        del raw_eic_dataframes
         f.close()
     with open(save_path+'raw_data_6', 'wb') as f:
         dill.dump(isotopic_fits_dataframes, f)
