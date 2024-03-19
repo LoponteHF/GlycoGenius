@@ -90,7 +90,7 @@ def main():
             if custom_glycans_boolean:
                 if len(config['library_building']['custom_glycans_list'].split("\\")) > 1 or len(config['library_building']['custom_glycans_list'].split("/")) > 1:
                     try:
-                        temp_path_custom_glycans = config['library_building']['custom_glycans_list']
+                        temp_path_custom_glycans = config['library_building']['custom_glycans_list'].strip("\"").strip("'")
                         for i_i, i in enumerate(temp_path_custom_glycans):
                             if i == "\\":
                                 temp_path_custom_glycans = temp_path_custom_glycans[:i_i]+"/"+temp_path_custom_glycans[i_i+1:]
@@ -167,10 +167,14 @@ def main():
                 reporter_ions[i_i] = i.strip()
                 if len(i) == 0:
                     reporter_ions = reporter_ions[:i_i]+reporter_ions[i_i+1:]
-            rt_tolerance_frag = float(config['analysis_parameters']['ret_time_tolerance_ms2'])
+            if 'ret_time_tolerance_ms2' in config['analysis_parameters']:
+                rt_tolerance_frag = float(config['analysis_parameters']['ret_time_tolerance_ms2'])
             accuracy_unit = config['analysis_parameters']['accuracy_unit']
             accuracy_value = float(config['analysis_parameters']['accuracy_value'])
-            ret_time_interval = (float(config['analysis_parameters']['ret_time_begin']), float(config['analysis_parameters']['ret_time_end']), float(config['analysis_parameters']['ret_time_tolerance']))
+            if 'ret_time_tolerance' in config['analysis_parameters']:
+                ret_time_interval = (float(config['analysis_parameters']['ret_time_begin']), float(config['analysis_parameters']['ret_time_end']), float(config['analysis_parameters']['ret_time_tolerance']))
+            else:
+                ret_time_interval = (float(config['analysis_parameters']['ret_time_begin']), float(config['analysis_parameters']['ret_time_end']), ret_time_interval[2])
             min_ppp = (config['analysis_parameters'].getboolean('custom_min_points_per_peak'), int(config['analysis_parameters']['number_points_per_peak']))
             close_peaks = (config['analysis_parameters'].getboolean('limit_peaks_picked'), int(config['analysis_parameters']['max_number_peaks']))
             align_chromatograms = config['analysis_parameters'].getboolean('align_chromatograms')

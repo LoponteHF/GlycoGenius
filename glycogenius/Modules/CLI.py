@@ -160,7 +160,10 @@ def interactive_terminal():
     input_order = [None]
     curr_os = platform.system()
     if curr_os == "Linux":
-        home = "/home/"+str(os.path.expanduser("~" if "SUDO_USER" not in os.environ else os.environ["SUDO_USER"]))
+        if "SUDO_USER" not in os.environ:
+            home = "/home/"+str(os.path.expanduser("~"))
+        else:
+            home = str(os.path.expanduser(os.environ["SUDO_USER"]))
         default_path = home+"/GlycoGenius/"
     if curr_os == "Windows":
         default_path = "C:/GlycoGenius/"
@@ -186,9 +189,11 @@ def interactive_terminal():
             print("PROGRAM IS WITH YOU. SHOULD THE PROGRAM PROVE")
             print("DEFECTIVE, YOU ASSUME THE COST OF ALL NECESSARY")
             print("SERVICING, REPAIR OR CORRECTION.\n")
+            input("\nPress Enter to continue.")
             continue
         if var == 'version':
             print("\nGlycoGenius version: "+version)
+            input("Press Enter to continue.")
             continue
         if var == 'license':
             license_path = str(pathlib.Path(__file__).parent.parent.resolve())
@@ -198,16 +203,17 @@ def interactive_terminal():
             with open(license_path+"/LICENSE.py", 'r') as f:
                 for line in f:
                     print(line, end = "")
+                input("\nPress Enter to continue.")
             continue
         try:
             var = int(var)
         except:
-            print("Wrong Input")
+            input("\nWrong Input. Press Enter to try again.\n")
             continue
         if var == 5:
             os._exit(1)
         if var < 1 or var > 4:
-            print("Wrong Input")
+            input("\nWrong Input. Press Enter to try again.\n")
             continue
         if var > 0 and var <= 4:
             input_order[0] = var
@@ -462,7 +468,7 @@ def interactive_terminal():
             if var == 'y' or var == 'n':
                 break
             else:
-                print("Wrong Input")
+                input("\nWrong Input. Press Enter to try again.\n")
                 continue
         print("")
         if var == 'y':
@@ -486,7 +492,7 @@ def interactive_terminal():
             elif var == 'n':
                 break
             else:
-                print("Wrong Input")
+                input("\nWrong Input. Press Enter to try again.\n")
                 continue
         permethylated = False
         reduced = False

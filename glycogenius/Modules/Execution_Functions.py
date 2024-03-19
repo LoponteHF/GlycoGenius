@@ -548,6 +548,7 @@ def imp_exp_gen_library(samples_names,
         df = DataFrame(df)
         with ExcelWriter(save_path+'Glycans_Library.xlsx') as writer:
             df.to_excel(writer, index = False)
+            General_Functions.autofit_columns_excel(df, writer.sheets['Sheet1'])
         with open(save_path+'skyline_transitions.csv', 'w') as f:
             f.write('Precursor Name, Precursor Formula, Precursor Adduct, Precursor Charge\n')
             for i_i, i in enumerate(full_library):
@@ -1849,12 +1850,13 @@ def output_filtered_data(curve_fit_score,
     
     print("Creating data plotting files...", end='', flush=True)
     with ExcelWriter(save_path+begin_time+'_Found_Glycans_EICs.xlsx') as writer:
+        df2.to_excel(writer, sheet_name="Index references", index = False)
+        General_Functions.autofit_columns_excel(df2, writer.sheets["Index references"])
         for i_i, i in enumerate(found_eic_raw_dataframes):
             found_eic_raw_dataframes_df = DataFrame(i)
             found_eic_processed_dataframes_simplified_df = DataFrame(found_eic_processed_dataframes_simplified[i_i])
             found_eic_raw_dataframes_df.to_excel(writer, sheet_name="RAW_Sample_"+str(i_i), index = False)
             found_eic_processed_dataframes_simplified_df.to_excel(writer, sheet_name="Processed_Sample_"+str(i_i), index = False)
-        df2.to_excel(writer, sheet_name="Index references", index = False)
     del found_eic_processed_dataframes_simplified
     del found_eic_processed_dataframes_simplified_df
     del found_eic_raw_dataframes
@@ -1864,7 +1866,9 @@ def output_filtered_data(curve_fit_score,
         with open(save_path+'raw_data_6', 'rb') as f: #start of isotopic fits output
             isotopic_fits_dataframes = dill.load(f)
             f.close()
+            
         isotopic_fits_dataframes_arranged = []
+        biggest_len = 0
         for i_i, i in enumerate(isotopic_fits_dataframes): #sample
             temp_fits_dataframes = {}
             for j_j, j in enumerate(i): #glycan
@@ -1882,24 +1886,38 @@ def output_filtered_data(curve_fit_score,
                     temp_fits_dataframes[j]['RT_'+str(k_k)+':'] = temp_fits_dataframes[j]['RT_'+str(k_k)+':']+isotopic_fits_dataframes[i_i][j][k][0]
                     temp_fits_dataframes[j]['Score_'+str(k_k)+':'] = temp_fits_dataframes[j]['Score_'+str(k_k)+':']+isotopic_fits_dataframes[i_i][j][k][1]
                     temp_fits_dataframes[j]['fit_'+str(k_k)] = temp_fits_dataframes[j]['fit_'+str(k_k)]+isotopic_fits_dataframes[i_i][j][k][2]
-                    while len(temp_fits_dataframes[j]['RT_'+str(k_k)+':']) < 1000:
-                        temp_fits_dataframes[j]['RT_'+str(k_k)+':'].append(None)
-                        temp_fits_dataframes[j]['Score_'+str(k_k)+':'].append(None)
-                        temp_fits_dataframes[j]['fit_'+str(k_k)].append(None)
+                    if len(temp_fits_dataframes[j]['RT_'+str(k_k)+':']) > biggest_len:
+                        biggest_len = len(temp_fits_dataframes[j]['RT_'+str(k_k)+':'])
             isotopic_fits_dataframes_arranged.append(temp_fits_dataframes)
+        del isotopic_fits_dataframes
         for i_i, i in enumerate(isotopic_fits_dataframes_arranged):
             with ExcelWriter(save_path+begin_time+'_Isotopic_Fits_Sample_'+str(i_i)+'.xlsx') as writer:
                 for j_j, j in enumerate(i): #navigating glycans
+                    for k_k, k in enumerate(list(i[j].keys())):
+                        while len(i[j][k]) < biggest_len:
+                            i[j][k].append(None)
                     isotopic_fits_df = DataFrame(isotopic_fits_dataframes_arranged[i_i][j])
                     isotopic_fits_df.to_excel(writer, sheet_name=j, index = False)
-        del isotopic_fits_dataframes
         del isotopic_fits_dataframes_arranged
         del isotopic_fits_df
         
         with open(save_path+'raw_data_5', 'rb') as f:
             curve_fitting_dataframes = dill.load(f)
             f.close()
+        biggest_len = 0
+        for i in curve_fitting_dataframes: #finds out the biggest len
+            for j in i:
+                if len(i[j]) > biggest_len:
+                    biggest_len = len(i[j])
+        for i in curve_fitting_dataframes: #elongates the smaller dataframes so that they are all the same size
+            for j in i:
+                if len(i[j]) < biggest_len:
+                    while len(i[j]) < biggest_len:
+                        i[j].append(None)
+                        
         with ExcelWriter(save_path+begin_time+'_curve_fitting_Plot_Data.xlsx') as writer:
+            df2.to_excel(writer, sheet_name="Index references", index = False)
+            General_Functions.autofit_columns_excel(df2, writer.sheets["Index references"])
             for i_i, i in enumerate(curve_fitting_dataframes):
                 if len(curve_fitting_dataframes[i_i]) > 16384:
                     for j in range(int(len(curve_fitting_dataframes[i_i])/16384)+1):
@@ -1916,25 +1934,26 @@ def output_filtered_data(curve_fit_score,
                 else:
                     curve_df = DataFrame(curve_fitting_dataframes[i_i])
                     curve_df.to_excel(writer, sheet_name="Sample_"+str(i_i), index = False)
-            df2.to_excel(writer, sheet_name="Index references", index = False)
         del curve_fitting_dataframes
         del curve_df        
         
     
     if output_plot_data:
         with ExcelWriter(save_path+begin_time+'_processed_EIC_Plot_Data.xlsx') as writer: #smoothed eic, now changed to processed to avoid TMI
+            df2.to_excel(writer, sheet_name="Index references", index = False)
+            General_Functions.autofit_columns_excel(df2, writer.sheets["Index references"])
             for i_i, i in enumerate(smoothed_eic_dataframes):
                 smoothed_eic_df = DataFrame(i)
                 smoothed_eic_df.to_excel(writer, sheet_name="Sample_"+str(i_i), index = False)
-            df2.to_excel(writer, sheet_name="Index references", index = False)
         del smoothed_eic_dataframes
         del smoothed_eic_df
         
         with ExcelWriter(save_path+begin_time+'_raw_EIC_Plot_Data.xlsx') as writer:
+            df2.to_excel(writer, sheet_name="Index references", index = False)
+            General_Functions.autofit_columns_excel(df2, writer.sheets["Index references"])
             for i_i, i in enumerate(raw_eic_dataframes):
                 raw_eic_df = DataFrame(i)
                 raw_eic_df.to_excel(writer, sheet_name="Sample_"+str(i_i), index = False)
-            df2.to_excel(writer, sheet_name="Index references", index = False)
         del raw_eic_dataframes
         del raw_eic_df
     elif reanalysis and not output_plot_data:
@@ -2108,12 +2127,6 @@ def arrange_raw_data(analyzed_data,
                         for n in temp_curve_data_total[m_m][2]:
                             temp_array.append(int(n))
                         curve_fitting_dataframes[k_k][str(i)+"+"+str(j)+"_"+str(m)+"_Ideal_ints"] = temp_array
-    biggest_len = 10000
-    for i in curve_fitting_dataframes:
-        for j in i:
-            if len(i[j]) < biggest_len:
-                for k in range(biggest_len-len(i[j])):
-                    i[j].append(None)
     with open(save_path+'raw_data_1', 'wb') as f:
         if analyze_ms2:
             dill.dump([df1, df2, fragments_dataframes, version], f)
@@ -2200,43 +2213,47 @@ def pre_processing(data,
     tuple
         A tuple containing the dummy arrays as well as the calculated noise for each sample.
     '''
-    zeroes_arrays= []
-    inf_arrays = []
-    threads_arrays = []
-    ms1_id = []
-    rt_array_report = []
-    temp_noise = []
-    temp_avg_noise = []
-    for j_j, j in enumerate(ms1_index[data_id]):
-        zeroes_arrays.append(0.0)
-        inf_arrays.append(inf)
-        rt_array_report.append(data[j]['retentionTime'])
-        mz_ints = [data[j]['m/z array'], data[j]['intensity array']]
-        if custom_noise[0]:
-            temp_noise.append(custom_noise[1][data_id])
-            temp_avg_noise.append(custom_noise[1][data_id])
-        elif data[j]['retentionTime'] >= ret_time_interval[0] and data[j]['retentionTime'] <= ret_time_interval[1]:
-            if len(data[j]['intensity array']) == 0:
+    try:
+        zeroes_arrays= []
+        inf_arrays = []
+        threads_arrays = []
+        ms1_id = []
+        rt_array_report = []
+        temp_noise = []
+        temp_avg_noise = []
+        for j_j, j in enumerate(ms1_index[data_id]):
+            zeroes_arrays.append(0.0)
+            inf_arrays.append(inf)
+            rt_array_report.append(data[j]['retentionTime'])
+            mz_ints = [data[j]['m/z array'], data[j]['intensity array']]
+            if custom_noise[0]:
+                temp_noise.append(custom_noise[1][data_id])
+                temp_avg_noise.append(custom_noise[1][data_id])
+            elif data[j]['retentionTime'] >= ret_time_interval[0] and data[j]['retentionTime'] <= ret_time_interval[1]:
+                if len(data[j]['intensity array']) == 0:
+                    temp_noise.append((1.0, 0.0, 0.0))
+                    temp_avg_noise.append(1.0)
+                if len(data[j]['intensity array']) != 0:
+                    threads_arrays.append(j)
+                    ms1_id.append(j_j)
+                    temp_noise.append(General_Functions.rt_noise_level_parameters_set(mz_ints, "segments"))
+                    temp_avg_noise.append(General_Functions.rt_noise_level_parameters_set(mz_ints, "whole"))
+            else:
                 temp_noise.append((1.0, 0.0, 0.0))
                 temp_avg_noise.append(1.0)
-            if len(data[j]['intensity array']) != 0:
-                threads_arrays.append(j)
-                ms1_id.append(j_j)
-                temp_noise.append(General_Functions.rt_noise_level_parameters_set(mz_ints, "segments"))
-                temp_avg_noise.append(General_Functions.rt_noise_level_parameters_set(mz_ints, "whole"))
-        else:
-            temp_noise.append((1.0, 0.0, 0.0))
-            temp_avg_noise.append(1.0)
-    list_for_avg = []        
-    for i_i, i in enumerate(temp_avg_noise):
-        if i != 1.0:
-            list_for_avg.append(i)
-    avg = sum(list_for_avg)/len(list_for_avg)        
-    for i_i, i in enumerate(temp_avg_noise):
-        if i == 1.0:
-            temp_avg_noise[i_i] = avg
-    
-    return zeroes_arrays, inf_arrays, threads_arrays, ms1_id, rt_array_report, temp_noise, temp_avg_noise, data_id
+        list_for_avg = []        
+        for i_i, i in enumerate(temp_avg_noise):
+            if i != 1.0:
+                list_for_avg.append(i)
+        avg = sum(list_for_avg)/len(list_for_avg)        
+        for i_i, i in enumerate(temp_avg_noise):
+            if i == 1.0:
+                temp_avg_noise[i_i] = avg
+        
+        return zeroes_arrays, inf_arrays, threads_arrays, ms1_id, rt_array_report, temp_noise, temp_avg_noise, data_id
+    except KeyboardInterrupt:
+        print("\n\n----------Execution cancelled by user.----------\n", flush=True)
+        raise SystemExit(1)
     
 def analyze_files(library,
                   lib_size,
@@ -2377,9 +2394,10 @@ def analyze_files(library,
         
         
     print('Done!')
-    print("Pre-processing done!")
+    print("Pre-processing done in "+str(datetime.datetime.now() - begin_time)+"!")
     print_sep()
     print("Analyzing glycans in samples' MS1 spectra...")
+    begin_time = datetime.datetime.now()
     
     results = []
     with concurrent.futures.ProcessPoolExecutor(max_workers = cpu_count) as executor:
@@ -2539,73 +2557,77 @@ def analyze_glycan(library,
     i : string
         The glycan analyzed.
     '''
-    print('Analyzing glycan '+str(i)+': '+str(i_i+1)+'/'+str(total_glycans))
-    
-    glycan_data = library[i]
-    glycan_data['Adducts_mz_data'] = {}
-    temp_eic = File_Accessing.eic_from_glycan(data,
-                                              i,
-                                              glycan_data,
-                                              ms1_index,
-                                              ret_time_interval,
-                                              tolerance,
-                                              min_isotops,
-                                              noise,
-                                              noise_avg,
-                                              max_charges,
-                                              zeroes_arrays,
-                                              inf_arrays,
-                                              threads_arrays,
-                                              rt_arrays,
-                                              ms1_id)
-    for j in temp_eic[0]: #moving through adducts
-        glycan_data['Adducts_mz_data'][j] = {}
-        for k in temp_eic[0][j]: #moving through samples
-            if i == "Internal Standard":
-                temp_eic_smoothed = File_Accessing.eic_smoothing(temp_eic[4][j][k])
-            else:
-                temp_eic_smoothed = File_Accessing.eic_smoothing(temp_eic[0][j][k])
-            glycan_data['Adducts_mz_data'][j][k] = []
-            glycan_data['Adducts_mz_data'][j][k].append(temp_eic[0][j][k][1]) #processed chromatogram
-            glycan_data['Adducts_mz_data'][j][k].append([]) #placeholder for inserting data about the glycan and adduct
-            glycan_data['Adducts_mz_data'][j][k].append(temp_eic_smoothed[1]) #smoothed chromatogram
-            glycan_data['Adducts_mz_data'][j][k].append(temp_eic[4][j][k][1]) #raw chromatogram
-            glycan_data['Adducts_mz_data'][j][k].append(temp_eic[5][j][k]) #isotopic fits data
-            if max(temp_eic[0][j][k][1]) < noise_avg[k] and i != "Internal Standard":
-                continue
-            if i == "Internal Standard":
-                temp_peaks = File_Accessing.peaks_from_eic(temp_eic[4][j][k],
-                                                           temp_eic_smoothed,
-                                                           ret_time_interval,
-                                                           min_ppp,
-                                                           close_peaks,
-                                                           i)
-            else:
-                temp_peaks = File_Accessing.peaks_from_eic(temp_eic[0][j][k],
-                                                           temp_eic_smoothed,
-                                                           ret_time_interval,
-                                                           min_ppp,
-                                                           close_peaks,
-                                                           i)
-            if len(temp_peaks) == 0:
-                continue
-            if i == "Internal Standard":
-                temp_peaks_auc = File_Accessing.peaks_auc_from_eic(temp_eic[4][j][k],
-                                                                   ms1_index[k],
-                                                                   temp_peaks)
-            else:
-                temp_peaks_auc = File_Accessing.peaks_auc_from_eic(temp_eic[0][j][k],
-                                                                   ms1_index[k],
-                                                                   temp_peaks)
-            for l_l, l in enumerate(temp_peaks):
-                if temp_peaks_auc[l_l] >= noise_avg[k]:
-                    l['AUC'] = temp_peaks_auc[l_l]
-                    l['Average_PPM'] = File_Accessing.average_ppm_calc(temp_eic[1][j][k], (tolerance[0], tolerance[1], glycan_data['Adducts_mz'][j]), l)
-                    l['Iso_Fit_Score'] = File_Accessing.iso_fit_score_calc(temp_eic[2][j][k], l)
-                    l['Signal-to-Noise'] = l['int']/(General_Functions.local_noise_calc(noise[k][l['id']], glycan_data['Adducts_mz'][j], noise_avg[k]))
-                    l['Curve_Fit_Score'] = File_Accessing.peak_curve_fit(temp_eic_smoothed, l)
-                    glycan_data['Adducts_mz_data'][j][k][1].append(l)
-    return glycan_data, i
+    try:
+        print('Analyzing glycan '+str(i)+': '+str(i_i+1)+'/'+str(total_glycans))
+        
+        glycan_data = library[i]
+        glycan_data['Adducts_mz_data'] = {}
+        temp_eic = File_Accessing.eic_from_glycan(data,
+                                                  i,
+                                                  glycan_data,
+                                                  ms1_index,
+                                                  ret_time_interval,
+                                                  tolerance,
+                                                  min_isotops,
+                                                  noise,
+                                                  noise_avg,
+                                                  max_charges,
+                                                  zeroes_arrays,
+                                                  inf_arrays,
+                                                  threads_arrays,
+                                                  rt_arrays,
+                                                  ms1_id)
+        for j in temp_eic[0]: #moving through adducts
+            glycan_data['Adducts_mz_data'][j] = {}
+            for k in temp_eic[0][j]: #moving through samples
+                if i == "Internal Standard":
+                    temp_eic_smoothed = File_Accessing.eic_smoothing(temp_eic[4][j][k])
+                else:
+                    temp_eic_smoothed = File_Accessing.eic_smoothing(temp_eic[0][j][k])
+                glycan_data['Adducts_mz_data'][j][k] = []
+                glycan_data['Adducts_mz_data'][j][k].append(temp_eic[0][j][k][1]) #processed chromatogram
+                glycan_data['Adducts_mz_data'][j][k].append([]) #placeholder for inserting data about the glycan and adduct
+                glycan_data['Adducts_mz_data'][j][k].append(temp_eic_smoothed[1]) #smoothed chromatogram
+                glycan_data['Adducts_mz_data'][j][k].append(temp_eic[4][j][k][1]) #raw chromatogram
+                glycan_data['Adducts_mz_data'][j][k].append(temp_eic[5][j][k]) #isotopic fits data
+                if max(temp_eic[0][j][k][1]) < noise_avg[k] and i != "Internal Standard":
+                    continue
+                if i == "Internal Standard":
+                    temp_peaks = File_Accessing.peaks_from_eic(temp_eic[4][j][k],
+                                                               temp_eic_smoothed,
+                                                               ret_time_interval,
+                                                               min_ppp,
+                                                               close_peaks,
+                                                               i)
+                else:
+                    temp_peaks = File_Accessing.peaks_from_eic(temp_eic[0][j][k],
+                                                               temp_eic_smoothed,
+                                                               ret_time_interval,
+                                                               min_ppp,
+                                                               close_peaks,
+                                                               i)
+                if len(temp_peaks) == 0:
+                    continue
+                if i == "Internal Standard":
+                    temp_peaks_auc = File_Accessing.peaks_auc_from_eic(temp_eic[4][j][k],
+                                                                       ms1_index[k],
+                                                                       temp_peaks)
+                else:
+                    temp_peaks_auc = File_Accessing.peaks_auc_from_eic(temp_eic[0][j][k],
+                                                                       ms1_index[k],
+                                                                       temp_peaks)
+                for l_l, l in enumerate(temp_peaks):
+                    if temp_peaks_auc[l_l] >= noise_avg[k]:
+                        l['AUC'] = temp_peaks_auc[l_l]
+                        l['Average_PPM'] = File_Accessing.average_ppm_calc(temp_eic[1][j][k], (tolerance[0], tolerance[1], glycan_data['Adducts_mz'][j]), l)
+                        l['Iso_Fit_Score'] = File_Accessing.iso_fit_score_calc(temp_eic[2][j][k], l)
+                        l['Signal-to-Noise'] = l['int']/(General_Functions.local_noise_calc(noise[k][l['id']], glycan_data['Adducts_mz'][j], noise_avg[k]))
+                        l['Curve_Fit_Score'] = File_Accessing.peak_curve_fit(temp_eic_smoothed, l)
+                        glycan_data['Adducts_mz_data'][j][k][1].append(l)
+        return glycan_data, i
+    except KeyboardInterrupt:
+        print("\n\n----------Execution cancelled by user.----------\n", flush=True)
+        raise SystemExit(1)
     
 def analyze_ms2(ms2_index, 
                 data, 
@@ -2876,148 +2898,152 @@ def analyze_glycan_ms2(ms2_index,
     tuple
         A series of information on the MS2 data analyzed.
     '''
-    print('Analyzing glycan '+str(i)+': '+str(i_i+1)+'/'+str(len(analyzed_data[0])))
-    fragments_data = {}
-    for j_j, j in enumerate(analyzed_data[0][i]['Adducts_mz_data']): #goes through each adduct
-        fragments_data[j] = {}
-        for k_k, k in enumerate(data): #goes through each file
-            fragments_data[j][k_k] = []
-            if len(ms2_index[k_k]) == 0:
-                continue
-            if len(analyzed_data[0][i]['Adducts_mz_data'][j][k_k][1]) == 0 and not unrestricted_fragments: #checks if found the adduct
-                continue
-            for l in ms2_index[k_k]:
-                if len(k[l]['intensity array']) == 0:
+    try:
+        print('Analyzing glycan '+str(i)+': '+str(i_i+1)+'/'+str(len(analyzed_data[0])))
+        fragments_data = {}
+        for j_j, j in enumerate(analyzed_data[0][i]['Adducts_mz_data']): #goes through each adduct
+            fragments_data[j] = {}
+            for k_k, k in enumerate(data): #goes through each file
+                fragments_data[j][k_k] = []
+                if len(ms2_index[k_k]) == 0:
                     continue
-                if unrestricted_fragments:
-                    if k[l]['retentionTime'] < rt_interval[0] or k[l]['retentionTime'] > rt_interval[1]:
+                if len(analyzed_data[0][i]['Adducts_mz_data'][j][k_k][1]) == 0 and not unrestricted_fragments: #checks if found the adduct
+                    continue
+                for l in ms2_index[k_k]:
+                    if len(k[l]['intensity array']) == 0:
                         continue
-                else:
-                    if k[l]['retentionTime'] < analyzed_data[0][i]['Adducts_mz_data'][j][k_k][1][0]['peak_interval'][0] - rt_tolerance or k[l]['retentionTime'] > analyzed_data[0][i]['Adducts_mz_data'][j][k_k][1][-1]['peak_interval'][1] + rt_tolerance: #skips spectra outside peak interval of peaks found
-                        continue
-                if abs((k[l]['precursorMz'][0]['precursorMz']) - analyzed_data[0][i]['Adducts_mz'][j]) <= (1.0074/General_Functions.form_to_charge(j))+General_Functions.tolerance_calc(tolerance[0], tolerance[1], analyzed_data[0][i]['Adducts_mz'][j]): #checks if precursor matches adduct mz
-                    found_count = 0
-                    total = sum(k[l]['intensity array'])
-                    former_peak_mz = 0
-                    max_int = max(k[l]['intensity array'])
-                    for m_m, m in enumerate(k[l]['m/z array']):
-                    
-                        if k[l]['intensity array'][m_m] < max_int*0.1: #this avoids picking on super small intensity peaks... since MS2 data noise is sometimes almost boolean, it's easier to just filter by intensity related to base peak
+                    if unrestricted_fragments:
+                        if k[l]['retentionTime'] < rt_interval[0] or k[l]['retentionTime'] > rt_interval[1]:
                             continue
-                            
-                        if abs(m+former_peak_mz+General_Functions.h_mass) < General_Functions.tolerance_calc(tolerance[0], tolerance[1], m) or abs(m-former_peak_mz+(General_Functions.h_mass/2)) < General_Functions.tolerance_calc(tolerance[0], tolerance[1], m): #this stack makes it so that fragments are not picked as peaks of the envelope of former peaks. checks for singly or doubly charged fragments only
-                            former_peak_mz = m
+                    else:
+                        if k[l]['retentionTime'] < analyzed_data[0][i]['Adducts_mz_data'][j][k_k][1][0]['peak_interval'][0] - rt_tolerance or k[l]['retentionTime'] > analyzed_data[0][i]['Adducts_mz_data'][j][k_k][1][-1]['peak_interval'][1] + rt_tolerance: #skips spectra outside peak interval of peaks found
                             continue
-                        former_peak_mz = m
+                    if abs((k[l]['precursorMz'][0]['precursorMz']) - analyzed_data[0][i]['Adducts_mz'][j]) <= (1.0074/General_Functions.form_to_charge(j))+General_Functions.tolerance_calc(tolerance[0], tolerance[1], analyzed_data[0][i]['Adducts_mz'][j]): #checks if precursor matches adduct mz
+                        found_count = 0
+                        total = sum(k[l]['intensity array'])
+                        former_peak_mz = 0
+                        max_int = max(k[l]['intensity array'])
+                        for m_m, m in enumerate(k[l]['m/z array']):
                         
-                        found = False
-                        for n_n, n in enumerate(fragments):
-                            if 'Monos_Composition' in list(n.keys()):
-                                if lactonized_ethyl_esterified:
-                                    if (n['Monos_Composition']['H'] == analyzed_data[0][i]['Monos_Composition']['H']
-                                        and n['Monos_Composition']['N'] == analyzed_data[0][i]['Monos_Composition']['N']
-                                        and n['Monos_Composition']['lS'] == analyzed_data[0][i]['Monos_Composition']['lS']
-                                        and n['Monos_Composition']['eS'] == analyzed_data[0][i]['Monos_Composition']['eS']
-                                        and n['Monos_Composition']['F'] == analyzed_data[0][i]['Monos_Composition']['F']
-                                        and n['Monos_Composition']['G'] == analyzed_data[0][i]['Monos_Composition']['G']):
-                                        continue
-                                else:
-                                    if (n['Monos_Composition']['H'] == analyzed_data[0][i]['Monos_Composition']['H']
-                                        and n['Monos_Composition']['N'] == analyzed_data[0][i]['Monos_Composition']['N']
-                                        and n['Monos_Composition']['S'] == analyzed_data[0][i]['Monos_Composition']['S']
-                                        and n['Monos_Composition']['F'] == analyzed_data[0][i]['Monos_Composition']['F']
-                                        and n['Monos_Composition']['G'] == analyzed_data[0][i]['Monos_Composition']['G']):
-                                        continue
-                            if found:
-                                break
-                            combo = False
-                            if filter_output:
-                                if "/" in n['Formula']:
-                                    combo = True
-                                    fragments_comp = []
-                                    formula_splitted = n['Formula'].split("/")
-                                    for o in formula_splitted:
-                                        for p_p, p in enumerate(o):
-                                            if p == "-" or p == "+" or p == "_":
-                                                fragments_comp.append(o[:p_p])
-                                                break
-                                    for o_o, o in enumerate(fragments_comp):
-                                        fragments_comp[o_o] = General_Functions.form_to_comp(o)
-                                    viable = []
-                                    for o in fragments_comp:
-                                        if lactonized_ethyl_esterified:
-                                            if 'H' not in o.keys():
-                                                o['H'] = 0
-                                            if 'N' not in o.keys():
-                                                o['N'] = 0
-                                            if 'lS' not in o.keys():
-                                                o['lS'] = 0
-                                            if 'eS' not in o.keys():
-                                                o['eS'] = 0
-                                            if 'F' not in o.keys():
-                                                o['F'] = 0
-                                            if 'G' not in o.keys():
-                                                o['G'] = 0
-                                            if (o['H'] > analyzed_data[0][i]['Monos_Composition']['H']
-                                                or o['N'] > analyzed_data[0][i]['Monos_Composition']['N']
-                                                or o['lS'] > analyzed_data[0][i]['Monos_Composition']['lS']
-                                                or o['eS'] > analyzed_data[0][i]['Monos_Composition']['eS']
-                                                or o['F'] > analyzed_data[0][i]['Monos_Composition']['F']
-                                                or o['G'] > analyzed_data[0][i]['Monos_Composition']['G']):
-                                                viable.append(False)
-                                                break
-                                            else:
-                                                viable.append(True)
-                                        else:
-                                            if 'H' not in o.keys():
-                                                o['H'] = 0
-                                            if 'N' not in o.keys():
-                                                o['N'] = 0
-                                            if 'S' not in o.keys():
-                                                o['S'] = 0
-                                            if 'F' not in o.keys():
-                                                o['F'] = 0
-                                            if 'G' not in o.keys():
-                                                o['G'] = 0
-                                            if (o['H'] > analyzed_data[0][i]['Monos_Composition']['H']
-                                                or o['N'] > analyzed_data[0][i]['Monos_Composition']['N']
-                                                or o['S'] > analyzed_data[0][i]['Monos_Composition']['S']
-                                                or o['F'] > analyzed_data[0][i]['Monos_Composition']['F']
-                                                or o['G'] > analyzed_data[0][i]['Monos_Composition']['G']):
-                                                viable.append(False)
-                                                break
-                                            else:
-                                                viable.append(True)
-                                    if True not in viable:
-                                        continue
-                                    else:
-                                        count = 0
-                                        new_formula = ""
-                                        for o_o, o in enumerate(viable):
-                                            if count == 0:
-                                                if o:
-                                                    new_formula = formula_splitted[o_o]
-                                                    count+= 1
-                                            else:
-                                                if o:
-                                                    new_formula+= "/"+formula_splitted[o_o]
-                                                    count+= 1
-                                elif "/" not in n['Formula'] and not combo:
+                            if k[l]['intensity array'][m_m] < max_int*0.1: #this avoids picking on super small intensity peaks... since MS2 data noise is sometimes almost boolean, it's easier to just filter by intensity related to base peak
+                                continue
+                                
+                            if abs(m+former_peak_mz+General_Functions.h_mass) < General_Functions.tolerance_calc(tolerance[0], tolerance[1], m) or abs(m-former_peak_mz+(General_Functions.h_mass/2)) < General_Functions.tolerance_calc(tolerance[0], tolerance[1], m): #this stack makes it so that fragments are not picked as peaks of the envelope of former peaks. checks for singly or doubly charged fragments only
+                                former_peak_mz = m
+                                continue
+                            former_peak_mz = m
+                            
+                            found = False
+                            for n_n, n in enumerate(fragments):
+                                if 'Monos_Composition' in list(n.keys()):
                                     if lactonized_ethyl_esterified:
-                                        if (n['Monos_Composition']['H'] > analyzed_data[0][i]['Monos_Composition']['H'] or n['Monos_Composition']['N'] > analyzed_data[0][i]['Monos_Composition']['N'] or n['Monos_Composition']['lS'] > analyzed_data[0][i]['Monos_Composition']['lS'] or n['Monos_Composition']['eS'] > analyzed_data[0][i]['Monos_Composition']['eS'] or n['Monos_Composition']['F'] > analyzed_data[0][i]['Monos_Composition']['F'] or n['Monos_Composition']['G'] > analyzed_data[0][i]['Monos_Composition']['G']):
+                                        if (n['Monos_Composition']['H'] == analyzed_data[0][i]['Monos_Composition']['H']
+                                            and n['Monos_Composition']['N'] == analyzed_data[0][i]['Monos_Composition']['N']
+                                            and n['Monos_Composition']['lS'] == analyzed_data[0][i]['Monos_Composition']['lS']
+                                            and n['Monos_Composition']['eS'] == analyzed_data[0][i]['Monos_Composition']['eS']
+                                            and n['Monos_Composition']['F'] == analyzed_data[0][i]['Monos_Composition']['F']
+                                            and n['Monos_Composition']['G'] == analyzed_data[0][i]['Monos_Composition']['G']):
                                             continue
                                     else:
-                                        if (n['Monos_Composition']['H'] > analyzed_data[0][i]['Monos_Composition']['H'] or n['Monos_Composition']['N'] > analyzed_data[0][i]['Monos_Composition']['N'] or n['Monos_Composition']['S'] > analyzed_data[0][i]['Monos_Composition']['S'] or n['Monos_Composition']['F'] > analyzed_data[0][i]['Monos_Composition']['F'] or n['Monos_Composition']['G'] > analyzed_data[0][i]['Monos_Composition']['G']):
+                                        if (n['Monos_Composition']['H'] == analyzed_data[0][i]['Monos_Composition']['H']
+                                            and n['Monos_Composition']['N'] == analyzed_data[0][i]['Monos_Composition']['N']
+                                            and n['Monos_Composition']['S'] == analyzed_data[0][i]['Monos_Composition']['S']
+                                            and n['Monos_Composition']['F'] == analyzed_data[0][i]['Monos_Composition']['F']
+                                            and n['Monos_Composition']['G'] == analyzed_data[0][i]['Monos_Composition']['G']):
                                             continue
-                            for o in n['Adducts_mz']:
-                                if abs(n['Adducts_mz'][o]-m) <= General_Functions.tolerance_calc(tolerance[0], tolerance[1], n['Adducts_mz'][o]): #fragments data outputted in the form of (Glycan, Adduct, Fragment, Fragment mz, intensity, retention time, precursor)
-                                    if "_" not in n['Formula']:
-                                        fragments_data[j][k_k].append((i, j, n['Formula']+'_'+o, n['Adducts_mz'][o], k[l]['intensity array'][m_m], k[l]['retentionTime'], k[l]['precursorMz'][0]['precursorMz'], total))
-                                    elif "_" in n['Formula'] and combo:
-                                        fragments_data[j][k_k].append((i, j, new_formula, n['Adducts_mz'][o], k[l]['intensity array'][m_m], k[l]['retentionTime'], k[l]['precursorMz'][0]['precursorMz'], total))
-                                    else:
-                                        fragments_data[j][k_k].append((i, j, n['Formula'], n['Adducts_mz'][o], k[l]['intensity array'][m_m], k[l]['retentionTime'], k[l]['precursorMz'][0]['precursorMz'], total))
-                                    found = True
-                                    found_count += k[l]['intensity array'][m_m]
+                                if found:
                                     break
-    return fragments_data, i
+                                combo = False
+                                if filter_output:
+                                    if "/" in n['Formula']:
+                                        combo = True
+                                        fragments_comp = []
+                                        formula_splitted = n['Formula'].split("/")
+                                        for o in formula_splitted:
+                                            for p_p, p in enumerate(o):
+                                                if p == "-" or p == "+" or p == "_":
+                                                    fragments_comp.append(o[:p_p])
+                                                    break
+                                        for o_o, o in enumerate(fragments_comp):
+                                            fragments_comp[o_o] = General_Functions.form_to_comp(o)
+                                        viable = []
+                                        for o in fragments_comp:
+                                            if lactonized_ethyl_esterified:
+                                                if 'H' not in o.keys():
+                                                    o['H'] = 0
+                                                if 'N' not in o.keys():
+                                                    o['N'] = 0
+                                                if 'lS' not in o.keys():
+                                                    o['lS'] = 0
+                                                if 'eS' not in o.keys():
+                                                    o['eS'] = 0
+                                                if 'F' not in o.keys():
+                                                    o['F'] = 0
+                                                if 'G' not in o.keys():
+                                                    o['G'] = 0
+                                                if (o['H'] > analyzed_data[0][i]['Monos_Composition']['H']
+                                                    or o['N'] > analyzed_data[0][i]['Monos_Composition']['N']
+                                                    or o['lS'] > analyzed_data[0][i]['Monos_Composition']['lS']
+                                                    or o['eS'] > analyzed_data[0][i]['Monos_Composition']['eS']
+                                                    or o['F'] > analyzed_data[0][i]['Monos_Composition']['F']
+                                                    or o['G'] > analyzed_data[0][i]['Monos_Composition']['G']):
+                                                    viable.append(False)
+                                                    break
+                                                else:
+                                                    viable.append(True)
+                                            else:
+                                                if 'H' not in o.keys():
+                                                    o['H'] = 0
+                                                if 'N' not in o.keys():
+                                                    o['N'] = 0
+                                                if 'S' not in o.keys():
+                                                    o['S'] = 0
+                                                if 'F' not in o.keys():
+                                                    o['F'] = 0
+                                                if 'G' not in o.keys():
+                                                    o['G'] = 0
+                                                if (o['H'] > analyzed_data[0][i]['Monos_Composition']['H']
+                                                    or o['N'] > analyzed_data[0][i]['Monos_Composition']['N']
+                                                    or o['S'] > analyzed_data[0][i]['Monos_Composition']['S']
+                                                    or o['F'] > analyzed_data[0][i]['Monos_Composition']['F']
+                                                    or o['G'] > analyzed_data[0][i]['Monos_Composition']['G']):
+                                                    viable.append(False)
+                                                    break
+                                                else:
+                                                    viable.append(True)
+                                        if True not in viable:
+                                            continue
+                                        else:
+                                            count = 0
+                                            new_formula = ""
+                                            for o_o, o in enumerate(viable):
+                                                if count == 0:
+                                                    if o:
+                                                        new_formula = formula_splitted[o_o]
+                                                        count+= 1
+                                                else:
+                                                    if o:
+                                                        new_formula+= "/"+formula_splitted[o_o]
+                                                        count+= 1
+                                    elif "/" not in n['Formula'] and not combo:
+                                        if lactonized_ethyl_esterified:
+                                            if (n['Monos_Composition']['H'] > analyzed_data[0][i]['Monos_Composition']['H'] or n['Monos_Composition']['N'] > analyzed_data[0][i]['Monos_Composition']['N'] or n['Monos_Composition']['lS'] > analyzed_data[0][i]['Monos_Composition']['lS'] or n['Monos_Composition']['eS'] > analyzed_data[0][i]['Monos_Composition']['eS'] or n['Monos_Composition']['F'] > analyzed_data[0][i]['Monos_Composition']['F'] or n['Monos_Composition']['G'] > analyzed_data[0][i]['Monos_Composition']['G']):
+                                                continue
+                                        else:
+                                            if (n['Monos_Composition']['H'] > analyzed_data[0][i]['Monos_Composition']['H'] or n['Monos_Composition']['N'] > analyzed_data[0][i]['Monos_Composition']['N'] or n['Monos_Composition']['S'] > analyzed_data[0][i]['Monos_Composition']['S'] or n['Monos_Composition']['F'] > analyzed_data[0][i]['Monos_Composition']['F'] or n['Monos_Composition']['G'] > analyzed_data[0][i]['Monos_Composition']['G']):
+                                                continue
+                                for o in n['Adducts_mz']:
+                                    if abs(n['Adducts_mz'][o]-m) <= General_Functions.tolerance_calc(tolerance[0], tolerance[1], n['Adducts_mz'][o]): #fragments data outputted in the form of (Glycan, Adduct, Fragment, Fragment mz, intensity, retention time, precursor)
+                                        if "_" not in n['Formula']:
+                                            fragments_data[j][k_k].append((i, j, n['Formula']+'_'+o, n['Adducts_mz'][o], k[l]['intensity array'][m_m], k[l]['retentionTime'], k[l]['precursorMz'][0]['precursorMz'], total))
+                                        elif "_" in n['Formula'] and combo:
+                                            fragments_data[j][k_k].append((i, j, new_formula, n['Adducts_mz'][o], k[l]['intensity array'][m_m], k[l]['retentionTime'], k[l]['precursorMz'][0]['precursorMz'], total))
+                                        else:
+                                            fragments_data[j][k_k].append((i, j, n['Formula'], n['Adducts_mz'][o], k[l]['intensity array'][m_m], k[l]['retentionTime'], k[l]['precursorMz'][0]['precursorMz'], total))
+                                        found = True
+                                        found_count += k[l]['intensity array'][m_m]
+                                        break
+        return fragments_data, i
+    except KeyboardInterrupt:
+        print("\n\n----------Execution cancelled by user.----------\n", flush=True)
+        raise SystemExit(1)

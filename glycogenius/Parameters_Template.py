@@ -130,7 +130,6 @@ analyze_ms2 = yes
 force_fragments_to_glycans = yes
 unrestricted_fragments = no
 reporter_ions = N1T1, 366.14
-ret_time_tolerance_ms2 = 0.2
 ; 	Allows to analyze ms2 data, as well. Fragments 
 ;	identified will be associated with each glycan. 
 ;	You can choose to filter identified fragments by 
@@ -146,9 +145,7 @@ ret_time_tolerance_ms2 = 0.2
 ;	(with T being the reducing end of the glycan, 
 ;	including possibly the tag, if used) or an mz. 
 ;	reporter_ions can be changed on raw data 
-;	reanalysis. ret_time_tolerance_ms2 indicates 
-;	the retention time tolerance for attributing a 
-;	given MS2 spectra to a specific peak.
+;	reanalysis.
 ;
 accuracy_unit = mz
 ; 	Determines the units of mz tolerance to be used 
@@ -166,15 +163,12 @@ accuracy_value = 0.01
 ;
 ret_time_begin = 1
 ret_time_end = 999
-ret_time_tolerance = 0.2
 ; 	The minimum and maximum retention time, in minutes, 
 ;	used for various portions of the script. A shorter 
 ;	interval of ret_time makes the script run faster, 
 ;	so try to trim your sample as much as possible, 
 ;	if you know when your analytes are leaving the 
-;	column. Set the retention time tolerance used for 
-;	and same peak identification. ret_time_tolerance 
-;	can be reapplied on raw data reanalysis.
+;	column.
 ;
 custom_min_points_per_peak = no
 number_points_per_peak = 5

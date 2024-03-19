@@ -530,11 +530,9 @@ def analyze_mz_array(sliced_mz,
             dotp.append(dotproduct)
         iso_quali = mean(dotp)
         
-        #reduces score if fewer isotopic peaks are found: very punishing for only 2 peaks, much less punishing for three, normal score from 4 and over
+        #reduces score if fewer isotopic peaks are found: punishing for only 2 peaks, normal score from 3 and over
         if len(iso_actual) == 1:
-            iso_quali = (iso_quali+(iso_quali*0.70))/2
-        if len(iso_actual) == 2:
-            iso_quali = (iso_quali+(iso_quali*0.95))/2
+            iso_quali = (iso_quali*0.8)
             
     if len(iso_actual) == 0:
         iso_quali = 0.0
@@ -689,8 +687,11 @@ def iso_fit_score_calc(iso_fits,
     '''
     weights_list = []
     for i in range(peak['peak_interval_id'][1]-peak['peak_interval_id'][0]+1):
-        weights_list.append(General_Functions.normpdf(i, (peak['peak_interval_id'][1]-peak['peak_interval_id'][0]+1)/2, (peak['peak_interval_id'][1]-peak['peak_interval_id'][0])/6))
-    scaler = (1/max(weights_list))
+        weights_list.append(General_Functions.normpdf(i, (peak['id']-peak['peak_interval_id'][0]+1), (peak['peak_interval_id'][1]-peak['peak_interval_id'][0])/6))
+    if max(weights_list) > 0:
+        scaler = (1/max(weights_list))
+    else:
+        scaler = 1
     weights_list_scaled = []
     for i in weights_list:
         weights_list_scaled.append(i*scaler)
@@ -735,7 +736,7 @@ def average_ppm_calc(ppm_array,
     missing_points = 0
     weights_list = []
     for i in range(peak['peak_interval_id'][1]-peak['peak_interval_id'][0]+1):
-        weights_list.append(General_Functions.normpdf(i, (peak['peak_interval_id'][1]-peak['peak_interval_id'][0]+1)/2, (peak['peak_interval_id'][1]-peak['peak_interval_id'][0])/6))
+        weights_list.append(General_Functions.normpdf(i, (peak['id']-peak['peak_interval_id'][0]+1), (peak['peak_interval_id'][1]-peak['peak_interval_id'][0])/6))
     scaler = (1/max(weights_list))
     weights_list_scaled = []
     for i in weights_list:
@@ -794,50 +795,70 @@ def peaks_from_eic(rt_int,
     temp_start = 0
     temp_max = 0
     temp_max_id_iu = 0
+    temp_min = inf
+    temp_min_id_iu = 0
     going_up = False
     going_down = False
     datapoints_per_time = int(0.2/(rt_int[0][rt_int[1].index(max(rt_int[1]))]-rt_int[0][rt_int[1].index(max(rt_int[1]))-1]))
-    slope_threshold = 5*datapoints_per_time #this number indicates the minimum angle to consider a peak
+    slope_threshold = 300*datapoints_per_time
+    threshold = int(datapoints_per_time/3)
+    down_count = 0
+    end_count = 0
     for i_i, i in enumerate(rt_int_smoothed[1]):
         if (rt_int[0][i_i] >= rt_interval[1] or rt_int[0][i_i] == rt_int[0][-2]):
             break    
         if rt_int[0][i_i] >= rt_interval[0]:
-            if i > 0 and rt_int_smoothed[1][i_i+1] > 0:
-                arc_tan_slope = atan(((rt_int_smoothed[1][i_i+1]/i)-1)/(1/datapoints_per_time))*(180/pi)
-            elif i > 0 and rt_int_smoothed[1][i_i+1] == 0:
-                arc_tan_slope = atan(((1/(i+1))-1)/(1/datapoints_per_time))*(180/pi)
-            elif i == 0 and rt_int_smoothed[1][i_i+1] > 0:
-                arc_tan_slope = atan((rt_int_smoothed[1][i_i+1])/(1/datapoints_per_time))*(180/pi)
-            elif i == 0 and rt_int_smoothed[1][i_i+1] == 0:
-                arc_tan_slope = 0.0
-            # print(rt_int[0][i_i], i, rt_int_smoothed[1][i_i+1], arc_tan_slope, going_up, going_down, datapoints_per_time, slope_threshold)
-            if (going_up or going_down) and rt_int[1][i_i] > temp_max:
+            slope = (rt_int_smoothed[1][i_i+1]-i)/(rt_int[0][i_i+1]-rt_int[0][i_i])
+            # print(rt_int[0][i_i], i, rt_int_smoothed[1][i_i+1], slope, going_up, going_down, datapoints_per_time, slope_threshold)
+            if rt_int_smoothed[1][i_i] > temp_max and (going_up or going_down):
                 temp_max = rt_int[1][i_i]
                 temp_max_id_iu = i_i
-            if (going_up and (arc_tan_slope < 0 or rt_int_smoothed[1][i_i] == 0)):
-                going_up = False
-                going_down = True
-            if (going_down and (arc_tan_slope >= 0 or rt_int_smoothed[1][i_i] == 0.0)):
-                min_id = i_i
-                if rt_int_smoothed[1][i_i+1] < i:
-                    min_id = i_i+1
-                temp_peak_width = (rt_int[0][min_id]-rt_int[0][temp_start])
-                going_down = False
-                good = False
-                if min_ppp[0]:
-                    if i_i-temp_start >= min_ppp[1] or glycan == "Internal Standard":
-                        good = True
-                else:
-                    if min_id-temp_start >= datapoints_per_time or glycan == "Internal Standard":
-                        good = True
-                if good:
-                    peaks.append({'id': temp_max_id_iu, 'rt': rt_int[0][temp_max_id_iu], 'int': temp_max, 'peak_width': temp_peak_width, 'peak_interval': (rt_int[0][temp_start], rt_int[0][min_id]), 'peak_interval_id': (temp_start, min_id)})
-                    temp_max = 0
-                    temp_max_id_iu = 0
-                if not good:
-                    temp_max = 0
-                    temp_max_id_iu = 0
-            if (i_i != 0 and arc_tan_slope >= slope_threshold and not going_up and not going_down):
+            if (going_up and (slope < 0 or rt_int_smoothed[1][i_i] == 0.0)):
+                if down_count <= threshold:
+                    down_count += 1
+                elif down_count > threshold or rt_int_smoothed[1][i_i] == 0:
+                    down_count = 0
+                    going_up = False
+                    going_down = True
+            if (going_down and (slope >= -slope_threshold or rt_int_smoothed[1][i_i] == 0.0)):
+                if i < temp_min:
+                    temp_min = i
+                    temp_min_id_iu = i_i
+                if end_count <= threshold:
+                    end_count += 1
+                elif end_count > threshold or rt_int_smoothed[1][i_i] == 0.0:
+                    end_count = 0
+                    going_down = False
+                    found_start = False
+                    temp_start_2 = 0
+                    for k_k, k in enumerate(rt_int_smoothed[1][temp_start:temp_min_id_iu+1]): #trims leading and/or tailing part of the picked pick
+                        if not found_start and k > temp_max*0.01:
+                            temp_start_2 = temp_start+k_k
+                            found_start = True
+                        if k_k > temp_max_id_iu-temp_start and k < temp_max*0.01:
+                            temp_min_id_iu = temp_start+k_k
+                            break
+                    temp_start = temp_start_2
+                    good = False
+                    if min_ppp[0]:
+                        if temp_min_id_iu-temp_start >= min_ppp[1] or glycan == "Internal Standard":
+                            good = True
+                    else:
+                        if temp_min_id_iu-temp_start >= datapoints_per_time or glycan == "Internal Standard":
+                            good = True
+                    if good:
+                        temp_peak_width = (rt_int[0][temp_min_id_iu]-rt_int[0][temp_start])
+                        peaks.append({'id': temp_max_id_iu, 'rt': rt_int[0][temp_max_id_iu], 'int': temp_max, 'peak_width': temp_peak_width, 'peak_interval': (rt_int[0][temp_start], rt_int[0][temp_min_id_iu]), 'peak_interval_id': (temp_start, temp_min_id_iu)})
+                        temp_max = 0
+                        temp_max_id_iu = 0
+                        temp_min = inf
+                        temp_min_id_iu = 0
+                    if not good:
+                        temp_max = 0
+                        temp_max_id_iu = 0
+                        temp_min = inf
+                        temp_min_id_iu = 0
+            if (i_i != 0 and slope >= slope_threshold and not going_up and not going_down):
                 temp_start = i_i-1
                 going_up = True
     if close_peaks[0] or glycan == "Internal Standard":
