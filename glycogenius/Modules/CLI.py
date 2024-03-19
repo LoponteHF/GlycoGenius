@@ -161,9 +161,9 @@ def interactive_terminal():
     curr_os = platform.system()
     if curr_os == "Linux":
         if "SUDO_USER" not in os.environ:
-            home = "/home/"+str(os.path.expanduser("~"))
+            home = str(os.path.expanduser("~"))
         else:
-            home = str(os.path.expanduser(os.environ["SUDO_USER"]))
+            home = "/home/"+str(os.path.expanduser(os.environ["SUDO_USER"]))
         default_path = home+"/GlycoGenius/"
     if curr_os == "Windows":
         default_path = "C:/GlycoGenius/"
