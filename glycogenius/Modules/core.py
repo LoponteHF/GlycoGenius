@@ -51,6 +51,7 @@ def main():
         high_res = False
         internal_standard = 0.0
         imp_exp_library = (False, False)
+        library_path = ''
         only_gen_lib = False
 
         multithreaded_analysis = True
@@ -159,6 +160,13 @@ def main():
             else:
                 internal_standard = float(internal_standard)
             imp_exp_library = (config['library_building'].getboolean('imp_library'), config['library_building'].getboolean('exp_library'))
+            library_path = config['library_building']['library_path']
+            library_path = library_path.strip()
+            library_path = library_path.strip("'")
+            library_path = library_path.strip("\"")
+            for i_i, i in enumerate(library_path):
+                if i == "\\":
+                    library_path = library_path[:i_i]+"/"+library_path[i_i+1:]
             only_gen_lib = config['library_building'].getboolean('only_gen_lib')
             multithreaded_analysis = config['analysis_parameters'].getboolean('multithreaded_analysis')
             number_cores = (config['analysis_parameters']['number_cores']).strip()
@@ -346,6 +354,7 @@ def main():
                                                               fast_iso,
                                                               high_res,
                                                               imp_exp_library,
+                                                              library_path,
                                                               only_gen_lib,
                                                               save_path,
                                                               internal_standard,

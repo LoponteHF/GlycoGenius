@@ -328,6 +328,7 @@ def imp_exp_gen_library(samples_names,
                         fast_iso,
                         high_res,
                         imp_exp_library,
+                        library_path,
                         only_gen_lib,
                         save_path,
                         internal_standard,
@@ -451,8 +452,33 @@ def imp_exp_gen_library(samples_names,
         neutral mass, neutral mass with tag, isotopic distribution and the mzs of the
         glycans with the desired adducts combination.
     '''
-    begin_time = datetime.datetime.now()
-    if custom_glycans_list[0] and not imp_exp_library[0]:
+    date = datetime.datetime.now()
+    begin_time = str(date)[2:4]+str(date)[5:7]+str(date)[8:10]+"_"+str(date)[11:13]+str(date)[14:16]+str(date)[17:19]
+    if imp_exp_library[0]:
+        print('Importing existing library...', end = '', flush = True)
+        try:
+            pathlib.Path(save_path+"Temp").mkdir(exist_ok = True, parents = True)
+            shutil.copy(library_path, os.path.join(save_path+"Temp", 'glycans_library.py'))
+            spec = importlib.util.spec_from_file_location("glycans_library", save_path+"Temp/glycans_library.py")
+            lib_module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(lib_module)
+            full_library = lib_module.full_library
+            print("Done!")
+            shutil.rmtree(save_path+"Temp")
+            return full_library
+        except:
+            print("\n\nGlycan library file not found. Check if the\npath used in 'library_path' is correct or set\n'imp_library' to 'no'.\n")
+            if os.isatty(0):
+                input("\nPress Enter to exit.")
+                os._exit(1)
+            else:
+                print("Close the window or press CTRL+C to exit.")
+                try:
+                    while True:
+                        time.sleep(3600)
+                except KeyboardInterrupt:
+                    os._exit(1)
+    if custom_glycans_list[0]:
         custom_glycans_comp = []
         print('Building custom glycans library...', end = "", flush = True)
         for i in custom_glycans_list[1]:
@@ -468,28 +494,7 @@ def imp_exp_gen_library(samples_names,
                                             permethylated,
                                             reduced)
         print('Done!')
-    if imp_exp_library[0]:
-        print('Importing existing library...', end = '', flush = True)
-        try:
-            spec = importlib.util.spec_from_file_location("glycans_library", save_path+'glycans_library.py')
-            lib_module = importlib.util.module_from_spec(spec)
-            spec.loader.exec_module(lib_module)
-            full_library = lib_module.full_library
-            print("Done!")
-            return full_library
-        except:
-            print("\n\nNo glycan_library.py file found in the working\ndirectory. Make sure you have set the working\ndirectly correctly or change imp_lib to 'no'.\n")
-            if os.isatty(0):
-                input("\nPress Enter to exit.")
-                os._exit(1)
-            else:
-                print("Close the window or press CTRL+C to exit.")
-                try:
-                    while True:
-                        time.sleep(3600)
-                except KeyboardInterrupt:
-                    os._exit(1)
-    if not custom_glycans_list[0]:
+    else:
         print('Building glycans library...', end = "", flush = True)
         monos_library = Library_Tools.generate_glycans_library(min_max_monos,
                                                  min_max_hex,
@@ -513,7 +518,7 @@ def imp_exp_gen_library(samples_names,
         print('Done!')
     if imp_exp_library[1] or only_gen_lib:
         print('Exporting glycans library...', end = '', flush = True)
-        with open(save_path+'glycans_library.py', 'w') as f:
+        with open(save_path+begin_time+'_glycans_lib.ggl', 'w') as f:
             f.write('full_library = '+str(full_library))
             f.close()
         if lactonized_ethyl_esterified:
