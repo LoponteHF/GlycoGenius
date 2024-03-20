@@ -29,6 +29,9 @@ import numpy
 import sys
 import datetime
 import xlsxwriter
+import zipfile
+import pathlib
+import os
 
 ##---------------------------------------------------------------------------------------
 ##Hard-coded permanent information
@@ -107,6 +110,66 @@ def linear_regression(x, y, th = 2.5):
     outlier_indices = where(abs(residuals) > threshold)[0]
     # Final equation is used as (y = mx + b)
     return m, b, outlier_indices
+    
+def make_gg(temp_dir, save_dir, filename):
+    '''Creates a zipped file with extension .gg containing raw_data files.
+    
+    Parameters
+    ----------
+    temp_dir : string
+        A string containing the path to the temp_dir where raw_data files are.
+        
+    save_dir : string
+        A string containing the path to save the .gg file.
+        
+    filename : string
+        The name of the .gg file.
+        
+    Uses
+    ----
+    zipfile.ZipFile
+        Creates a zipfile object to add files to.
+    
+    zipfile.write
+        Adds files to the zipfile object.
+        
+    Returns
+    -------
+    nothing
+        Creates filename.gg file, containing files in temp_dir, at the save_dir.
+    '''
+    files_list = os.listdir(temp_dir)
+    with zipfile.ZipFile(save_dir+filename+".gg", 'w') as zipf:
+        for file in files_list:
+            zipf.write(temp_dir+"/"+str(file), arcname=file)
+            
+def open_gg(gg_file, temp_path):
+    '''Unzipts the .gg file to temp_path.
+    
+    Parameters
+    ----------
+    gg_file : string
+        Path to the .gg file.
+        
+    temp_path : string
+        String containing the path to the folder where the files will be extracted.
+        
+    Uses
+    ----
+    zipfile.ZipFile
+        Creates a zipfile object to add files to.
+        
+    zipfile.extractall
+        Extract all files in .gg file to the target directory.
+        
+    Returns
+    -------
+    nothing
+        Extracts raw_data files from gg_file to temp_path.
+    '''
+    with zipfile.ZipFile(gg_file, 'r') as zip_ref:
+        zip_ref.extractall(temp_path)
+    
 
 def calculate_ppm_diff(mz, target):
     '''Calculates the PPM difference between a mz and a target mz.

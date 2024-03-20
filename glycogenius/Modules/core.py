@@ -77,6 +77,7 @@ def main():
         compositions = True
         iso_fittings = False
         reanalysis = False
+        reanalysis_path = ''
         output_plot_data = False
 
         if not os.isatty(0):
@@ -217,6 +218,13 @@ def main():
             iso_fittings = config['analysis_parameters'].getboolean('output_fittings_data')
             output_plot_data = config['analysis_parameters'].getboolean('output_plot_data')
             reanalysis = config['analysis_parameters'].getboolean('reanalysis')
+            reanalysis_path = config['analysis_parameters']['analysis_file']
+            reanalysis_path = reanalysis_path.strip()
+            reanalysis_path = reanalysis_path.strip("'")
+            reanalysis_path = reanalysis_path.strip("\"")
+            for i_i, i in enumerate(reanalysis_path):
+                if i == "\\":
+                    reanalysis_path = reanalysis_path[:i_i]+"/"+reanalysis_path[i_i+1:]
             
         else: #If no parameters file pipelines, run CLI
             parameters = CLI.interactive_terminal()
@@ -300,6 +308,7 @@ def main():
                                                      max_ppm,
                                                      percentage_auc,
                                                      reanalysis,
+                                                     reanalysis_path,
                                                      save_path,
                                                      analyze_ms2[0],
                                                      analyze_ms2[2],
@@ -422,6 +431,7 @@ def main():
                                                      max_ppm,
                                                      percentage_auc,
                                                      reanalysis,
+                                                     reanalysis_path,
                                                      save_path,
                                                      analyze_ms2[0],
                                                      analyze_ms2[2],

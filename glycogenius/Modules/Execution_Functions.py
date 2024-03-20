@@ -16,8 +16,6 @@
 # or by typing 'license' after running it stand-alone in the terminal
 # by typing 'glycogenius'. If not, see <https://www.gnu.org/licenses/>.
 
-import pathlib
-import importlib
 from . import Library_Tools
 from . import General_Functions
 from . import File_Accessing
@@ -38,6 +36,9 @@ import traceback
 import pkg_resources
 import platform
 import copy
+import pathlib
+import importlib
+import shutil
 
 #fetches the version from package info or setup file, depending on use mode
 version1 = "0.0.0"
@@ -907,6 +908,7 @@ def output_filtered_data(curve_fit_score,
                          max_ppm,
                          percentage_auc,
                          reanalysis,
+                         gg_file,
                          save_path,
                          analyze_ms2,
                          unrestricted_fragments,
@@ -938,6 +940,9 @@ def output_filtered_data(curve_fit_score,
         
     reanalysis : tuple
         Contains two indexes: The first one indicates whether this is only a reanalysis execution and the second one indicates whether or not to produce plot data excel files. The second one is there because the plot data is more heavy and doesn't change on reanalysis, so should only be set to True if you lost original plot data.
+        
+    gg_file : string
+        String containing the path to the .gg analysis file.
         
     save_path : string
         A string containing the path to the working directory of the script.
@@ -1001,31 +1006,33 @@ def output_filtered_data(curve_fit_score,
         Creates excel files of processed data.
     '''
     date = datetime.datetime.now()
+    temp_path = save_path+"Temp/"
+    pathlib.Path(temp_path).mkdir(exist_ok = True, parents = True)
     begin_time = str(date)[2:4]+str(date)[5:7]+str(date)[8:10]+"_"+str(date)[11:13]+str(date)[14:16]+str(date)[17:19]
     if reanalysis:
         print("Reanalyzing raw data with new parameters...")
+        try:
+            General_Functions.open_gg(gg_file, temp_path)
+        except:
+            print("\nAnalysis file not found. If you're reanalyzing\nan existing analysis result file, check if the\npath in 'analysis_file' is correct, otherwise\nchange 'reanalysis' to 'no' and try again.\n")
+            return
     else:
         print("Analyzing raw data...")
-    try:
-        with open(save_path+'raw_data_1', 'rb') as f:
-            file = dill.load(f)
-            df1 = file[0]
-            df2 = file[1]
-            if type(file[2]) == list:
-                analyze_ms2 = True
-                fragments_dataframes = file[2]
-                if reanalysis and ".".join(version.split('.')[:2]) != ".".join(file[3].split('.')[:2]):
-                    print("Raw data files version incompatible with\ncurrent version (Current version: "+version+";\nRaw data version: "+file[3]+")")
-                    return
-            else:
-                if reanalysis and ".".join(version.split('.')[:2]) != ".".join(file[2].split('.')[:2]):
-                    print("Raw data files version incompatible with\ncurrent version (Current version: "+version+";\nRaw data version: "+file[3]+")")
-                    return
-            f.close()
-    except:
-        if reanalysis:
-            print("\nRaw data files not found. If you're not\nreanalyzing existing raw data, set\n'reanalysis' to 'no' in parameters before\nexecution or choose a different option in the\ncommand-line interface.\n")
-        return
+    with open(temp_path+'raw_data_1', 'rb') as f:
+        file = dill.load(f)
+        df1 = file[0]
+        df2 = file[1]
+        if len(file) > 3:
+            analyze_ms2 = True
+            fragments_dataframes = file[2]
+            if reanalysis and ".".join(version.split('.')[:2]) != ".".join(file[3].split('.')[:2]):
+                print("Raw data files version incompatible with\ncurrent version (Current version: "+version+";\nRaw data version: "+file[3]+")")
+                return
+        else:
+            if reanalysis and ".".join(version.split('.')[:2]) != ".".join(file[2].split('.')[:2]):
+                print("Raw data files version incompatible with\ncurrent version (Current version: "+version+";\nRaw data version: "+file[2]+")")
+                return
+        f.close()
     df1_refactor = []
     for i_i, i in enumerate(df2["Sample_Number"]): #QCs cutoff
         if analyze_ms2:
@@ -1805,10 +1812,10 @@ def output_filtered_data(curve_fit_score,
     found_eic_raw_dataframes = [] #This creates a file with only the found glycan's EIC
     found_eic_processed_dataframes = []
 
-    with open(save_path+'raw_data_2', 'rb') as f:
+    with open(temp_path+'raw_data_2', 'rb') as f:
         raw_eic_dataframes = dill.load(f)
         f.close()
-    with open(save_path+'raw_data_4', 'rb') as f:
+    with open(temp_path+'raw_data_4', 'rb') as f:
         smoothed_eic_dataframes = dill.load(f)
         f.close()
             
@@ -1863,7 +1870,7 @@ def output_filtered_data(curve_fit_score,
     del found_eic_raw_dataframes_df
     
     if output_isotopic_fittings:
-        with open(save_path+'raw_data_6', 'rb') as f: #start of isotopic fits output
+        with open(temp_path+'raw_data_6', 'rb') as f: #start of isotopic fits output
             isotopic_fits_dataframes = dill.load(f)
             f.close()
             
@@ -1901,7 +1908,7 @@ def output_filtered_data(curve_fit_score,
         del isotopic_fits_dataframes_arranged
         del isotopic_fits_df
         
-        with open(save_path+'raw_data_5', 'rb') as f:
+        with open(temp_path+'raw_data_5', 'rb') as f:
             curve_fitting_dataframes = dill.load(f)
             f.close()
         biggest_len = 0
@@ -1959,6 +1966,7 @@ def output_filtered_data(curve_fit_score,
     elif reanalysis and not output_plot_data:
         del smoothed_eic_dataframes
         del raw_eic_dataframes
+    shutil.rmtree(temp_path)
     print("Done!")
 
 def arrange_raw_data(analyzed_data,
@@ -1996,7 +2004,9 @@ def arrange_raw_data(analyzed_data,
     nothing
         Creates raw_data files.
     '''
-    begin_time = datetime.datetime.now()
+    date = datetime.datetime.now()
+    begin_time = str(date)[2:4]+str(date)[5:7]+str(date)[8:10]+"_"+str(date)[11:13]+str(date)[14:16]+str(date)[17:19]
+    temp_path = save_path+"Temp/"
     print('Arranging raw data...', end='', flush = True)
     df1 = []
     df2 = {"Sample_Number" : [], "File_Name" : [], "Average_Noise_Level" : []}
@@ -2127,7 +2137,8 @@ def arrange_raw_data(analyzed_data,
                         for n in temp_curve_data_total[m_m][2]:
                             temp_array.append(int(n))
                         curve_fitting_dataframes[k_k][str(i)+"+"+str(j)+"_"+str(m)+"_Ideal_ints"] = temp_array
-    with open(save_path+'raw_data_1', 'wb') as f:
+    pathlib.Path(temp_path).mkdir(exist_ok = True, parents = True)
+    with open(temp_path+'raw_data_1', 'wb') as f:
         if analyze_ms2:
             dill.dump([df1, df2, fragments_dataframes, version], f)
             del df1
@@ -2138,26 +2149,27 @@ def arrange_raw_data(analyzed_data,
             del df1
             del df2
         f.close()
-    with open(save_path+'raw_data_2', 'wb') as f:
+    with open(temp_path+'raw_data_2', 'wb') as f:
         dill.dump(raw_eic_dataframes, f)
         del raw_eic_dataframes
         f.close()
-    with open(save_path+'raw_data_3', 'wb') as f:
+    with open(temp_path+'raw_data_3', 'wb') as f:
         dill.dump(eic_dataframes, f)
         del eic_dataframes
         f.close()
-    with open(save_path+'raw_data_4', 'wb') as f:
+    with open(temp_path+'raw_data_4', 'wb') as f:
         dill.dump(smoothed_eic_dataframes, f)
         del smoothed_eic_dataframes
         f.close()
-    with open(save_path+'raw_data_5', 'wb') as f:
+    with open(temp_path+'raw_data_5', 'wb') as f:
         dill.dump(curve_fitting_dataframes, f)
         del curve_fitting_dataframes
         f.close()
-    with open(save_path+'raw_data_6', 'wb') as f:
+    with open(temp_path+'raw_data_6', 'wb') as f:
         dill.dump(isotopic_fits_dataframes, f)
         del isotopic_fits_dataframes
         f.close()
+    General_Functions.make_gg(temp_path, save_path, begin_time+"_Analysis")
     print("Done!")
 
 def print_sep(): ##Complete

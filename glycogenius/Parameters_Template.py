@@ -147,7 +147,7 @@ reporter_ions = N1T1, 366.14
 ;	reporter_ions can be changed on raw data 
 ;	reanalysis.
 ;
-accuracy_unit = mz
+accuracy_unit = ppm
 ; 	Determines the units of mz tolerance to be used 
 ;	by the script. Options: 'ppm' or 'pw'. 
 ;	'ppm' = Particles per Million, where 10 ppm is 
@@ -155,7 +155,7 @@ accuracy_unit = mz
 ;	mz tolerance from centroid, 0.01 mz means it 
 ;	tolerates a 0.01 variance in mz
 ;
-accuracy_value = 0.01
+accuracy_value = 10
 ; 	The value for the accuracy_unit parameter. You 
 ;	can use a broader accuracy value and then filter 
 ;	raw data using max_ppm, but this may lead to 
@@ -268,7 +268,10 @@ output_plot_data = no
 ;	reapplied on reanalysis.
 ;
 reanalysis = no
+analysis_file = 
 ; 	Reanalyzes raw data with new max_ppm, 
 ;	isotopic_fitting_score, curve_fitting_score, 
 ;	signal_to_noise, outputting new plot or fitting 
 ;	data and aligning or not the chromatograms.
+;	Indicate the path to the analysis file in 
+;	analysis_file.
