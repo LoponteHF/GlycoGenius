@@ -23,7 +23,7 @@ from scipy.sparse.linalg import splu
 from scipy import sparse
 from statistics import mean
 from re import split
-from math import inf, atan, pi, exp
+from math import inf, atan, pi, exp, sqrt
 import pathlib
 import importlib
 import numpy
@@ -516,19 +516,24 @@ def analyze_mz_array(sliced_mz,
             
     if len(iso_actual) > 0:
         dotp = []
+        weights = []
         number = range(1, len(mz_isos)+1)
-        starting_points_actual = [0, 1]
-        starting_points_theoretical = [0, 1]
+        starting_points = [0, 1]
         for m_m, m in enumerate(number):
-            vector_actual = [m-starting_points_actual[0], iso_actual[m_m]-starting_points_actual[1]]
-            vector_target = [m-starting_points_theoretical[0], iso_target[m_m]-starting_points_theoretical[1]]
+            intensities = [iso_actual[m_m], iso_target[m_m]]
+            scaler = 1-(max(intensities)-min(intensities))
+            if scaler < 0:
+                scaler = min(intensities)/max(intensities)
+            vector_actual = [m-starting_points[0], iso_actual[m_m]-starting_points[1]]
+            vector_target = [m-starting_points[0], iso_target[m_m]-starting_points[1]]
+            magnitude_target = sqrt(vector_target[0]**2 + vector_target[1]**2)
             normalized_actual = vector_actual/numpy.linalg.norm(vector_actual)
             normalized_target = vector_target/numpy.linalg.norm(vector_target)
-            starting_points_actual = [m, iso_actual[m_m]]
-            starting_points_theoretical = [m, iso_target[m_m]]
+            starting_points = [m, iso_target[m_m]]
             dotproduct = numpy.dot(normalized_actual, normalized_target)
-            dotp.append(dotproduct)
-        iso_quali = mean(dotp)
+            dotp.append(((dotproduct+1)/2)*scaler) #scales the dotp by the relationship between the intensities
+            weights.append(1/m)
+        iso_quali = numpy.average(dotp, weights = weights)
         
         #reduces score if fewer isotopic peaks are found: punishing for only 2 peaks, normal score from 3 and over
         if len(iso_actual) == 1:
@@ -820,7 +825,7 @@ def peaks_from_eic(rt_int,
                     down_count = 0
                     going_up = False
                     going_down = True
-            if (going_down and (slope >= -slope_threshold or rt_int_smoothed[1][i_i] == 0.0)):
+            if (going_down and (slope >= 0 or rt_int_smoothed[1][i_i] == 0.0)):
                 if i < temp_min:
                     temp_min = i
                     temp_min_id_iu = i_i

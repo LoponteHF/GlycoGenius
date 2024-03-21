@@ -192,10 +192,11 @@ def main():
             iso_fit_score = float(config['analysis_parameters']['isotopic_fitting_score'])
             curve_fit_score = float(config['analysis_parameters']['curve_fitting_score'])
             s_to_n = int(config['analysis_parameters']['signal_to_noise'])
-            noise_levels = config['analysis_parameters']['noise_levels'].split(",")
-            for i_i, i in enumerate(noise_levels):
-                noise_levels[i_i] = int(i.strip())
-            custom_noise = (config['analysis_parameters'].getboolean('custom_noise_level'), noise_levels)
+            if 'noise_levels' in config['analysis_parameters']:
+                noise_levels = config['analysis_parameters']['noise_levels'].split(",")
+                for i_i, i in enumerate(noise_levels):
+                    noise_levels[i_i] = int(i.strip())
+                custom_noise = (config['analysis_parameters'].getboolean('custom_noise_level'), noise_levels)
             samples_path = config['analysis_parameters']['samples_path']
             samples_path = samples_path.strip()
             samples_path = samples_path.strip("'")

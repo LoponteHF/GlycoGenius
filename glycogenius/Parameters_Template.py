@@ -226,14 +226,6 @@ signal_to_noise = 3
 ;	chromatogram peak viable. Can be reapplied on 
 ;	raw data reanalysis.
 ;
-custom_noise_level = no
-noise_levels = 0, 0
-; 	Sets a custom level of noise for each sample, 
-;	ignoring the automatic noise calculation. Noise 
-;	for each sample is comma separated in "noise_levels". 
-;	Warning: NOT RECOMMENDED unless you're really 
-;	sure about what you're doing.
-;
 samples_path =
 ; 	A comma separated list of full path to files 
 ;	to be analyzed together.
