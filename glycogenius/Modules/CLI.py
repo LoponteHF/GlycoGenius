@@ -17,6 +17,7 @@
 # by typing 'glycogenius'. If not, see <https://www.gnu.org/licenses/>.
 
 from . import General_Functions
+from . import Execution_Functions
 from .Execution_Functions import print_sep
 import pkg_resources
 import pathlib
@@ -42,7 +43,7 @@ if version2 > version1:
     version = version2
 else:
     version = version1
-
+    
 def print_header(complete = True):
     '''Prints a default header to be used in CLI.
     
@@ -250,11 +251,11 @@ def interactive_terminal():
                 try:
                     comp = General_Functions.form_to_comp(var)
                 except:
-                    print('Wrong input')
+                    input("\nWrong Input. Press Enter to try again.\n")
                     continue
                 for i in comp:
                     if i != 'H' and i != 'N' and i != 'S' and i != 'F' and i != 'G':
-                        print('Wrong input')
+                        input("\nWrong Input. Press Enter to try again.\n")
                         continue
                 glycans_list.append(var)
                 print("Current glycans: ", glycans_list)
@@ -445,7 +446,7 @@ def interactive_terminal():
             try:
                 var2 = int(var2)
             except:
-                print('Wrong input')
+                input("\nWrong Input. Press Enter to try again.\n")
                 continue
             adducts[var] = var2
         print_sep()
@@ -457,7 +458,7 @@ def interactive_terminal():
             try:
                 var = int(var)
             except:
-                print('Wrong input')
+                input("\nWrong Input. Press Enter to try again.\n")
                 continue
             max_charges = var
             break
@@ -505,7 +506,7 @@ def interactive_terminal():
                 if var == 'n':
                     break
                 else:
-                    print('Wrong input')
+                    input("\nWrong Input. Press Enter to try again.\n")
                     continue
             while True:
                 var = input("Are the glycans reduced (y/n): ")
@@ -515,7 +516,7 @@ def interactive_terminal():
                 if var == 'n':
                     break
                 else:
-                    print('Wrong input')
+                    input("\nWrong Input. Press Enter to try again.\n")
                     continue
             print_sep()
         fast_iso = True
@@ -527,7 +528,7 @@ def interactive_terminal():
 #                fast_iso = False
 #                break
 #            else:
-#                print('Wrong input')
+#                input("\nWrong Input. Press Enter to try again.\n")
 #                continue
         high_res = False
 #        if not fast_iso:
@@ -540,7 +541,7 @@ def interactive_terminal():
 #                if var == 'n':
 #                    break
 #                else:
-#                    print('Wrong input')
+#                    input("\nWrong Input. Press Enter to try again.\n")
 #                    continue
 #            if input_order[0] != 1:
 #                print("")
@@ -577,7 +578,7 @@ def interactive_terminal():
                 if var == 'n':
                     break
                 else:
-                    print('Wrong input')
+                    input("\nWrong Input. Press Enter to try again.\n")
                     continue
             print("")
             if ms2[0]:
@@ -589,7 +590,7 @@ def interactive_terminal():
                     if var == 'n':
                         break
                     else:
-                        print('Wrong input')
+                        input("\nWrong Input. Press Enter to try again.\n")
                         continue
                 print("")
             accuracy_unit = "mz"
@@ -601,7 +602,7 @@ def interactive_terminal():
                 if var == 'mz' or var == '':
                     break
                 else:
-                    print('Wrong input')
+                    input("\nWrong Input. Press Enter to try again.\n")
                     continue
             print("")
             accuracy_value = 0.0
@@ -610,7 +611,7 @@ def interactive_terminal():
                 try:
                     var = float(var)
                 except:
-                    print('Wrong input')
+                    input("\nWrong Input. Press Enter to try again.\n")
                     continue
                 accuracy_value = var
                 break
@@ -623,7 +624,7 @@ def interactive_terminal():
                 try:
                     var = float(var)
                 except:
-                    print('Wrong input')
+                    input("\nWrong Input. Press Enter to try again.\n")
                     continue
                 rt_int[0] = var
                 break
@@ -635,7 +636,7 @@ def interactive_terminal():
                 try:
                     var = float(var)
                 except:
-                    print('Wrong input')
+                    input("\nWrong Input. Press Enter to try again.\n")
                     continue
                 rt_int[1] = var
                 break
@@ -649,7 +650,7 @@ def interactive_terminal():
                 try:
                     var = int(var)
                 except:
-                    print('Wrong input')
+                    input("\nWrong Input. Press Enter to try again.\n")
                     continue
                 max_ppm = var
                 break
@@ -662,10 +663,10 @@ def interactive_terminal():
                 try:
                     var = float(var)
                 except:
-                    print('Wrong input')
+                    input("\nWrong Input. Press Enter to try again.\n")
                     continue
                 if var < 0.0 or var > 1.0:
-                    print('Wrong input')
+                    input("\nWrong Input. Press Enter to try again.\n")
                     continue
                 iso_fit = var
                 break
@@ -678,10 +679,10 @@ def interactive_terminal():
                 try:
                     var = float(var)
                 except:
-                    print('Wrong input')
+                    input("\nWrong Input. Press Enter to try again.\n")
                     continue
                 if var < 0.0 or var > 1.0:
-                    print('Wrong input')
+                    input("\nWrong Input. Press Enter to try again.\n")
                     continue
                 curve_fit = var
                 break
@@ -694,7 +695,7 @@ def interactive_terminal():
                 try:
                     var = int(var)
                 except:
-                    print('Wrong input')
+                    input("\nWrong Input. Press Enter to try again.\n")
                     continue
                 sn = var
                 break
@@ -763,7 +764,7 @@ def interactive_terminal():
             try:
                 var = int(var)
             except:
-                print('Wrong input')
+                input("\nWrong Input. Press Enter to try again.\n")
                 continue
             max_ppm = var
             break
@@ -774,10 +775,10 @@ def interactive_terminal():
             try:
                 var = float(var)
             except:
-                print('Wrong input')
+                input("\nWrong Input. Press Enter to try again.\n")
                 continue
             if var < 0.0 or var > 1.0:
-                print('Wrong input')
+                input("\nWrong Input. Press Enter to try again.\n")
                 continue
             iso_fit = var
             break
@@ -788,10 +789,10 @@ def interactive_terminal():
             try:
                 var = float(var)
             except:
-                print('Wrong input')
+                input("\nWrong Input. Press Enter to try again.\n")
                 continue
             if var < 0.0 or var > 1.0:
-                print('Wrong input')
+                input("\nWrong Input. Press Enter to try again.\n")
                 continue
             curve_fit = var
             break
@@ -802,7 +803,7 @@ def interactive_terminal():
             try:
                 var = int(var)
             except:
-                print('Wrong input')
+                input("\nWrong Input. Press Enter to try again.\n")
                 continue
             sn = var
             break
@@ -818,7 +819,7 @@ def interactive_terminal():
             if var == 'n':
                 break
             else:
-                print('Wrong input')
+                input("\nWrong Input. Press Enter to try again.\n")
                 continue
         path = default_path
         while True:
@@ -838,4 +839,180 @@ def interactive_terminal():
                 path = var
                 break
         return input_order, commented, path
+        
+def CLI():
+    '''A function that handles the input of parameters through the CLI 
+    and turns them into arguments for the functions used in core module.
+    
+    Parameters
+    ----------
+    none
+    
+    Uses
+    ----
+    pathlib.Path
+        Class of paths that can be used to create, change and access 
+        directories in the computer.
+    
+    Returns
+    -------
+    functions arguments
+        Organized arguments for the various functions used in core module.
+    '''
+    custom_glycans_list = [False, []]
+    min_max_monos = [0, 0]
+    min_max_hex = [0, 0]
+    min_max_hexnac = [0, 0]
+    min_max_sia = [0, 0]
+    min_max_fuc = [0, 0]
+    min_max_ac = [0, 0]
+    min_max_gc = [0, 0]
+    force_nglycan = False
+    max_adducts = {}
+    adducts_exclusion = []
+    max_charges = 0
+    reducing_end_tag = 0.0
+    permethylated = False
+    reduced = False
+    lactonized_ethyl_esterified = False
+    fast_iso = True
+    high_res = False
+    internal_standard = 0.0
+    imp_exp_library = [False, False]
+    exp_lib_name = ''
+    library_path = ''
+    only_gen_lib = False
+
+    multithreaded_analysis = True
+    number_cores = 'all'
+    analyze_ms2 = [False, False, False]
+    reporter_ions = []
+    tolerance = ['mz', 0.01]
+    ret_time_interval = [0, 99999, 0.2]
+    rt_tolerance_frag = 0.2
+    min_isotopologue_peaks = 2
+    min_ppp = [False, 0]
+    close_peaks = [False, 3]
+    align_chromatograms = True
+    percentage_auc = 0.1
+    max_ppm = 10
+    iso_fit_score = 0.9
+    curve_fit_score = 0.9
+    s_to_n = 3
+    custom_noise = [False, []]
+    samples_path = ''
+    save_path = ''
+    plot_metaboanalyst = [False, []]
+    compositions = True
+    iso_fittings = False
+    reanalysis = False
+    reanalysis_path = ''
+    output_plot_data = False
+
+    samples_list = []
+    samples_names = []
+    
+    parameters = interactive_terminal()
+    Execution_Functions.print_sep()
+    if parameters[0][0] == 1 or parameters[0][0] == 2:
+        if parameters[0][1] == 1:
+            custom_glycans_list = (True, parameters[1])
+            max_adducts = parameters[2]
+            max_charges = parameters[3]
+            reducing_end_tag = parameters[4]
+            fast_iso = parameters[5]
+            high_res = parameters[6]
+            permethylated = parameters[8]
+            reduced = parameters[9]
+        if parameters[0][1] == 2:
+            min_max_monos = (parameters[1][0], parameters[1][1])
+            min_max_hex = (parameters[1][2], parameters[1][3])
+            min_max_hexnac = (parameters[1][4], parameters[1][5])
+            min_max_fuc = (parameters[1][6], parameters[1][7])
+            min_max_ac = (parameters[1][8], parameters[1][9])
+            min_max_gc = (parameters[1][10], parameters[1][11])
+            min_max_sia = (parameters[1][12], parameters[1][13])
+            force_nglycan = parameters[1][14]
+            max_adducts = parameters[2]
+            max_charges = parameters[3]
+            reducing_end_tag = parameters[4]
+            fast_iso = parameters[5]
+            high_res = parameters[6]
+            permethylated = parameters[8]
+            reduced = parameters[9]
+        if parameters[0][0] == 1:
+            lactonized_ethyl_esterified = parameters[10]
+            if parameters[0][1] == 1:
+                force_nglycan = parameters[11]
+            save_path = parameters[7]
+            if save_path[-1] != "/":
+                save_path+= "/"
+            only_gen_lib = True
+        if parameters[0][0] == 2:
+            analyze_ms2 = parameters[7]
+            accuracy_unit = parameters[8]
+            accuracy_value = parameters[9]
+            tolerance = [accuracy_unit, accuracy_value]
+            ret_time_interval = (parameters[10][0], parameters[10][1], 0.2)
+            min_isotopologue_peaks = parameters[11]
+            max_ppm = parameters[12]
+            iso_fit_score = parameters[13]
+            curve_fit_score = parameters[14]
+            s_to_n = parameters[15]
+            samples_path = parameters[16]
+            samples_list = Execution_Functions.samples_path_to_list(samples_path)
+            if len(samples_list) == 0:                                             
+                if not os.isatty(0):
+                    Execution_Functions.print_sep()
+                    print("No sample files to analyze.")
+                    os._exit(1)
+                else:
+                    Execution_Functions.print_sep()
+                    input("No sample files to analyzed. Press Enter\nto exit.")
+                    os._exit(1)
+            
+            samples_names = Execution_Functions.sample_names(samples_list)
+            print("Sample files detected: "+str(len(samples_names)))
+            for i in samples_names:
+                print("--> "+i)
+            Execution_Functions.print_sep()
+            save_path = parameters[17]
+            permethylated = parameters[18]
+            reduced = parameters[19]
+            lactonized_ethyl_esterified = parameters[20]
+            if parameters[0][1] == 1:
+                force_nglycan = parameters[21]
+    if parameters[0][0] == 3:
+        save_path = parameters[1]
+        max_ppm = parameters[2]
+        iso_fit_score = parameters[3]
+        curve_fit_score = parameters[4]
+        s_to_n = parameters[5]
+        reanalysis = (True, True)
+    if parameters[0][0] == 4:
+        comments = parameters[1]
+        save_path = parameters[2]
+        Execution_Functions.generate_cfg_file(save_path, comments)
+        
+    if save_path != '':
+        pathlib.Path(save_path).mkdir(exist_ok = True, parents = True)
+        
+    #args to execution functions:
+    output_filtered_data_args = [curve_fit_score, iso_fit_score, s_to_n, max_ppm, percentage_auc, reanalysis, reanalysis_path, save_path, analyze_ms2[0], analyze_ms2[2], reporter_ions, plot_metaboanalyst, compositions, align_chromatograms, force_nglycan, ret_time_interval[2], rt_tolerance_frag, iso_fittings, output_plot_data, multithreaded_analysis, number_cores]
+
+    imp_exp_gen_library_args = [custom_glycans_list, min_max_monos, min_max_hex, min_max_hexnac, min_max_sia, min_max_fuc, min_max_ac, min_max_gc, force_nglycan, max_adducts, adducts_exclusion, max_charges, reducing_end_tag, fast_iso, high_res, imp_exp_library, library_path, exp_lib_name, only_gen_lib, save_path, internal_standard, permethylated, lactonized_ethyl_esterified, reduced]
+
+    list_of_data_args = [samples_list]
+
+    index_spectra_from_file_ms1_args = [None, 1, multithreaded_analysis, number_cores]
+
+    index_spectra_from_file_ms2_args = [None, 2, multithreaded_analysis, number_cores]
+
+    analyze_files_args = [None, None, None, None, tolerance, ret_time_interval, min_isotopologue_peaks, min_ppp, max_charges, custom_noise, close_peaks, multithreaded_analysis, number_cores]
+
+    analyze_ms2_args = [None, None, None, ret_time_interval, tolerance, min_max_monos, min_max_hex, min_max_hexnac,  min_max_sia, min_max_fuc, min_max_ac, min_max_gc, max_charges, reducing_end_tag, force_nglycan, permethylated, reduced, lactonized_ethyl_esterified, analyze_ms2[1], analyze_ms2[2], ret_time_interval[2], multithreaded_analysis, number_cores]
+
+    arrange_raw_data_args = [None, samples_names, analyze_ms2[0], save_path]
+
+    return output_filtered_data_args, imp_exp_gen_library_args, list_of_data_args, index_spectra_from_file_ms1_args, index_spectra_from_file_ms2_args, analyze_files_args, analyze_ms2_args, arrange_raw_data_args, samples_names, reanalysis, analyze_ms2[0]
     

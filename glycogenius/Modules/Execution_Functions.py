@@ -94,11 +94,11 @@ def generate_cfg_file(path, comments):
     with open(path+'glycogenius_parameters.ini', 'w') as g:
         with open(glycogenius_path+'/Parameters_Template.py', 'r') as f:
             for line in f:
-                if line[0:14] == "samples_path =":
-                    g.write("samples_path = "+path+"Sample Files/\n")
+                if "samples_directory =" in line:
+                    g.write("samples_directory = "+path+"Sample Files/\n")
                     continue
-                if line[0:14] == "working_path =":
-                    g.write("working_path = "+path+"\n")
+                if "working_directory =" in line:
+                    g.write("working_directory = "+path+"\n")
                     continue
                 if not comments and line[0] == ';':
                     continue
@@ -228,11 +228,15 @@ def index_spectra_from_file(files,
     results = []
     if multithreaded:
         if number_cores == 'all':
-            cpu_count = (os.cpu_count())-1
+            cpu_count = (os.cpu_count())-2
+            if cpu_count <= 0:
+                cpu_count = 1
         else:
             number_cores = int(number_cores)
-            if number_cores > (os.cpu_count())-1:
-                cpu_count = (os.cpu_count())-1
+            if number_cores > (os.cpu_count())-2:
+                cpu_count = (os.cpu_count())-2
+                if cpu_count <= 0:
+                    cpu_count = 1
             else:
                 cpu_count = number_cores
     else:
@@ -311,8 +315,7 @@ def sample_names(samples_list):
         curated_samples.append(".".join(i.split(".")[:-1]))
     return curated_samples
 
-def imp_exp_gen_library(samples_names,
-                        custom_glycans_list,
+def imp_exp_gen_library(custom_glycans_list,
                         min_max_monos,
                         min_max_hex,
                         min_max_hexnac,
@@ -329,6 +332,7 @@ def imp_exp_gen_library(samples_names,
                         high_res,
                         imp_exp_library,
                         library_path,
+                        exp_lib_name,
                         only_gen_lib,
                         save_path,
                         internal_standard,
@@ -338,10 +342,7 @@ def imp_exp_gen_library(samples_names,
     '''Imports, generates and/or exports a glycans library.
 
     Parameters
-    ----------        
-    samples_names : list
-        A list containing the extracted sample names from the file names.
-        
+    ----------                
     custom_glycans_list : tuple
         A tuple with two indexes: The first one is whether or not the library should be built
         off a custom glycans list and the second one is a list containing the glycans you wish
@@ -457,15 +458,14 @@ def imp_exp_gen_library(samples_names,
     if imp_exp_library[0]:
         print('Importing existing library...', end = '', flush = True)
         try:
-            pathlib.Path(save_path+"Temp").mkdir(exist_ok = True, parents = True)
-            shutil.copy(library_path, os.path.join(save_path+"Temp", 'glycans_library.py'))
-            spec = importlib.util.spec_from_file_location("glycans_library", save_path+"Temp/glycans_library.py")
+            pathlib.Path(save_path+begin_time+"_Temp").mkdir(exist_ok = True, parents = True)
+            shutil.copy(library_path, os.path.join(save_path+begin_time+"_Temp", 'glycans_library.py'))
+            spec = importlib.util.spec_from_file_location("glycans_library", save_path+begin_time+"_Temp/glycans_library.py")
             lib_module = importlib.util.module_from_spec(spec)
             spec.loader.exec_module(lib_module)
             full_library = lib_module.full_library
             print("Done!")
-            shutil.rmtree(save_path+"Temp")
-            return full_library
+            shutil.rmtree(save_path+begin_time+"_Temp")
         except:
             print("\n\nGlycan library file not found. Check if the\npath used in 'library_path' is correct or set\n'imp_library' to 'no'.\n")
             if os.isatty(0):
@@ -478,7 +478,7 @@ def imp_exp_gen_library(samples_names,
                         time.sleep(3600)
                 except KeyboardInterrupt:
                     os._exit(1)
-    if custom_glycans_list[0]:
+    elif custom_glycans_list[0] and not imp_exp_library[0]:
         custom_glycans_comp = []
         print('Building custom glycans library...', end = "", flush = True)
         for i in custom_glycans_list[1]:
@@ -518,9 +518,29 @@ def imp_exp_gen_library(samples_names,
         print('Done!')
     if imp_exp_library[1] or only_gen_lib:
         print('Exporting glycans library...', end = '', flush = True)
-        with open(save_path+begin_time+'_glycans_lib.ggl', 'w') as f:
-            f.write('full_library = '+str(full_library))
-            f.close()
+        if exp_lib_name != '':
+            if len(exp_lib_name.split('.')) > 1:
+                exp_lib_name = exp_lib_name.split('.')[0]
+            counter = 0
+            while True:
+                if counter == 0 and os.path.isfile(save_path+exp_lib_name+'.ggl'):
+                    counter+=1
+                    continue
+                elif counter != 0 and os.path.isfile(save_path+exp_lib_name+'('+str(counter)+').ggl'):
+                    counter+=1
+                    continue
+                else:
+                    if counter != 0:
+                        exp_lib_name = exp_lib_name+'('+str(counter)+')'
+                    else:
+                        exp_lib_name = exp_lib_name
+                    break
+        else:
+            exp_lib_name = begin_time+'_glycans_lib'
+        if not imp_exp_library[0]:
+            with open(save_path+exp_lib_name+'.ggl', 'w') as f:
+                f.write('full_library = '+str(full_library))
+                f.close()
         if lactonized_ethyl_esterified:
             df = {'Glycan' : [], 'Hex' : [], 'HexNAc' : [], 'dHex' : [], 'a2,3-Neu5Ac' : [], 'a2,6-Neu5Ac' : [], 'Neu5Gc' : [], 'Isotopic Distribution' : [], 'Neutral Mass + Tag' : []}
         else:
@@ -552,10 +572,14 @@ def imp_exp_gen_library(samples_names,
                 else:
                     df[j].append(float("%.4f" % round(full_library[i]['Adducts_mz'][j], 4)))
         df = DataFrame(df)
-        with ExcelWriter(save_path+'Glycans_Library.xlsx') as writer:
+        if imp_exp_library[0]:
+            file_name = library_path.split("\\")[-1].split("/")[-1].split(".")[-2]
+        else:
+            file_name = exp_lib_name
+        with ExcelWriter(save_path+file_name+'.xlsx') as writer:
             df.to_excel(writer, index = False)
             General_Functions.autofit_columns_excel(df, writer.sheets['Sheet1'])
-        with open(save_path+'skyline_transitions.csv', 'w') as f:
+        with open(save_path+file_name+'_skyline_transitions.csv', 'w') as f:
             f.write('Precursor Name, Precursor Formula, Precursor Adduct, Precursor Charge\n')
             for i_i, i in enumerate(full_library):
                 for j_j, j in enumerate(full_library[i]['Adducts_mz']):
@@ -925,7 +949,10 @@ def output_filtered_data(curve_fit_score,
                          rt_tolerance,
                          rt_tolerance_frag,
                          output_isotopic_fittings,
-                         output_plot_data):
+                         output_plot_data,
+                         multithreaded,
+                         number_cores,
+                         temp_time = 0.0):
     '''This function filters and converts raw results data into human readable
     excel files.
     
@@ -1011,11 +1038,11 @@ def output_filtered_data(curve_fit_score,
         Creates excel files of processed data.
     '''
     date = datetime.datetime.now()
-    temp_path = save_path+"Temp/"
-    pathlib.Path(temp_path).mkdir(exist_ok = True, parents = True)
     begin_time = str(date)[2:4]+str(date)[5:7]+str(date)[8:10]+"_"+str(date)[11:13]+str(date)[14:16]+str(date)[17:19]
     if reanalysis:
         print("Reanalyzing raw data with new parameters...")
+        temp_path = save_path+begin_time+"_Temp/"
+        pathlib.Path(temp_path).mkdir(exist_ok = True, parents = True)
         try:
             General_Functions.open_gg(gg_file, temp_path)
         except:
@@ -1023,6 +1050,8 @@ def output_filtered_data(curve_fit_score,
             return
     else:
         print("Analyzing raw data...")
+        temp_path = save_path+temp_time+"_Temp/"
+        pathlib.Path(temp_path).mkdir(exist_ok = True, parents = True)
     with open(temp_path+'raw_data_1', 'rb') as f:
         file = dill.load(f)
         df1 = file[0]
@@ -1038,6 +1067,7 @@ def output_filtered_data(curve_fit_score,
                 print("Raw data files version incompatible with\ncurrent version (Current version: "+version+";\nRaw data version: "+file[2]+")")
                 return
         f.close()
+        
     df1_refactor = []
     for i_i, i in enumerate(df2["Sample_Number"]): #QCs cutoff
         if analyze_ms2:
@@ -1160,6 +1190,7 @@ def output_filtered_data(curve_fit_score,
             df1[i_i]["S/N"][j_j] = str(temp_sn)[1:-1]
             df1[i_i]["Iso_Fitting_Score"][j_j] = str(temp_fit)[1:-1]
             df1[i_i]["Curve_Fitting_Score"][j_j] = str(temp_curve)[1:-1]
+    
     to_remove = []
     to_remove_glycan = []
     to_remove_adduct = []
@@ -1216,7 +1247,7 @@ def output_filtered_data(curve_fit_score,
                     df1_refactor[i_i]["PPM"].append(float(df1[i_i]["PPM"][j_j].split(", ")[k_k]))
                     df1_refactor[i_i]["S/N"].append(float(df1[i_i]["S/N"][j_j].split(", ")[k_k]))
                     df1_refactor[i_i]["Iso_Fitting_Score"].append(float(df1[i_i]["Iso_Fitting_Score"][j_j].split(", ")[k_k]))
-                    df1_refactor[i_i]["Curve_Fitting_Score"].append(float(df1[i_i]["Curve_Fitting_Score"][j_j].split(", ")[k_k]))               
+                    df1_refactor[i_i]["Curve_Fitting_Score"].append(float(df1[i_i]["Curve_Fitting_Score"][j_j].split(", ")[k_k]))        
                     
     if analyze_ms2:
         if len(reporter_ions) != 0: #reporter_ions filtering
@@ -1881,37 +1912,40 @@ def output_filtered_data(curve_fit_score,
             
         isotopic_fits_dataframes_arranged = []
         biggest_len = 0
-        for i_i, i in enumerate(isotopic_fits_dataframes): #sample
-            temp_fits_dataframes = {}
-            for j_j, j in enumerate(i): #glycan
-                temp_fits_dataframes[j] = {}
-                for k_k, k in enumerate(i[j]): #peaks of glycan
-                    temp_fits_dataframes[j]['RT_'+str(k_k)+':'] = []
-                    temp_fits_dataframes[j]['Score_'+str(k_k)+':'] = []
-                    temp_fits_dataframes[j]['fit_'+str(k_k)] = []
-                    temp_fits_dataframes[j]['RT_'+str(k_k)+':'].append(k)
-                    temp_fits_dataframes[j]['Score_'+str(k_k)+':'].append(isotopic_fits_dataframes[i_i][j][k][3])
-                    temp_fits_dataframes[j]['fit_'+str(k_k)].append(None)
-                    temp_fits_dataframes[j]['RT_'+str(k_k)+':'].append('mz:')
-                    temp_fits_dataframes[j]['Score_'+str(k_k)+':'].append('Ideal:')
-                    temp_fits_dataframes[j]['fit_'+str(k_k)].append('Actual:')
-                    temp_fits_dataframes[j]['RT_'+str(k_k)+':'] = temp_fits_dataframes[j]['RT_'+str(k_k)+':']+isotopic_fits_dataframes[i_i][j][k][0]
-                    temp_fits_dataframes[j]['Score_'+str(k_k)+':'] = temp_fits_dataframes[j]['Score_'+str(k_k)+':']+isotopic_fits_dataframes[i_i][j][k][1]
-                    temp_fits_dataframes[j]['fit_'+str(k_k)] = temp_fits_dataframes[j]['fit_'+str(k_k)]+isotopic_fits_dataframes[i_i][j][k][2]
-                    if len(temp_fits_dataframes[j]['RT_'+str(k_k)+':']) > biggest_len:
-                        biggest_len = len(temp_fits_dataframes[j]['RT_'+str(k_k)+':'])
-            isotopic_fits_dataframes_arranged.append(temp_fits_dataframes)
+        results = []
+        if multithreaded:
+            if number_cores == 'all':
+                cpu_count = (os.cpu_count())-2
+                if cpu_count <= 0:
+                    cpu_count = 1
+            else:
+                number_cores = int(number_cores)
+                if number_cores > (os.cpu_count())-2:
+                    cpu_count = (os.cpu_count())-2
+                    if cpu_count <= 0:
+                        cpu_count = 1
+                else:
+                    cpu_count = number_cores
+        else:
+            cpu_count = 1
+            
+        with concurrent.futures.ProcessPoolExecutor(max_workers = cpu_count) as executor:
+            for i_i, i in enumerate(isotopic_fits_dataframes): #sample
+                result = executor.submit(arrange_iso_outputs, i_i, i, isotopic_fits_dataframes)
+                results.append(result)
+                isotopic_fits_dataframes_arranged.append(None)
+        for i in results:
+            current_result = i.result()
+            isotopic_fits_dataframes_arranged[current_result[2]] = current_result[0]
+            if current_result[1] > biggest_len:
+                biggest_len = current_result[1]
         del isotopic_fits_dataframes
-        for i_i, i in enumerate(isotopic_fits_dataframes_arranged):
-            with ExcelWriter(save_path+begin_time+'_Isotopic_Fits_Sample_'+str(i_i)+'.xlsx') as writer:
-                for j_j, j in enumerate(i): #navigating glycans
-                    for k_k, k in enumerate(list(i[j].keys())):
-                        while len(i[j][k]) < biggest_len:
-                            i[j][k].append(None)
-                    isotopic_fits_df = DataFrame(isotopic_fits_dataframes_arranged[i_i][j])
-                    isotopic_fits_df.to_excel(writer, sheet_name=j, index = False)
+        del results
+        
+        with concurrent.futures.ProcessPoolExecutor(max_workers = cpu_count) as executor:
+            for i_i, i in enumerate(isotopic_fits_dataframes_arranged):
+                executor.submit(write_iso_to_excel, save_path, begin_time, i_i, i, isotopic_fits_dataframes_arranged, biggest_len)
         del isotopic_fits_dataframes_arranged
-        del isotopic_fits_df
         
         with open(temp_path+'raw_data_5', 'rb') as f:
             curve_fitting_dataframes = dill.load(f)
@@ -1973,6 +2007,57 @@ def output_filtered_data(curve_fit_score,
         del raw_eic_dataframes
     shutil.rmtree(temp_path)
     print("Done!")
+    
+def arrange_iso_outputs(i_i,
+                        i,
+                        isotopic_fits_dataframes):
+    '''
+    '''
+    try:
+        biggest_len = 0
+        temp_fits_dataframes = {}
+        for j_j, j in enumerate(i): #glycan
+            temp_fits_dataframes[j] = {}
+            for k_k, k in enumerate(i[j]): #peaks of glycan
+                temp_fits_dataframes[j]['RT_'+str(k_k)+':'] = []
+                temp_fits_dataframes[j]['Score_'+str(k_k)+':'] = []
+                temp_fits_dataframes[j]['fit_'+str(k_k)] = []
+                temp_fits_dataframes[j]['RT_'+str(k_k)+':'].append(k)
+                temp_fits_dataframes[j]['Score_'+str(k_k)+':'].append(isotopic_fits_dataframes[i_i][j][k][3])
+                temp_fits_dataframes[j]['fit_'+str(k_k)].append(None)
+                temp_fits_dataframes[j]['RT_'+str(k_k)+':'].append('mz:')
+                temp_fits_dataframes[j]['Score_'+str(k_k)+':'].append('Ideal:')
+                temp_fits_dataframes[j]['fit_'+str(k_k)].append('Actual:')
+                temp_fits_dataframes[j]['RT_'+str(k_k)+':'] = temp_fits_dataframes[j]['RT_'+str(k_k)+':']+isotopic_fits_dataframes[i_i][j][k][0]
+                temp_fits_dataframes[j]['Score_'+str(k_k)+':'] = temp_fits_dataframes[j]['Score_'+str(k_k)+':']+isotopic_fits_dataframes[i_i][j][k][1]
+                temp_fits_dataframes[j]['fit_'+str(k_k)] = temp_fits_dataframes[j]['fit_'+str(k_k)]+isotopic_fits_dataframes[i_i][j][k][2]
+                if len(temp_fits_dataframes[j]['RT_'+str(k_k)+':']) > biggest_len:
+                    biggest_len = len(temp_fits_dataframes[j]['RT_'+str(k_k)+':'])
+        return temp_fits_dataframes, biggest_len, i_i
+    except KeyboardInterrupt:
+        print("\n\n----------Execution cancelled by user.----------\n", flush=True)
+        raise SystemExit(1)
+    
+def write_iso_to_excel(save_path,
+                       begin_time,
+                       i_i,
+                       i,
+                       isotopic_fits_dataframes_arranged,
+                       biggest_len):
+    '''
+    '''
+    try:
+        with ExcelWriter(save_path+begin_time+'_Isotopic_Fits_Sample_'+str(i_i)+'.xlsx') as writer:
+            for j_j, j in enumerate(i): #navigating glycans
+                for k_k, k in enumerate(list(i[j].keys())):
+                    while len(i[j][k]) < biggest_len:
+                        i[j][k].append(None)
+                isotopic_fits_df = DataFrame(isotopic_fits_dataframes_arranged[i_i][j])
+                isotopic_fits_df.to_excel(writer, sheet_name=j, index = False)
+        del isotopic_fits_df
+    except KeyboardInterrupt:
+        print("\n\n----------Execution cancelled by user.----------\n", flush=True)
+        raise SystemExit(1)
 
 def arrange_raw_data(analyzed_data,
                      samples_names,
@@ -2011,7 +2096,7 @@ def arrange_raw_data(analyzed_data,
     '''
     date = datetime.datetime.now()
     begin_time = str(date)[2:4]+str(date)[5:7]+str(date)[8:10]+"_"+str(date)[11:13]+str(date)[14:16]+str(date)[17:19]
-    temp_path = save_path+"Temp/"
+    temp_path = save_path+begin_time+"_Temp/"
     print('Arranging raw data...', end='', flush = True)
     df1 = []
     df2 = {"Sample_Number" : [], "File_Name" : [], "Average_Noise_Level" : []}
@@ -2176,6 +2261,7 @@ def arrange_raw_data(analyzed_data,
         f.close()
     General_Functions.make_gg(temp_path, save_path, begin_time+"_Analysis")
     print("Done!")
+    return begin_time
 
 def print_sep(): ##Complete
     '''Prints a separator consisting of 48 '-' character.
@@ -2375,11 +2461,15 @@ def analyze_files(library,
     results = []
     if multithreaded:
         if number_cores == 'all':
-            cpu_count = (os.cpu_count())-1
+            cpu_count = (os.cpu_count())-2
+            if cpu_count <= 0:
+                cpu_count = 1
         else:
             number_cores = int(number_cores)
-            if number_cores > (os.cpu_count())-1:
-                cpu_count = (os.cpu_count())-1
+            if number_cores > (os.cpu_count())-2:
+                cpu_count = (os.cpu_count())-2
+                if cpu_count <= 0:
+                    cpu_count = 1
             else:
                 cpu_count = number_cores
     else:
@@ -2419,8 +2509,6 @@ def analyze_files(library,
     results = []
     with concurrent.futures.ProcessPoolExecutor(max_workers = cpu_count) as executor:
         for i_i, i in enumerate(library):
-            
-            # a good candidate function for in-code parallelization, if we can pickle it
             result = executor.submit(analyze_glycan, 
                                      library,
                                      lib_size,
@@ -2635,11 +2723,11 @@ def analyze_glycan(library,
                                                                        temp_peaks)
                 for l_l, l in enumerate(temp_peaks):
                     if temp_peaks_auc[l_l] >= noise_avg[k]:
-                        l['AUC'] = temp_peaks_auc[l_l]
-                        l['Average_PPM'] = File_Accessing.average_ppm_calc(temp_eic[1][j][k], (tolerance[0], tolerance[1], glycan_data['Adducts_mz'][j]), l)
-                        l['Iso_Fit_Score'] = File_Accessing.iso_fit_score_calc(temp_eic[2][j][k], l)
-                        l['Signal-to-Noise'] = l['int']/(General_Functions.local_noise_calc(noise[k][l['id']], glycan_data['Adducts_mz'][j], noise_avg[k]))
                         l['Curve_Fit_Score'] = File_Accessing.peak_curve_fit(temp_eic_smoothed, l)
+                        l['Average_PPM'] = File_Accessing.average_ppm_calc(temp_eic[1][j][k], (tolerance[0], tolerance[1], glycan_data['Adducts_mz'][j]), l, l['Curve_Fit_Score'][3])
+                        l['Iso_Fit_Score'] = File_Accessing.iso_fit_score_calc(temp_eic[2][j][k], l, l['Curve_Fit_Score'][3])
+                        l['AUC'] = temp_peaks_auc[l_l]
+                        l['Signal-to-Noise'] = l['int']/(General_Functions.local_noise_calc(noise[k][l['id']], glycan_data['Adducts_mz'][j], noise_avg[k]))
                         glycan_data['Adducts_mz_data'][j][k][1].append(l)
         return glycan_data, i
     except KeyboardInterrupt:
@@ -2818,19 +2906,21 @@ def analyze_ms2(ms2_index,
     results = []
     if multithreaded:
         if number_cores == 'all':
-            cpu_count = (os.cpu_count())-1
+            cpu_count = (os.cpu_count())-2
+            if cpu_count <= 0:
+                cpu_count = 1
         else:
             number_cores = int(number_cores)
-            if number_cores > (os.cpu_count())-1:
-                cpu_count = (os.cpu_count())-1
+            if number_cores > (os.cpu_count())-2:
+                cpu_count = (os.cpu_count())-2
+                if cpu_count <= 0:
+                    cpu_count = 1
             else:
                 cpu_count = number_cores
     else:
         cpu_count = 1
     with concurrent.futures.ProcessPoolExecutor(max_workers = cpu_count) as executor:
         for i_i, i in enumerate(analyzed_data[0]): #goes through each glycan found in analysis
-            if i_i == 0:
-                print("0.00% Done")
             result = executor.submit(analyze_glycan_ms2,
                                      ms2_index,
                                      fragments,

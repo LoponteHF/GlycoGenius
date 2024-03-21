@@ -24,6 +24,7 @@ from scipy import sparse
 from statistics import mean
 from re import split
 from math import inf, atan, pi, exp, sqrt
+import concurrent.futures
 import pathlib
 import importlib
 import numpy
@@ -247,7 +248,7 @@ def eic_from_glycan(files,
             isotopic_fits[i][j_j] = {}
             thread_numbers = threads_arrays[j_j]
             
-            #this is a possible point of parallelization
+            #checked possibility of parallelization here, too much overhead (over 10 more time to run, even if using 1 core)
             for k_k, k in enumerate(thread_numbers):
                 analyze_mz_array(j[k]['m/z array'],
                                  j[k]['intensity array'],
@@ -271,6 +272,7 @@ def eic_from_glycan(files,
                                  adduct_charge)
                 
     return data, ppm_info, iso_fitting_quality, verbose_info, raw_data, isotopic_fits
+
     
 def analyze_mz_array(sliced_mz,
                      sliced_int,
@@ -426,12 +428,8 @@ def analyze_mz_array(sliced_mz,
         local_noise = General_Functions.local_noise_calc(noise[file_id][ms1_id], l, avg_noise[file_id])
         current_tolerance = General_Functions.tolerance_calc(tolerance[0], tolerance[1], l)
         if iso_found and l > ((glycan_info['Isotopic_Distribution_Masses'][iso_distro]+adduct_mass)/adduct_charge) + current_tolerance:
-            if len(current_iso_peak1) > 5: #here data is profile (NOT RECOMMENDED, but it will work.... very slowly....)
-                iso_actual.append(max(current_iso_peak1))
-                iso_target.append(max(current_iso_peak2))
-            else:
-                iso_actual.append(sum(current_iso_peak1))
-                iso_target.append(sum(current_iso_peak2))
+            iso_actual.append(max(current_iso_peak1))
+            iso_target.append(max(current_iso_peak2))
             mz_isos.append(sum(current_mz)/len(current_mz))
             current_iso_peak1 = []
             current_iso_peak2 = []
@@ -521,9 +519,7 @@ def analyze_mz_array(sliced_mz,
         starting_points = [0, 1]
         for m_m, m in enumerate(number):
             intensities = [iso_actual[m_m], iso_target[m_m]]
-            scaler = 1-(max(intensities)-min(intensities))
-            if scaler < 0:
-                scaler = min(intensities)/max(intensities)
+            intensity_score = min(intensities)/max(intensities)
             vector_actual = [m-starting_points[0], iso_actual[m_m]-starting_points[1]]
             vector_target = [m-starting_points[0], iso_target[m_m]-starting_points[1]]
             magnitude_target = sqrt(vector_target[0]**2 + vector_target[1]**2)
@@ -531,13 +527,17 @@ def analyze_mz_array(sliced_mz,
             normalized_target = vector_target/numpy.linalg.norm(vector_target)
             starting_points = [m, iso_target[m_m]]
             dotproduct = numpy.dot(normalized_actual, normalized_target)
-            dotp.append(((dotproduct+1)/2)*scaler) #scales the dotp by the relationship between the intensities
+            dotp.append(numpy.average([dotproduct, intensity_score], weights = [3, 2]))
             weights.append(1/m)
         iso_quali = numpy.average(dotp, weights = weights)
         
         #reduces score if fewer isotopic peaks are found: punishing for only 2 peaks, normal score from 3 and over
         if len(iso_actual) == 1:
             iso_quali = (iso_quali*0.8)
+        
+        mz_isos = [glycan_info['Adducts_mz'][glycan_id]]+mz_isos
+        iso_target = [1]+iso_target
+        iso_actual = [1]+iso_actual
             
     if len(iso_actual) == 0:
         iso_quali = 0.0
@@ -550,7 +550,7 @@ def analyze_mz_array(sliced_mz,
     ppm_info[glycan_id][file_id][ms1_id] = ppm_error
     iso_fitting_quality[glycan_id][file_id][ms1_id] = iso_quali
     data[glycan_id][file_id][1][ms1_id] = intensity
-    isotopic_fits[glycan_id][file_id][ret_time] = [[glycan_info['Adducts_mz'][glycan_id]]+mz_isos, [1]+iso_target, [1]+iso_actual, iso_quali]
+    isotopic_fits[glycan_id][file_id][ret_time] = [mz_isos, iso_target, iso_actual, iso_quali]
     
 def eic_smoothing(y, lmbd = 100, d = 2):
     '''Implementation of the Whittaker smoothing algorithm,
@@ -668,7 +668,8 @@ def peak_curve_fit(rt_int,
     return fits_list[0]
     
 def iso_fit_score_calc(iso_fits,
-                       peak):
+                       peak,
+                       weights_list):
     '''Calculates the mean isotopic fitting score of a given peak.
     
     Parameters
@@ -690,22 +691,13 @@ def iso_fit_score_calc(iso_fits,
         Average of the isotopic fits score calculated for the interval of
         the peak of the glycan, weighted by the gaussian fit of it.
     '''
-    weights_list = []
-    for i in range(peak['peak_interval_id'][1]-peak['peak_interval_id'][0]+1):
-        weights_list.append(General_Functions.normpdf(i, (peak['id']-peak['peak_interval_id'][0]+1), (peak['peak_interval_id'][1]-peak['peak_interval_id'][0])/6))
-    if max(weights_list) > 0:
-        scaler = (1/max(weights_list))
-    else:
-        scaler = 1
-    weights_list_scaled = []
-    for i in weights_list:
-        weights_list_scaled.append(i*scaler)
-    iso_fit_score = numpy.average(iso_fits[peak['peak_interval_id'][0]:peak['peak_interval_id'][1]+1], weights = weights_list_scaled)
+    iso_fit_score = numpy.average(iso_fits[peak['peak_interval_id'][0]:peak['peak_interval_id'][1]+1], weights = weights_list)
     return iso_fit_score
     
 def average_ppm_calc(ppm_array,
                      tolerance,
-                     peak):
+                     peak,
+                     weights_list):
     '''Calculates the arithmetic mean of the PPM differences of a given peak.
     
     Parameters
@@ -739,20 +731,13 @@ def average_ppm_calc(ppm_array,
     ppms = []
     ppm_default = General_Functions.calculate_ppm_diff(tolerance[2]-General_Functions.tolerance_calc(tolerance[0], tolerance[1], tolerance[2]), tolerance[2])
     missing_points = 0
-    weights_list = []
-    for i in range(peak['peak_interval_id'][1]-peak['peak_interval_id'][0]+1):
-        weights_list.append(General_Functions.normpdf(i, (peak['id']-peak['peak_interval_id'][0]+1), (peak['peak_interval_id'][1]-peak['peak_interval_id'][0])/6))
-    scaler = (1/max(weights_list))
-    weights_list_scaled = []
-    for i in weights_list:
-        weights_list_scaled.append(i*scaler)
     for i in ppm_array[peak['peak_interval_id'][0]:peak['peak_interval_id'][1]+1]:
         if i != inf:
             ppms.append(i)
         else:
             ppms.append(ppm_default)
             missing_points+= 1
-    regular_mean = numpy.average(ppms, weights = weights_list_scaled)
+    regular_mean = numpy.average(ppms, weights = weights_list)
     return regular_mean, missing_points
 
 def peaks_from_eic(rt_int, 
@@ -805,7 +790,7 @@ def peaks_from_eic(rt_int,
     going_up = False
     going_down = False
     datapoints_per_time = int(0.2/(rt_int[0][rt_int[1].index(max(rt_int[1]))]-rt_int[0][rt_int[1].index(max(rt_int[1]))-1]))
-    slope_threshold = 300*datapoints_per_time
+    slope_threshold = 100*datapoints_per_time
     threshold = int(datapoints_per_time/3)
     down_count = 0
     end_count = 0
@@ -815,7 +800,7 @@ def peaks_from_eic(rt_int,
         if rt_int[0][i_i] >= rt_interval[0]:
             slope = (rt_int_smoothed[1][i_i+1]-i)/(rt_int[0][i_i+1]-rt_int[0][i_i])
             # print(rt_int[0][i_i], i, rt_int_smoothed[1][i_i+1], slope, going_up, going_down, datapoints_per_time, slope_threshold)
-            if rt_int_smoothed[1][i_i] > temp_max and (going_up or going_down):
+            if rt_int[1][i_i] > temp_max and (going_up or going_down):
                 temp_max = rt_int[1][i_i]
                 temp_max_id_iu = i_i
             if (going_up and (slope < 0 or rt_int_smoothed[1][i_i] == 0.0)):
@@ -851,9 +836,12 @@ def peaks_from_eic(rt_int,
                     else:
                         if temp_min_id_iu-temp_start >= datapoints_per_time or glycan == "Internal Standard":
                             good = True
+                    if temp_max_id_iu >= temp_min_id_iu: #this avoids slopes as peaks
+                        good = False
                     if good:
                         temp_peak_width = (rt_int[0][temp_min_id_iu]-rt_int[0][temp_start])
                         peaks.append({'id': temp_max_id_iu, 'rt': rt_int[0][temp_max_id_iu], 'int': temp_max, 'peak_width': temp_peak_width, 'peak_interval': (rt_int[0][temp_start], rt_int[0][temp_min_id_iu]), 'peak_interval_id': (temp_start, temp_min_id_iu)})
+                        # print(peaks[-1])
                         temp_max = 0
                         temp_max_id_iu = 0
                         temp_min = inf
