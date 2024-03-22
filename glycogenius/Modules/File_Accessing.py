@@ -527,7 +527,7 @@ def analyze_mz_array(sliced_mz,
             normalized_target = vector_target/numpy.linalg.norm(vector_target)
             starting_points = [m, iso_target[m_m]]
             dotproduct = numpy.dot(normalized_actual, normalized_target)
-            dotp.append(numpy.average([dotproduct, intensity_score], weights = [3, 2]))
+            dotp.append(numpy.average([(dotproduct+1)/2, intensity_score], weights = [3, 2]))
             weights.append(1/m)
         iso_quali = numpy.average(dotp, weights = weights)
         
