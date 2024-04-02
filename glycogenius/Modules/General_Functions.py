@@ -40,8 +40,8 @@ monosaccharides = {
     "H": ("Hexose", "C6O6H12", {"C": 6, "O": 5, "N": 0, "H": 10}),
     "N": ("N-Acetyl Hexosamine", "C8O6NH15", {"C": 8, "O": 5, "N": 1, "H": 13}),
     "S": ("Acetyl Neuraminic Acid", "C11O9NH19", {"C": 11, "O": 8, "N": 1, "H": 17}),
-    "lS": ("Lactonized Acetyl Neuraminic Acid alpha2,3 bound", "C11O8N2H20", {"C": 11, "O": 7, "N": 2, "H": 18}),
-    "eS": ("Ethyl-Esterified Acetyl Neuraminic Acid alpha2,6 bound", "C13O9NH23", {"C": 13, "O": 8, "N": 1, "H": 21}),
+    "Am": ("Lactonized Acetyl Neuraminic Acid alpha2,3 bound", "C11O8N2H20", {"C": 11, "O": 7, "N": 2, "H": 18}),
+    "E": ("Ethyl-Esterified Acetyl Neuraminic Acid alpha2,6 bound", "C13O9NH23", {"C": 13, "O": 8, "N": 1, "H": 21}),
     "F": ("Fucose", "C6O5H12", {"C": 6, "O": 4, "N": 0, "H": 10}),
     "G": ("Glycolyl Neuraminic Acid", "C11O10NH19", {"C": 11, "O": 9, "N": 1, "H": 17})
     }
@@ -539,9 +539,9 @@ def count_seq_letters(string):
             current_letter = i
             count = string.count(i)
             if i == "L":
-                friendly_letters['lS'] = count
+                friendly_letters['Am'] = count
             if i == "E":
-                friendly_letters['eS'] = count
+                friendly_letters['E'] = count
             elif i != "L" and i != "E":
                 friendly_letters[i] = count
     return friendly_letters
@@ -584,7 +584,7 @@ def sum_monos(*compositions):
     summed_comp : dict
         Dictionary containing the sum of each monosaccharides of the compositions.
     '''
-    summed_comp = {"H": 0, "N": 0, "S": 0, "lS": 0, "eS": 0, "F": 0, "G": 0, "T": 0}
+    summed_comp = {"H": 0, "N": 0, "S": 0, "Am": 0, "E": 0, "F": 0, "G": 0, "T": 0}
     for i in compositions:
         for j in i:
             summed_comp[j]+=i[j]
@@ -725,8 +725,8 @@ def calculate_isotopic_pattern(glycan_atoms,
     return relative_isotop_pattern, relative_isotop_mass
 
 def gen_adducts_combo(adducts,
-                      exclusions,
-                      max_charge):
+                      exclusions=[],
+                      max_charge=3):
     '''Generates a list of dictionaries with compositions of adducts combinations, based
     on parameters set.
 

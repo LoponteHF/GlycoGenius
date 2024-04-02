@@ -25,12 +25,13 @@ import datetime
 
 #-----------------------------------------------------------------------------
 
-def main():
+def main(args=[]):
     try:
-        if not os.isatty(0):
-            args = Config_Handler.config_handler()
-        else:
-            args = CLI.CLI()
+        if len(args) == 0:
+            if not os.isatty(0):
+                args = Config_Handler.config_handler()
+            else:
+                args = CLI.CLI()
             
         begin_time = datetime.datetime.now()
 
@@ -69,13 +70,14 @@ def main():
             args[7][0] = analyzed_data
             temp_time = Execution_Functions.arrange_raw_data(*args[7])
             Execution_Functions.print_sep()
-            args[0].append(temp_time)
-            Execution_Functions.output_filtered_data(*args[0])
-                                                     
+            args[0][21] = temp_time
+            if len(args) == 11:
+                Execution_Functions.output_filtered_data(*args[0])
+                   
+        print('Execution complete. Time elapsed: '+str(datetime.datetime.now() - begin_time))
         if os.isatty(0):
-            input('Execution complete. Time elapsed: '+str(datetime.datetime.now() - begin_time)+'\nPress Enter to exit.')
+            input('\nPress Enter to exit.')
         else:
-            print('Execution complete. Time elapsed: '+str(datetime.datetime.now() - begin_time))
             print("Close the window or press CTRL+C to exit.")
             try:
                 while True:

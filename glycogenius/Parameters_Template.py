@@ -68,7 +68,7 @@ custom_glycans_list = H3N2, H5N2, H5N4S2F1
 ;	indicate the path to a text file containing
 ;	the list (line or comma separated).
 ;	Monosaccharides accepted: Hexoses (H), 
-;	HexNAc (N), Acetyl Sialic Acid (S or lS and eS
+;	HexNAc (N), Acetyl Sialic Acid (S or Am and E
 ;	if you have lactonized-ethyl sterified glycans),
 ;	Glycolyl Sialic Acid (G), Deoxyhexose (F). Case
 ;	sensitive.
@@ -127,12 +127,12 @@ reduced = no
 ; 	If the sample doesn't have a tag and the glycans
 ;	had their reducing end reduced, set this to "yes".
 ;
-lactonized_ethyl_esterified = no
+aminated_ethyl_esterified = no
 ; 	Use if the sialic acids were derivitized with 
-;	lactonization (alpha2,3) and ethyl esterification 
+;	amination (alpha2,3) and ethyl esterification 
 ;	(alpha2,6). Lactonized Acetyl Sialic Acid will
-;	be identified as 'lS' and Ethyl Esterified Acetyl
-;	Sialic Acid will be identified as 'eS'.
+;	be identified as 'Am' and Ethyl Esterified Acetyl
+;	Sialic Acid will be identified as 'E'.
 ;
 fast_iso = yes
 ; 	Allows you to calculate the isotopic distribution

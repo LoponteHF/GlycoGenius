@@ -29,7 +29,7 @@ import configparser
 
 
 
-def config_handler():
+def config_handler(from_GUI = False, param_file_path = ''):
     '''A function that handles the input of configs through a pipelined
     parameters .ini file and turns them into arguments for the functions
     used in core module.
@@ -103,12 +103,18 @@ def config_handler():
 
     samples_list = []
     samples_names = []
-
+    
     CLI.print_header(False)
     config = configparser.ConfigParser()
     configs = ""
-    for line in sys.stdin:
-        configs+=line
+    if from_GUI:
+        with open(param_file_path, "r") as f:
+            for line in f:
+                configs+=line
+            f.close()
+    else:
+        for line in sys.stdin:
+            configs+=line
     config.read_string(configs)
     
     #working directory
@@ -240,35 +246,27 @@ def config_handler():
         total_neu5gc = config['library_building_modes']['neu5gc'].split(',')
         min_max_gc = [int(total_neu5gc[0]), int(total_neu5gc[1])]
         
-    if library_mode != 'import_library':
-        imp_exp_library[1] = config['library_building_modes'].getboolean('export_library')
-        if imp_exp_library[1]:
-            exp_lib_name = config['library_building_modes']['exported_library_name'].strip()
-        force_nglycan = config['common_library_building_settings'].getboolean('force_nglycan')
-        max_adducts = General_Functions.form_to_comp(config['common_library_building_settings']['max_adducts'])
-        adducts_exc = config['common_library_building_settings']['adducts_exclusion'].split(",")
-        if len(adducts_exc) > 0:
-            for i in adducts_exc:
-                adducts_exclusion.append(General_Functions.form_to_comp(i.strip()))
-        max_charges = int(config['common_library_building_settings']['max_charges'])
-        try:
-            reducing_end_tag = float(config['common_library_building_settings']['reducing_end_tag'])
-        except:
-            reducing_end_tag = config['common_library_building_settings']['reducing_end_tag']
-            if reducing_end_tag.split('-')[0] == 'pep':
-                reducing_end_tag = dict(mass.Composition(sequence = reducing_end_tag.split('-')[-1]))
-                reducing_end_tag['H'] -= 2
-                reducing_end_tag['O'] -= 1
-        permethylated = config['common_library_building_settings'].getboolean('permethylated')
-        reduced = config['common_library_building_settings'].getboolean('reduced')
-        lactonized_ethyl_esterified = config['common_library_building_settings'].getboolean('lactonized_ethyl_esterified')
-        fast_iso = config['common_library_building_settings'].getboolean('fast_iso')
-        high_res = config['common_library_building_settings'].getboolean('high_resolution_isotopic_dist')
-        internal_standard = config['common_library_building_settings']['internal_standard_mass']
-        if len(internal_standard.strip()) == 0:
-            internal_standard = 0.0
-        else:
-            internal_standard = float(internal_standard)
+    imp_exp_library[1] = config['library_building_modes'].getboolean('export_library')
+    if imp_exp_library[1]:
+        exp_lib_name = config['library_building_modes']['exported_library_name'].strip()
+    force_nglycan = config['common_library_building_settings'].getboolean('force_nglycan')
+    max_adducts = General_Functions.form_to_comp(config['common_library_building_settings']['max_adducts'])
+    adducts_exc = config['common_library_building_settings']['adducts_exclusion'].split(",")
+    if len(adducts_exc) > 0:
+        for i in adducts_exc:
+            adducts_exclusion.append(General_Functions.form_to_comp(i.strip()))
+    max_charges = int(config['common_library_building_settings']['max_charges'])
+    reducing_end_tag = config['common_library_building_settings']['reducing_end_tag']
+    permethylated = config['common_library_building_settings'].getboolean('permethylated')
+    reduced = config['common_library_building_settings'].getboolean('reduced')
+    lactonized_ethyl_esterified = config['common_library_building_settings'].getboolean('aminated_ethyl_esterified')
+    fast_iso = config['common_library_building_settings'].getboolean('fast_iso')
+    high_res = config['common_library_building_settings'].getboolean('high_resolution_isotopic_dist')
+    internal_standard = config['common_library_building_settings']['internal_standard_mass']
+    if len(internal_standard.strip()) == 0:
+        internal_standard = 0.0
+    else:
+        internal_standard = float(internal_standard)
         
         
     #analysis running mode
@@ -337,7 +335,7 @@ def config_handler():
         max_ppm = int(config['post-analysis/reanalysis']['max_ppm_threshold'])
         iso_fit_score = float(config['post-analysis/reanalysis']['isotopic_fitting_score_threshold'])
         curve_fit_score = float(config['post-analysis/reanalysis']['curve_fitting_score_threshold'])
-        s_to_n = int(config['post-analysis/reanalysis']['signal_to_noise_threshold'])
+        s_to_n = float(config['post-analysis/reanalysis']['signal_to_noise_threshold'])
         compositions = config['post-analysis/reanalysis'].getboolean('analyze_compositions')
         plot_metaboanalyst_file = config['post-analysis/reanalysis'].getboolean('output_metaboanalyst_file')
         if plot_metaboanalyst_file:
@@ -352,8 +350,11 @@ def config_handler():
         iso_fittings = config['post-analysis/reanalysis'].getboolean('output_fittings_data')
         output_plot_data = config['post-analysis/reanalysis'].getboolean('output_plot_data')
         
+    if from_GUI:
+        return (custom_glycans_list, min_max_monos, min_max_hex, min_max_hexnac, min_max_sia, min_max_fuc, min_max_ac, min_max_gc, force_nglycan, max_adducts, adducts_exclusion, max_charges, reducing_end_tag, permethylated, reduced, lactonized_ethyl_esterified, fast_iso, high_res, internal_standard, imp_exp_library, exp_lib_name, library_path, only_gen_lib), (multithreaded_analysis, number_cores, analyze_ms2, reporter_ions, tolerance, ret_time_interval, rt_tolerance_frag, min_isotopologue_peaks, min_ppp, close_peaks, align_chromatograms, percentage_auc, max_ppm, iso_fit_score, curve_fit_score, s_to_n, custom_noise, samples_path, save_path, plot_metaboanalyst, compositions, iso_fittings, reanalysis, reanalysis_path, output_plot_data)
+        
     #args to execution functions:
-    output_filtered_data_args = [curve_fit_score, iso_fit_score, s_to_n, max_ppm, percentage_auc, reanalysis, reanalysis_path, save_path, analyze_ms2[0], analyze_ms2[2], reporter_ions, plot_metaboanalyst, compositions, align_chromatograms, force_nglycan, ret_time_interval[2], rt_tolerance_frag, iso_fittings, output_plot_data, multithreaded_analysis, number_cores]
+    output_filtered_data_args = [curve_fit_score, iso_fit_score, s_to_n, max_ppm, percentage_auc, reanalysis, reanalysis_path, save_path, analyze_ms2[0], analyze_ms2[2], reporter_ions, plot_metaboanalyst, compositions, align_chromatograms, force_nglycan, ret_time_interval[2], rt_tolerance_frag, iso_fittings, output_plot_data, multithreaded_analysis, number_cores, 0.0]
 
     imp_exp_gen_library_args = [custom_glycans_list, min_max_monos, min_max_hex, min_max_hexnac, min_max_sia, min_max_fuc, min_max_ac, min_max_gc, force_nglycan, max_adducts, adducts_exclusion, max_charges, reducing_end_tag, fast_iso, high_res, imp_exp_library, library_path, exp_lib_name, only_gen_lib, save_path, internal_standard, permethylated, lactonized_ethyl_esterified, reduced]
 

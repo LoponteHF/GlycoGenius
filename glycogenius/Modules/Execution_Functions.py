@@ -551,8 +551,8 @@ def imp_exp_gen_library(custom_glycans_list,
                 df['Hex'].append(full_library[i]['Monos_Composition']['H'])
                 df['HexNAc'].append(full_library[i]['Monos_Composition']['N'])
                 df['dHex'].append(full_library[i]['Monos_Composition']['F'])
-                df['a2,3-Neu5Ac'].append(full_library[i]['Monos_Composition']['lS'])
-                df['a2,6-Neu5Ac'].append(full_library[i]['Monos_Composition']['eS'])
+                df['a2,3-Neu5Ac'].append(full_library[i]['Monos_Composition']['Am'])
+                df['a2,6-Neu5Ac'].append(full_library[i]['Monos_Composition']['E'])
                 df['Neu5Gc'].append(full_library[i]['Monos_Composition']['G'])
             else:
                 df['Glycan'].append(i)
@@ -595,7 +595,7 @@ def imp_exp_gen_library(custom_glycans_list,
         print("Done!")
     if only_gen_lib:
         print('Library length: '+str(len(full_library)))
-        print("Check it in Glycans_Library.xlsx.")
+        print("Check it in "+exp_lib_name+".")
         print("If you wish to analyze files,")
         print("set 'only_gen_lib' to False and input")
         print("remaining parameters.")
@@ -952,7 +952,9 @@ def output_filtered_data(curve_fit_score,
                          output_plot_data,
                          multithreaded,
                          number_cores,
-                         temp_time = 0.0):
+                         temp_time,
+                         from_GUI = False,
+                         metab_groups = []):
     '''This function filters and converts raw results data into human readable
     excel files.
     
@@ -1040,7 +1042,10 @@ def output_filtered_data(curve_fit_score,
     date = datetime.datetime.now()
     begin_time = str(date)[2:4]+str(date)[5:7]+str(date)[8:10]+"_"+str(date)[11:13]+str(date)[14:16]+str(date)[17:19]
     if reanalysis:
-        print("Reanalyzing raw data with new parameters...")
+        if from_GUI:
+            print("Saving results files...")
+        else:
+            print("Reanalyzing raw data with new parameters...")
         temp_path = save_path+begin_time+"_Temp/"
         pathlib.Path(temp_path).mkdir(exist_ok = True, parents = True)
         try:
@@ -1628,19 +1633,28 @@ def output_filtered_data(curve_fit_score,
             for i_i, i in enumerate(df2["File_Name"]):
                 samples_line.append(i)
             groups_line = ["Group"]
-            if len(plot_metaboanalyst[1]) > 0:
-                for i in df2["File_Name"]:
+            if from_GUI:
+                for i in df2['File_Name']:
                     found = False
-                    for j in plot_metaboanalyst[1]:
-                        if j in i:
-                            found = True
-                            groups_line.append(j)
-                            break
+                    if i in metab_groups.keys():
+                        found = True
+                        groups_line.append(metab_groups[i])
                     if not found:
                         groups_line.append("Ungrouped")
             else:
-                for i in df2["File_Name"]:
-                    groups_line.append("Ungrouped")
+                if len(plot_metaboanalyst[1]) > 0:
+                    for i in df2["File_Name"]:
+                        found = False
+                        for j in plot_metaboanalyst[1]:
+                            if j in i:
+                                found = True
+                                groups_line.append(j)
+                                break
+                        if not found:
+                            groups_line.append("Ungrouped")
+                else:
+                    for i in df2["File_Name"]:
+                        groups_line.append("Ungrouped")
             found_int_std = False
             for i in total_dataframes:
                 if "Internal Standard" in i["Glycan"]:
@@ -2062,7 +2076,8 @@ def write_iso_to_excel(save_path,
 def arrange_raw_data(analyzed_data,
                      samples_names,
                      analyze_ms2,
-                     save_path):
+                     save_path,
+                     from_GUI = False):
     '''Arrange the raw results data into pickled files to be processed by output_filtered_data.
 
     Parameters
@@ -2260,6 +2275,9 @@ def arrange_raw_data(analyzed_data,
         del isotopic_fits_dataframes
         f.close()
     General_Functions.make_gg(temp_path, save_path, begin_time+"_Analysis")
+    if from_GUI:
+        print("File name is "+begin_time+"_Analysis.gg")
+        shutil.rmtree(temp_path)
     print("Done!")
     return begin_time
 
@@ -2370,7 +2388,8 @@ def analyze_files(library,
                   custom_noise,
                   close_peaks,
                   multithreaded,
-                  number_cores): ##Complete
+                  number_cores,
+                  from_GUI = False): ##Complete
     '''Integrates all the file-accessing associated functions in this script to go
     through the files data, draw and process eic of hypothetical glycans, does 
     peak-picking and calculates AUC of the peaks.
@@ -2507,6 +2526,7 @@ def analyze_files(library,
     begin_time = datetime.datetime.now()
     
     results = []
+    temp_results = []
     with concurrent.futures.ProcessPoolExecutor(max_workers = cpu_count) as executor:
         for i_i, i in enumerate(library):
             result = executor.submit(analyze_glycan, 
@@ -2528,9 +2548,17 @@ def analyze_files(library,
                                      rt_array_report,
                                      ms1_id,
                                      i,
-                                     i_i,
-                                     lib_size)
+                                     i_i)
             results.append(result)
+            if from_GUI:
+                temp_results.append(result)
+                if len(temp_results) == cpu_count:
+                    for k_k, k in enumerate(temp_results):
+                        k.result()
+                        del temp_results[k_k]
+                        if len(temp_results) < cpu_count:
+                            break
+                print('Analyzing glycan '+str(i)+': '+str(i_i+1)+'/'+str(lib_size))
     for i in results:
         result_data = i.result()
         analyzed_data[result_data[1]] = result_data[0]
@@ -2556,8 +2584,7 @@ def analyze_glycan(library,
                   rt_arrays,
                   ms1_id,
                   i,
-                  i_i,
-                  total_glycans):
+                  i_i):
     '''Analyzes one single glycan. Core function of analyze_files.
     
     Parameters
@@ -2663,7 +2690,7 @@ def analyze_glycan(library,
         The glycan analyzed.
     '''
     try:
-        print('Analyzing glycan '+str(i)+': '+str(i_i+1)+'/'+str(total_glycans))
+        print('Analyzing glycan '+str(i)+': '+str(i_i+1)+'/'+str(lib_size))
         
         glycan_data = library[i]
         glycan_data['Adducts_mz_data'] = {}
@@ -2756,7 +2783,8 @@ def analyze_ms2(ms2_index,
                 unrestricted_fragments,
                 rt_tolerance,
                 multithreaded,
-                number_cores):
+                number_cores,
+                from_GUI = False):
     '''Analyzes the MS2 data in the sample files, outputting the found matches.
     
     Parameters
@@ -2904,6 +2932,7 @@ def analyze_ms2(ms2_index,
     scan_begin_time = datetime.datetime.now()
     
     results = []
+    temp_results = []
     if multithreaded:
         if number_cores == 'all':
             cpu_count = (os.cpu_count())-2
@@ -2935,6 +2964,15 @@ def analyze_ms2(ms2_index,
                                      i_i,
                                      i)
             results.append(result)
+            if from_GUI:
+                temp_results.append(result)
+                if len(temp_results) == cpu_count:
+                    for k_k, k in enumerate(temp_results):
+                        k.result()
+                        del temp_results[k_k]
+                        if len(temp_results) < cpu_count:
+                            break
+                print('Analyzing glycan '+str(i)+': '+str(i_i+1)+'/'+str(len(analyzed_data[0])))
             
     for i in results:
         result_data = i.result()
@@ -3046,8 +3084,8 @@ def analyze_glycan_ms2(ms2_index,
                                     if lactonized_ethyl_esterified:
                                         if (n['Monos_Composition']['H'] == analyzed_data[0][i]['Monos_Composition']['H']
                                             and n['Monos_Composition']['N'] == analyzed_data[0][i]['Monos_Composition']['N']
-                                            and n['Monos_Composition']['lS'] == analyzed_data[0][i]['Monos_Composition']['lS']
-                                            and n['Monos_Composition']['eS'] == analyzed_data[0][i]['Monos_Composition']['eS']
+                                            and n['Monos_Composition']['Am'] == analyzed_data[0][i]['Monos_Composition']['Am']
+                                            and n['Monos_Composition']['E'] == analyzed_data[0][i]['Monos_Composition']['E']
                                             and n['Monos_Composition']['F'] == analyzed_data[0][i]['Monos_Composition']['F']
                                             and n['Monos_Composition']['G'] == analyzed_data[0][i]['Monos_Composition']['G']):
                                             continue
@@ -3080,18 +3118,18 @@ def analyze_glycan_ms2(ms2_index,
                                                     o['H'] = 0
                                                 if 'N' not in o.keys():
                                                     o['N'] = 0
-                                                if 'lS' not in o.keys():
-                                                    o['lS'] = 0
-                                                if 'eS' not in o.keys():
-                                                    o['eS'] = 0
+                                                if 'Am' not in o.keys():
+                                                    o['Am'] = 0
+                                                if 'E' not in o.keys():
+                                                    o['E'] = 0
                                                 if 'F' not in o.keys():
                                                     o['F'] = 0
                                                 if 'G' not in o.keys():
                                                     o['G'] = 0
                                                 if (o['H'] > analyzed_data[0][i]['Monos_Composition']['H']
                                                     or o['N'] > analyzed_data[0][i]['Monos_Composition']['N']
-                                                    or o['lS'] > analyzed_data[0][i]['Monos_Composition']['lS']
-                                                    or o['eS'] > analyzed_data[0][i]['Monos_Composition']['eS']
+                                                    or o['Am'] > analyzed_data[0][i]['Monos_Composition']['Am']
+                                                    or o['E'] > analyzed_data[0][i]['Monos_Composition']['E']
                                                     or o['F'] > analyzed_data[0][i]['Monos_Composition']['F']
                                                     or o['G'] > analyzed_data[0][i]['Monos_Composition']['G']):
                                                     viable.append(False)
@@ -3134,7 +3172,7 @@ def analyze_glycan_ms2(ms2_index,
                                                         count+= 1
                                     elif "/" not in n['Formula'] and not combo:
                                         if lactonized_ethyl_esterified:
-                                            if (n['Monos_Composition']['H'] > analyzed_data[0][i]['Monos_Composition']['H'] or n['Monos_Composition']['N'] > analyzed_data[0][i]['Monos_Composition']['N'] or n['Monos_Composition']['lS'] > analyzed_data[0][i]['Monos_Composition']['lS'] or n['Monos_Composition']['eS'] > analyzed_data[0][i]['Monos_Composition']['eS'] or n['Monos_Composition']['F'] > analyzed_data[0][i]['Monos_Composition']['F'] or n['Monos_Composition']['G'] > analyzed_data[0][i]['Monos_Composition']['G']):
+                                            if (n['Monos_Composition']['H'] > analyzed_data[0][i]['Monos_Composition']['H'] or n['Monos_Composition']['N'] > analyzed_data[0][i]['Monos_Composition']['N'] or n['Monos_Composition']['Am'] > analyzed_data[0][i]['Monos_Composition']['Am'] or n['Monos_Composition']['E'] > analyzed_data[0][i]['Monos_Composition']['E'] or n['Monos_Composition']['F'] > analyzed_data[0][i]['Monos_Composition']['F'] or n['Monos_Composition']['G'] > analyzed_data[0][i]['Monos_Composition']['G']):
                                                 continue
                                         else:
                                             if (n['Monos_Composition']['H'] > analyzed_data[0][i]['Monos_Composition']['H'] or n['Monos_Composition']['N'] > analyzed_data[0][i]['Monos_Composition']['N'] or n['Monos_Composition']['S'] > analyzed_data[0][i]['Monos_Composition']['S'] or n['Monos_Composition']['F'] > analyzed_data[0][i]['Monos_Composition']['F'] or n['Monos_Composition']['G'] > analyzed_data[0][i]['Monos_Composition']['G']):

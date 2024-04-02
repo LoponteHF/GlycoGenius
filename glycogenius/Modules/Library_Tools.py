@@ -16,13 +16,13 @@
 # or by typing 'license' after running it stand-alone in the terminal
 # by typing 'glycogenius'. If not, see <https://www.gnu.org/licenses/>.
 
-import pathlib
-import importlib
 from . import General_Functions
 from pyteomics import mzxml, mzml, mass, auxiliary
 from itertools import combinations_with_replacement
 from re import split
 from math import inf
+import pathlib
+import importlib
 import sys
 import datetime
 
@@ -104,7 +104,7 @@ def generate_glycans_library(min_max_mono,
         glycans generated.
     '''
     glycans = []
-    def_glycan_comp = {"H": 0, "N": 0, "S": 0, "lS": 0, "eS": 0, "F": 0, "G": 0}
+    def_glycan_comp = {"H": 0, "N": 0, "S": 0, "Am": 0, "E": 0, "F": 0, "G": 0}
     for i in range(min_max_mono[0], min_max_mono[1]+1):
         if lactonized_ethyl_esterified:
             for j in combinations_with_replacement("HNLEFG", i):
@@ -117,10 +117,10 @@ def generate_glycans_library(min_max_mono,
         if lactonized_ethyl_esterified:
             if ((i['H'] < min_max_hex[0]) or (i['H'] > min_max_hex[1])
                 or (i['N'] < min_max_hexnac[0]) or (i['N'] > min_max_hexnac[1])
-                or (i['lS']+i['eS']+i['G'] < min_max_sialics[0])
-                or (i['lS']+i['eS']+i['G'] > min_max_sialics[1])
+                or (i['Am']+i['E']+i['G'] < min_max_sialics[0])
+                or (i['Am']+i['E']+i['G'] > min_max_sialics[1])
                 or (i['F'] < min_max_fuc[0]) or (i['F'] > min_max_fuc[1])
-                or (i['lS']+i['eS'] < min_max_ac[0]) or (i['lS']+i['eS'] > min_max_ac[1])
+                or (i['Am']+i['E'] < min_max_ac[0]) or (i['Am']+i['E'] > min_max_ac[1])
                 or (i['G'] < min_max_gc[0]) or (i['G'] > min_max_gc[1])):
                 to_be_removed.append(i)
         else:
@@ -135,8 +135,8 @@ def generate_glycans_library(min_max_mono,
     if n_glycan:
         if lactonized_ethyl_esterified:
             for i_i, i in enumerate(glycans):
-                if ((i['lS']+i['eS']+i['G'] > i['N']-2)
-                    or (i['F'] >= i['N']) or (i['lS']+i['eS']+i['G'] > i['H']-2)
+                if ((i['Am']+i['E']+i['G'] > i['N']-2)
+                    or (i['F'] >= i['N']) or (i['Am']+i['E']+i['G'] > i['H']-2)
                     or (i['H'] < 3) or (i['N'] < 2)):
                     if i not in to_be_removed:
                         to_be_removed.append(i)
@@ -254,6 +254,15 @@ def full_glycans_library(library,
         glycans with the desired adducts combination.
     '''
     full_library = {}
+    
+    try:
+        tag_mass = float(tag_mass)
+    except:
+        if tag_mass.split('-')[0] == 'pep':
+            tag_mass = dict(mass.Composition(sequence = tag_mass.split('-')[-1]))
+            tag_mass['H'] -= 2
+            tag_mass['O'] -= 1
+            
     if tag_mass != 0:
         if type(tag_mass) == float:
             tag = General_Functions.calculate_comp_from_mass(tag_mass)
@@ -337,7 +346,7 @@ def full_glycans_library(library,
         for i in range(len(i_iso_dist[0])):
             i_iso_dist[1].append(internal_standard+(i*General_Functions.h_mass))
         full_library[i_formula] = {}
-        full_library[i_formula]['Monos_Composition'] = {"H": 0, "N": 0, "S": 0, "lS": 0, "eS": 0, "F": 0, "G": 0}
+        full_library[i_formula]['Monos_Composition'] = {"H": 0, "N": 0, "S": 0, "Am": 0, "E": 0, "F": 0, "G": 0}
         full_library[i_formula]['Neutral_Mass'] = i_neutral_mass
         full_library[i_formula]['Neutral_Mass+Tag'] = i_neutral_mass
         full_library[i_formula]['Isotopic_Distribution'] = i_iso_dist[0]
@@ -467,7 +476,7 @@ def fragments_library(min_max_mono,
     '''
     print("Building fragments library...", end = "", flush = True)
     glycans = []
-    def_glycan_comp = {"H": 0, "N": 0, "S": 0, "lS": 0, "eS": 0, "F": 0, "G": 0, "T" : 0}
+    def_glycan_comp = {"H": 0, "N": 0, "S": 0, "Am": 0, "E": 0, "F": 0, "G": 0, "T" : 0}
     for i in range(1, 18):
         if lactonized_ethyl_esterified:
             for j in combinations_with_replacement("HNLEFG", i):
@@ -482,9 +491,9 @@ def fragments_library(min_max_mono,
                 or (i['T'] == 1 and i['N'] == 0)
                 or (i['H'] > min_max_hex[1])
                 or (i['N'] > min_max_hexnac[1])
-                or (i['lS']+i['eS']+i['G'] > min_max_sialics[1])
+                or (i['Am']+i['E']+i['G'] > min_max_sialics[1])
                 or (i['F'] > min_max_fuc[1])
-                or (i['lS']+i['eS'] > min_max_ac[1])
+                or (i['Am']+i['E'] > min_max_ac[1])
                 or (i['G'] > min_max_gc[1])):
                 to_be_removed.append(i_i)
         else:
@@ -502,12 +511,12 @@ def fragments_library(min_max_mono,
                 if ((i['T'] == 1 and sum(i.values()) < 8 and i['S']+i['G'] > 0)
                     or (sum(i.values()) < 6 and i['S'] >= 1 and i['N'] > 1)
                     or (i['H'] > 0 and i['T'] == 1 and i['N'] < 2)
-                    or (i['H'] == 2 and i['N'] == 1 and i['lS']+i['eS'] == 0 and i['F'] == 0 and i['G'] == 0 and i['T'] == 1)
-                    or (i['H'] == 0 and i['N'] == 1 and (i['lS']+i['eS'] == 1 or i['G'] == 1) and i['F'] == 0 and i['T'] == 0)
-                    or (i['H'] == 1 and i['N'] == 3 and i['lS']+i['eS'] == 0 and i['F'] == 0 and i['G'] == 0 and i['T'] == 1)
-                    or (i['H'] > 1 and i['N'] == 0 and (i['lS']+i['eS'] == 1 or i['G'] == 1) and i['F'] == 0 and i['T'] == 0)
-                    or (i['H'] == 1 and i['N'] == 1 and i['lS']+i['eS'] == 0 and i['F'] == 0 and i['G'] == 0 and i['T'] == 1)
-                    or (i['H'] == 3 and i['N'] == 1 and i['lS']+i['eS'] == 0 and i['F'] == 0 and i['G'] == 0 and i['T'] == 1)):
+                    or (i['H'] == 2 and i['N'] == 1 and i['Am']+i['E'] == 0 and i['F'] == 0 and i['G'] == 0 and i['T'] == 1)
+                    or (i['H'] == 0 and i['N'] == 1 and (i['Am']+i['E'] == 1 or i['G'] == 1) and i['F'] == 0 and i['T'] == 0)
+                    or (i['H'] == 1 and i['N'] == 3 and i['Am']+i['E'] == 0 and i['F'] == 0 and i['G'] == 0 and i['T'] == 1)
+                    or (i['H'] > 1 and i['N'] == 0 and (i['Am']+i['E'] == 1 or i['G'] == 1) and i['F'] == 0 and i['T'] == 0)
+                    or (i['H'] == 1 and i['N'] == 1 and i['Am']+i['E'] == 0 and i['F'] == 0 and i['G'] == 0 and i['T'] == 1)
+                    or (i['H'] == 3 and i['N'] == 1 and i['Am']+i['E'] == 0 and i['F'] == 0 and i['G'] == 0 and i['T'] == 1)):
                     to_be_removed.append(i_i)
             else:
                 if ((i['T'] == 1 and sum(i.values()) < 8 and i['S']+i['G'] > 0)
@@ -522,13 +531,24 @@ def fragments_library(min_max_mono,
                     to_be_removed.append(i_i)
     for i in sorted(to_be_removed, reverse = True):
         del glycans[i]
+    try:
+        tag_mass = float(tag_mass)
+    except:
+        if tag_mass.split('-')[0] == 'pep':
+            tag_mass = dict(mass.Composition(sequence = tag_mass.split('-')[-1]))
+            tag_mass['H'] -= 2
+            tag_mass['O'] -= 1
+            
     if tag_mass != 0:
         if type(tag_mass) == float:
             tag = General_Functions.calculate_comp_from_mass(tag_mass)
-        else:
+        elif type(tag_mass) != dict:
             comp_tag = General_Functions.form_to_comp(tag_mass)
             tag = (comp_tag, mass.calculate_mass(comp_tag))
-            tag_mass = tag[1]
+        else:
+            comp_tag = tag_mass
+            tag = (comp_tag, mass.calculate_mass(comp_tag))
+        tag_mass = tag[1]
     else:
         tag = ({"C": 0, "O": 0, "N": 0, "H": 0}, 0.0)
     adducts_combo = General_Functions.gen_adducts_combo({'H' : 2}, [], max_charges)

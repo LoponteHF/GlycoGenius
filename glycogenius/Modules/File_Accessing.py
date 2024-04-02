@@ -226,6 +226,7 @@ def eic_from_glycan(files,
         A dictionary containing all the isotopic fitting information for reporting and 
         checking data.
     '''
+    global buffer, buffer_good
     data = {}
     ppm_info = {}
     iso_fitting_quality = {}
@@ -249,6 +250,8 @@ def eic_from_glycan(files,
             thread_numbers = threads_arrays[j_j]
             
             #checked possibility of parallelization here, too much overhead (over 10 more time to run, even if using 1 core)
+            buffer = []
+            buffer_good = 0
             for k_k, k in enumerate(thread_numbers):
                 analyze_mz_array(j[k]['m/z array'],
                                  j[k]['intensity array'],
@@ -268,9 +271,9 @@ def eic_from_glycan(files,
                                  k,
                                  j[k]['retentionTime'],
                                  ms1_id[j_j][k_k],
+                                 ms1_id[-1],
                                  adduct_mass,
                                  adduct_charge)
-                
     return data, ppm_info, iso_fitting_quality, verbose_info, raw_data, isotopic_fits
 
     
@@ -292,6 +295,7 @@ def analyze_mz_array(sliced_mz,
                      thread_id,
                      ret_time,
                      ms1_id,
+                     last_ms1_id,
                      adduct_mass,
                      adduct_charge):
     '''The core function of eic_from_glycan. Analyzes a single spectrum and outputs
@@ -400,6 +404,7 @@ def analyze_mz_array(sliced_mz,
     nothing
         Edits the target dictionaries/lists directly.
     '''
+    global buffer, buffer_good
     intensity = 0.0 #variable to sum the total deisotopotized intensity
     mono_int = 0.0 #variable to sum the total intensity of the monoisotopic peak
     iso_distro = 1 #starting isotopic distribution peak, always 1
@@ -438,7 +443,7 @@ def analyze_mz_array(sliced_mz,
             iso_found = False
         if not_good: #Here are checks for quick skips
             break
-        if max_int < avg_noise[file_id]*0.5: #if there's no peak with intensity higher than 50% of the average noise of sample, don't even check it
+        if max_int < avg_noise[file_id]: #if there's no peak with intensity higher than the average noise of sample, don't even check it
             break
         if l_l == len(sliced_mz)-1 and not found:
             not_good = True
@@ -512,45 +517,74 @@ def analyze_mz_array(sliced_mz,
             raw_data[glycan_id][file_id][1][ms1_id] = sliced_int[l_l]
             break
             
-    if len(iso_actual) > 0:
-        dotp = []
-        weights = []
-        number = range(1, len(mz_isos)+1)
-        starting_points = [0, 1]
-        for m_m, m in enumerate(number):
-            intensities = [iso_actual[m_m], iso_target[m_m]]
-            intensity_score = min(intensities)/max(intensities)
-            vector_actual = [m-starting_points[0], iso_actual[m_m]-starting_points[1]]
-            vector_target = [m-starting_points[0], iso_target[m_m]-starting_points[1]]
-            magnitude_target = sqrt(vector_target[0]**2 + vector_target[1]**2)
-            normalized_actual = vector_actual/numpy.linalg.norm(vector_actual)
-            normalized_target = vector_target/numpy.linalg.norm(vector_target)
-            starting_points = [m, iso_target[m_m]]
-            dotproduct = numpy.dot(normalized_actual, normalized_target)
-            dotp.append(numpy.average([(dotproduct+1)/2, intensity_score], weights = [3, 2]))
-            weights.append(1/m)
-        iso_quali = numpy.average(dotp, weights = weights)
-        
-        #reduces score if fewer isotopic peaks are found: punishing for only 2 peaks, normal score from 3 and over
-        if len(iso_actual) == 1:
-            iso_quali = (iso_quali*0.8)
-        
-        mz_isos = [glycan_info['Adducts_mz'][glycan_id]]+mz_isos
-        iso_target = [1]+iso_target
-        iso_actual = [1]+iso_actual
+    if not_good:
+        buffer.append(None)
             
-    if len(iso_actual) == 0:
-        iso_quali = 0.0
+    if not not_good:
+        if len(iso_actual) > 0:
+            dotp = []
+            weights = []
+            number = range(1, len(mz_isos)+1)
+            starting_points = [0, 1]
+            for m_m, m in enumerate(number):
+                intensities = [iso_actual[m_m], iso_target[m_m]]
+                intensity_score = min(intensities)/max(intensities)
+                vector_actual = [m-starting_points[0], iso_actual[m_m]-starting_points[1]]
+                vector_target = [m-starting_points[0], iso_target[m_m]-starting_points[1]]
+                magnitude_target = sqrt(vector_target[0]**2 + vector_target[1]**2)
+                normalized_actual = vector_actual/numpy.linalg.norm(vector_actual)
+                normalized_target = vector_target/numpy.linalg.norm(vector_target)
+                starting_points = [m, iso_target[m_m]]
+                dotproduct = numpy.dot(normalized_actual, normalized_target)
+                dotp.append(numpy.average([(dotproduct+1)/2, intensity_score], weights = [3, 2]))
+                weights.append(1/m)
+            iso_quali = numpy.average(dotp, weights = weights)
+            
+            #reduces score if fewer isotopic peaks are found: punishing for only 2 peaks, normal score from 3 and over
+            if len(iso_actual) == 1:
+                iso_quali = (iso_quali*0.8)
+            
+            mz_isos = [glycan_info['Adducts_mz'][glycan_id]]+mz_isos
+            iso_target = [1]+iso_target
+            iso_actual = [1]+iso_actual
+                
+        if len(iso_actual) == 0:
+            iso_quali = 0.0
+            
+        if len(mono_ppm) > 0:
+            ppm_error = mean(mono_ppm)
+        else:
+            ppm_error = inf
         
-    if len(mono_ppm) > 0:
-        ppm_error = mean(mono_ppm)
-    else:
-        ppm_error = inf
+        buffer.append(([glycan_id, file_id, ms1_id, float("%.2f" % round(ret_time, 2))], [ppm_error, iso_quali, intensity, [mz_isos, iso_target, iso_actual, iso_quali]]))
         
-    ppm_info[glycan_id][file_id][ms1_id] = ppm_error
-    iso_fitting_quality[glycan_id][file_id][ms1_id] = iso_quali
-    data[glycan_id][file_id][1][ms1_id] = intensity
-    isotopic_fits[glycan_id][file_id][ret_time] = [mz_isos, iso_target, iso_actual, iso_quali]
+    #dinamical clean-up of buffer
+    min_in_a_row = 3
+    buffer_size = 10
+    if len(buffer) >= buffer_size or ms1_id == last_ms1_id: 
+        highest_in_a_row = 0
+        in_a_row = 0
+        for i_i, i in enumerate(buffer):
+            if i != None:
+                in_a_row += 1
+                if in_a_row > highest_in_a_row:
+                    highest_in_a_row = in_a_row
+            else:
+                if in_a_row > 0 and in_a_row < min_in_a_row:
+                    for k_k, k in enumerate(buffer):
+                        if k_k >= i_i:
+                            break
+                        if k_k >= i_i-in_a_row:
+                            buffer[k_k] = None
+                in_a_row = 0
+        if highest_in_a_row >= min_in_a_row: #edit this number to demand a minimum number of points in a row, up to a maximum of the buffer size (10)
+            for i in buffer:
+                if i != None:
+                    ppm_info[i[0][0]][i[0][1]][i[0][2]] = i[1][0]
+                    iso_fitting_quality[i[0][0]][i[0][1]][i[0][2]] = i[1][1]
+                    data[i[0][0]][i[0][1]][1][i[0][2]] = i[1][2]
+                    isotopic_fits[i[0][0]][i[0][1]][i[0][3]] = i[1][3]
+        buffer.pop(0)
     
 def eic_smoothing(y, lmbd = 100, d = 2):
     '''Implementation of the Whittaker smoothing algorithm,
@@ -790,8 +824,8 @@ def peaks_from_eic(rt_int,
     going_up = False
     going_down = False
     datapoints_per_time = int(0.2/(rt_int[0][rt_int[1].index(max(rt_int[1]))]-rt_int[0][rt_int[1].index(max(rt_int[1]))-1]))
-    slope_threshold = 100*datapoints_per_time
-    threshold = int(datapoints_per_time/3)
+    slope_threshold = 50*datapoints_per_time
+    threshold = int(datapoints_per_time/3) #this is tolerance for stopping a peak
     down_count = 0
     end_count = 0
     for i_i, i in enumerate(rt_int_smoothed[1]):
@@ -814,6 +848,14 @@ def peaks_from_eic(rt_int,
                 if i < temp_min:
                     temp_min = i
                     temp_min_id_iu = i_i
+                    lowest = rt_int_smoothed[1][temp_start]
+                    new_start = None
+                    for k in range(temp_start, temp_start-(temp_min_id_iu-temp_start)//3, -1):
+                        if rt_int_smoothed[1][k] < lowest:
+                            lowest = rt_int_smoothed[1][k]
+                            new_start = k
+                    if new_start != None:
+                        temp_start = new_start
                 if end_count <= threshold:
                     end_count += 1
                 elif end_count > threshold or rt_int_smoothed[1][i_i] == 0.0:
@@ -822,10 +864,10 @@ def peaks_from_eic(rt_int,
                     found_start = False
                     temp_start_2 = 0
                     for k_k, k in enumerate(rt_int_smoothed[1][temp_start:temp_min_id_iu+1]): #trims leading and/or tailing part of the picked pick
-                        if not found_start and k > temp_max*0.01:
+                        if not found_start and k > temp_max*0.02:
                             temp_start_2 = temp_start+k_k
                             found_start = True
-                        if k_k > temp_max_id_iu-temp_start and k < temp_max*0.01:
+                        if k_k > temp_max_id_iu-temp_start and k < temp_max*0.02:
                             temp_min_id_iu = temp_start+k_k
                             break
                     temp_start = temp_start_2
@@ -836,7 +878,7 @@ def peaks_from_eic(rt_int,
                     else:
                         if temp_min_id_iu-temp_start >= datapoints_per_time or glycan == "Internal Standard":
                             good = True
-                    if temp_max_id_iu >= temp_min_id_iu: #this avoids slopes as peaks
+                    if temp_max_id_iu >= temp_min_id_iu or rt_int[0][temp_min_id_iu] < rt_interval[0]+0.1: #this avoids slopes as peaks
                         good = False
                     if good:
                         temp_peak_width = (rt_int[0][temp_min_id_iu]-rt_int[0][temp_start])
