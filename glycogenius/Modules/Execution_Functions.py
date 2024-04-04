@@ -2129,7 +2129,7 @@ def arrange_raw_data(analyzed_data,
         smoothed_eic_dataframes.append({})
         temp_eic_rt = []
         for j in analyzed_data[1][i_i]:
-            temp_eic_rt.append(float("%.4f" % round(j, 4)))
+            temp_eic_rt.append(j)
         raw_eic_dataframes[i_i]['RTs_'+str(i_i)] = temp_eic_rt
         eic_dataframes[i_i]['RTs_'+str(i_i)] = temp_eic_rt
         smoothed_eic_dataframes[i_i]['RTs_'+str(i_i)] = temp_eic_rt
@@ -2176,7 +2176,7 @@ def arrange_raw_data(analyzed_data,
                 temp_curve_score = []
                 temp_curve_data_total = []
                 for l_l, l in enumerate(analyzed_data[0][i]['Adducts_mz_data'][j][k][1]):
-                    temp_rts.append(float("%.2f" % round(l['rt'], 2)))
+                    temp_rts.append(float("%.4f" % round(l['rt'], 4)))
                     temp_aucs.append(float("%.2f" % round(l['AUC'], 2)))
                     temp_ppm.append(float("%.2f" % round(l['Average_PPM'][0], 2)))
                     temp_s_n.append(float("%.1f" % round(l['Signal-to-Noise'], 1)))
@@ -2223,7 +2223,7 @@ def arrange_raw_data(analyzed_data,
                                 fragments_dataframes[k_k]["Fragment"].append(m[2])
                                 fragments_dataframes[k_k]["Fragment_mz"].append(float("%.4f" % round(m[3], 4)))
                                 fragments_dataframes[k_k]["Fragment_Intensity"].append(float("%.2f" % round(m[4], 2)))
-                                fragments_dataframes[k_k]["RT"].append(float("%.2f" % round(m[5],2)))
+                                fragments_dataframes[k_k]["RT"].append(float("%.4f" % round(m[5],4)))
                                 fragments_dataframes[k_k]["Precursor_mz"].append(float("%.4f" % round(m[6], 4)))
                                 fragments_dataframes[k_k]["% TIC explained"].append(float(m[7]))
                             df1[k_k]["Detected_Fragments"].append('Yes')
@@ -2232,7 +2232,7 @@ def arrange_raw_data(analyzed_data,
                     for m_m, m in enumerate(temp_rts):
                         temp_array = []
                         for n in temp_curve_data_total[m_m][0]:
-                            temp_array.append(float("%.4f" % round(n, 4)))
+                            temp_array.append(float("%.4f" % round(n,4)))
                         curve_fitting_dataframes[k_k][str(i)+"+"+str(j)+"_"+str(m)+"_RTs"] = temp_array
                         temp_array = []
                         for n in temp_curve_data_total[m_m][1]:
@@ -2552,7 +2552,7 @@ def analyze_files(library,
             results.append(result)
             if from_GUI:
                 temp_results.append(result)
-                if len(temp_results) == cpu_count:
+                if len(temp_results) == cpu_count+1:
                     for k_k, k in enumerate(temp_results):
                         k.result()
                         del temp_results[k_k]
@@ -2966,7 +2966,7 @@ def analyze_ms2(ms2_index,
             results.append(result)
             if from_GUI:
                 temp_results.append(result)
-                if len(temp_results) == cpu_count:
+                if len(temp_results) == cpu_count+1:
                     for k_k, k in enumerate(temp_results):
                         k.result()
                         del temp_results[k_k]
@@ -3070,7 +3070,7 @@ def analyze_glycan_ms2(ms2_index,
                         max_int = max(k[l]['intensity array'])
                         for m_m, m in enumerate(k[l]['m/z array']):
                         
-                            if k[l]['intensity array'][m_m] < max_int*0.1: #this avoids picking on super small intensity peaks... since MS2 data noise is sometimes almost boolean, it's easier to just filter by intensity related to base peak
+                            if k[l]['intensity array'][m_m] < max_int*0.05: #this avoids picking on super small intensity peaks... since MS2 data noise is sometimes almost boolean, it's easier to just filter by intensity related to base peak
                                 continue
                                 
                             if abs(m+former_peak_mz+General_Functions.h_mass) < General_Functions.tolerance_calc(tolerance[0], tolerance[1], m) or abs(m-former_peak_mz+(General_Functions.h_mass/2)) < General_Functions.tolerance_calc(tolerance[0], tolerance[1], m): #this stack makes it so that fragments are not picked as peaks of the envelope of former peaks. checks for singly or doubly charged fragments only
