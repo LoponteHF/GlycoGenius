@@ -55,14 +55,8 @@ class make_mzxml(object):
         
     Returns
     -------
-    standard mzML output
-        If class is iterated, returns regular mzml.MzML output.
-        UNFORTUNATELY COULDN'T CONVERT THIS FUNCTIONALITY
-        CIRCUNVENTED USING THE INDEX FUNCTION TO ACQUIRE SPECIFIC SPECTRA INFORMATION
-        AND DIRECTLY QUERYING EACH SPECTRUM
-    
     dict
-        If class is queried for a single index, returns the dictionary of the
+        If class is queried for a single index or iterated, returns the dictionary of the
         converted output (mzML -> mzXML)
         
     data : list
@@ -70,19 +64,19 @@ class make_mzxml(object):
         the converted output (mzML -> mzXML)
     '''
     def __init__(self,it):
-        self.it = mzml.MzML(it)
+        self.data = mzml.MzML(it)
     def __iter__(self):
-        return self.it
+        return self.make_mzxml_iterator(self.data)
     def __getitem__(self,index):
         if type(index) == int:
-            pre_data = self.it[index]
+            pre_data = self.data[index]
             if pre_data['ms level'] == 2:
-                if float(self.it[-1]['scanList']['scan'][0]['scan start time']) > 210: #210 scan time should allow for the correct evaluation of scan time being in seconds or minutes for every run that lasts between 3.5 minutes and 3.5 hours
+                if float(self.data[-1]['scanList']['scan'][0]['scan start time']) > 300: #300 scan time should allow for the correct evaluation of scan time being in seconds or minutes for every run that lasts between 5 minutes and 5 hours
                     return {'num': pre_data['id'].split('=')[-1], 'retentionTime': float(pre_data['scanList']['scan'][0]['scan start time'])/60, 'msLevel': pre_data['ms level'], 'm/z array': pre_data['m/z array'], 'intensity array': pre_data['intensity array'], 'precursorMz': [{'precursorMz': pre_data['precursorList']['precursor'][0]['selectedIonList']['selectedIon'][0]['selected ion m/z']}]}
                 else:
                     return {'num': pre_data['id'].split('=')[-1], 'retentionTime': float(pre_data['scanList']['scan'][0]['scan start time']), 'msLevel': pre_data['ms level'], 'm/z array': pre_data['m/z array'], 'intensity array': pre_data['intensity array'], 'precursorMz': [{'precursorMz': pre_data['precursorList']['precursor'][0]['selectedIonList']['selectedIon'][0]['selected ion m/z']}]}
             else:
-                if float(self.it[-1]['scanList']['scan'][0]['scan start time']) > 210:
+                if float(self.data[-1]['scanList']['scan'][0]['scan start time']) > 300:
                     return {'num': pre_data['id'].split('=')[-1], 'retentionTime': float(pre_data['scanList']['scan'][0]['scan start time'])/60, 'msLevel': pre_data['ms level'], 'm/z array': pre_data['m/z array'], 'intensity array': pre_data['intensity array']}
                 else:
                     return {'num': pre_data['id'].split('=')[-1], 'retentionTime': float(pre_data['scanList']['scan'][0]['scan start time']), 'msLevel': pre_data['ms level'], 'm/z array': pre_data['m/z array'], 'intensity array': pre_data['intensity array']}
@@ -96,20 +90,45 @@ class make_mzxml(object):
             if last_index != 'None':
                 last_index = int(last_index)
             else:
-                last_index = len(self.it)
+                last_index = len(self.data)
             data = []
             for index in range(first_index, last_index):
-                if self.it[index]['ms level'] == 2:
-                    if float(self.it[-1]['scanList']['scan'][0]['scan start time']) > 210:
-                        data.append({'num': self.it[index]['id'].split('=')[-1], 'retentionTime': float(self.it[index]['scanList']['scan'][0]['scan start time'])/60, 'msLevel': self.it[index]['ms level'], 'm/z array': self.it[index]['m/z array'], 'intensity array': self.it[index]['intensity array'], 'precursorMz': [{'precursorMz': self.it[index]['precursorList']['precursor'][0]['isolationWindow']['isolation window target m/z']}]})
+                if self.data[index]['ms level'] == 2:
+                    if float(self.data[-1]['scanList']['scan'][0]['scan start time']) > 300:
+                        data.append({'num': self.data[index]['id'].split('=')[-1], 'retentionTime': float(self.data[index]['scanList']['scan'][0]['scan start time'])/60, 'msLevel': self.data[index]['ms level'], 'm/z array': self.data[index]['m/z array'], 'intensity array': self.data[index]['intensity array'], 'precursorMz': [{'precursorMz': self.data[index]['precursorList']['precursor'][0]['isolationWindow']['isolation window target m/z']}]})
                     else:
-                        data.append({'num': self.it[index]['id'].split('=')[-1], 'retentionTime': float(self.it[index]['scanList']['scan'][0]['scan start time']), 'msLevel': self.it[index]['ms level'], 'm/z array': self.it[index]['m/z array'], 'intensity array': self.it[index]['intensity array'], 'precursorMz': [{'precursorMz': self.it[index]['precursorList']['precursor'][0]['isolationWindow']['isolation window target m/z']}]})
+                        data.append({'num': self.data[index]['id'].split('=')[-1], 'retentionTime': float(self.data[index]['scanList']['scan'][0]['scan start time']), 'msLevel': self.data[index]['ms level'], 'm/z array': self.data[index]['m/z array'], 'intensity array': self.data[index]['intensity array'], 'precursorMz': [{'precursorMz': self.data[index]['precursorList']['precursor'][0]['isolationWindow']['isolation window target m/z']}]})
                 else:
-                    if float(self.it[-1]['scanList']['scan'][0]['scan start time']) > 210:
-                        data.append({'num': self.it[index]['id'].split('=')[-1], 'retentionTime': float(self.it[index]['scanList']['scan'][0]['scan start time'])/60, 'msLevel': self.it[index]['ms level'], 'm/z array': self.it[index]['m/z array'], 'intensity array': self.it[index]['intensity array']})
+                    if float(self.data[-1]['scanList']['scan'][0]['scan start time']) > 300:
+                        data.append({'num': self.data[index]['id'].split('=')[-1], 'retentionTime': float(self.data[index]['scanList']['scan'][0]['scan start time'])/60, 'msLevel': self.data[index]['ms level'], 'm/z array': self.data[index]['m/z array'], 'intensity array': self.data[index]['intensity array']})
                     else:
-                        data.append({'num': self.it[index]['id'].split('=')[-1], 'retentionTime': float(self.it[index]['scanList']['scan'][0]['scan start time']), 'msLevel': self.it[index]['ms level'], 'm/z array': self.it[index]['m/z array'], 'intensity array': self.it[index]['intensity array']})
+                        data.append({'num': self.data[index]['id'].split('=')[-1], 'retentionTime': float(self.data[index]['scanList']['scan'][0]['scan start time']), 'msLevel': self.data[index]['ms level'], 'm/z array': self.data[index]['m/z array'], 'intensity array': self.data[index]['intensity array']})
             return data
+            
+    class make_mzxml_iterator:
+        def __init__(self, data):
+            self.data = data
+            self.index = 0
+
+        def __iter__(self):
+            return self
+
+        def __next__(self):
+            if self.index < len(self.data):
+                pre_data = self.data[self.index]
+                self.index += 1
+                if pre_data['ms level'] == 2:
+                    if float(self.data[-1]['scanList']['scan'][0]['scan start time']) > 300: #300 scan time should allow for the correct evaluation of scan time being in seconds or minutes for every run that lasts between 5 minutes and 5 hours
+                        return {'num': pre_data['id'].split('=')[-1], 'retentionTime': float(pre_data['scanList']['scan'][0]['scan start time'])/60, 'msLevel': pre_data['ms level'], 'm/z array': pre_data['m/z array'], 'intensity array': pre_data['intensity array'], 'precursorMz': [{'precursorMz': pre_data['precursorList']['precursor'][0]['selectedIonList']['selectedIon'][0]['selected ion m/z']}]}
+                    else:
+                        return {'num': pre_data['id'].split('=')[-1], 'retentionTime': float(pre_data['scanList']['scan'][0]['scan start time']), 'msLevel': pre_data['ms level'], 'm/z array': pre_data['m/z array'], 'intensity array': pre_data['intensity array'], 'precursorMz': [{'precursorMz': pre_data['precursorList']['precursor'][0]['selectedIonList']['selectedIon'][0]['selected ion m/z']}]}
+                else:
+                    if float(self.data[-1]['scanList']['scan'][0]['scan start time']) > 300:
+                        return {'num': pre_data['id'].split('=')[-1], 'retentionTime': float(pre_data['scanList']['scan'][0]['scan start time'])/60, 'msLevel': pre_data['ms level'], 'm/z array': pre_data['m/z array'], 'intensity array': pre_data['intensity array']}
+                    else:
+                        return {'num': pre_data['id'].split('=')[-1], 'retentionTime': float(pre_data['scanList']['scan'][0]['scan start time']), 'msLevel': pre_data['ms level'], 'm/z array': pre_data['m/z array'], 'intensity array': pre_data['intensity array']}
+            else:
+                raise StopIteration
        
 def eic_from_glycan(files,
                     glycan,
@@ -500,8 +519,8 @@ def analyze_mz_array(sliced_mz,
                     break
             if not_good:
                 break
-        if sliced_int[l_l] < local_noise: #Everything from here is dependent on noise level (currently: monoisotopic peak detection only)
-            continue
+        #if sliced_int[l_l] < local_noise: #Everything from here is dependent on noise level (currently: monoisotopic peak detection only)
+        #    continue
         if l >= target_mz - current_tolerance and abs(l-target_mz) <= current_tolerance:
             mono_ppm.append(General_Functions.calculate_ppm_diff(l, target_mz))
             intensity += sliced_int[l_l]
@@ -516,7 +535,7 @@ def analyze_mz_array(sliced_mz,
         if abs(sliced_mz[l_l] - target_mz) <= General_Functions.tolerance_calc(tolerance[0], tolerance[1], target_mz):
             raw_data[glycan_id][file_id][1][ms1_id] = sliced_int[l_l]
             break
-            
+    
     if not_good:
         buffer.append(None)
             
@@ -558,8 +577,8 @@ def analyze_mz_array(sliced_mz,
         
         buffer.append(([glycan_id, file_id, ms1_id, float("%.4f" % round(ret_time, 4))], [ppm_error, iso_quali, intensity, [mz_isos, iso_target, iso_actual, iso_quali]]))
         
-    #dinamical clean-up of buffer
-    min_in_a_row = 3
+    #dynamical clean-up of buffer
+    min_in_a_row = 4
     buffer_size = 10
     if len(buffer) >= buffer_size or ms1_id == last_ms1_id: 
         highest_in_a_row = 0
@@ -661,43 +680,44 @@ def peak_curve_fit(rt_int,
     y = rt_int[1][peak['peak_interval_id'][0]:peak['peak_interval_id'][1]+1]
     interval = x[len(x)//2]-x[(len(x)//2)-1]
     fits_list = []
-    for j in range(int(0.2/interval)):
-        before = []
-        after = []
-        y_adds = []
-        for k in range(j):
-            before.append(x[0]-k*interval)
-            after.append(x[-1]+k*interval)
-            y_adds.append(0.0)
-        before = sorted(before)
-        temp_x = before+x+after
-        temp_y = y_adds+y+y_adds
-        max_amp_id = temp_y.index(max(temp_y))
-        counts_max = 0
-        for i in temp_y:
-            if i == temp_y[max_amp_id]:
-                counts_max += 1
-        max_amp_id += int(counts_max/2)
-        y_gaussian = []
-        for i in temp_x:
-            y_gaussian.append(General_Functions.normpdf(i, temp_x[max_amp_id], (temp_x[-1]-temp_x[0])/6))
-        scaler = (temp_y[max_amp_id]/y_gaussian[max_amp_id])
-        y_gaussian_scaled = []
-        for j in y_gaussian:
-            y_gaussian_scaled.append(j*scaler)
-        if len(temp_y[len(y_adds):len(temp_y)-len(y_adds)]) <= 2:
-            temp_relation = []
-            for l in range(len(temp_y[len(y_adds):len(temp_y)-len(y_adds)])):
-                if temp_y[len(y_adds):len(temp_y)-len(y_adds)][l] >= y_gaussian_scaled[len(y_adds):len(temp_y)-len(y_adds)][l]:
-                    temp_relation.append(temp_y[len(y_adds):len(temp_y)-len(y_adds)][l]/y_gaussian_scaled[len(y_adds):len(temp_y)-len(y_adds)][l])
-                else:
-                    temp_relation.append(y_gaussian_scaled[len(y_adds):len(temp_y)-len(y_adds)][l]/temp_y[len(y_adds):len(temp_y)-len(y_adds)][l])
-            R_sq = mean(temp_relation)
-        else:
-            corr_matrix = numpy.corrcoef(temp_y[len(y_adds):len(temp_y)-len(y_adds)], y_gaussian_scaled[len(y_adds):len(temp_y)-len(y_adds)])
-            corr = corr_matrix[0,1]
-            R_sq = corr**2
-        fits_list.append((R_sq, temp_x[len(y_adds):len(temp_y)-len(y_adds)], temp_y[len(y_adds):len(temp_y)-len(y_adds)], y_gaussian_scaled[len(y_adds):len(temp_y)-len(y_adds)]))
+    for m in range(1, 11):
+        for j in range(len(x)):
+            before = []
+            after = []
+            y_adds = []
+            for k in range(j):
+                before.append(x[0]-k*interval)
+                after.append(x[-1]+k*interval)
+                y_adds.append(0.0)
+            before = sorted(before)
+            temp_x = before+x+after
+            temp_y = y_adds+y+y_adds
+            max_amp_id = temp_y.index(max(temp_y))
+            counts_max = 0
+            for i in temp_y:
+                if i == temp_y[max_amp_id]:
+                    counts_max += 1
+            max_amp_id += int(counts_max/2)
+            y_gaussian = []
+            for i in temp_x:
+                y_gaussian.append(General_Functions.normpdf(i, temp_x[max_amp_id], (temp_x[-1]-temp_x[0])/m))
+            scaler = (temp_y[max_amp_id]/y_gaussian[max_amp_id])
+            y_gaussian_scaled = []
+            for j in y_gaussian:
+                y_gaussian_scaled.append(j*scaler)
+            if len(temp_y[len(y_adds):len(temp_y)-len(y_adds)]) <= 2:
+                temp_relation = []
+                for l in range(len(temp_y[len(y_adds):len(temp_y)-len(y_adds)])):
+                    if temp_y[len(y_adds):len(temp_y)-len(y_adds)][l] >= y_gaussian_scaled[len(y_adds):len(temp_y)-len(y_adds)][l]:
+                        temp_relation.append(temp_y[len(y_adds):len(temp_y)-len(y_adds)][l]/y_gaussian_scaled[len(y_adds):len(temp_y)-len(y_adds)][l])
+                    else:
+                        temp_relation.append(y_gaussian_scaled[len(y_adds):len(temp_y)-len(y_adds)][l]/temp_y[len(y_adds):len(temp_y)-len(y_adds)][l])
+                R_sq = mean(temp_relation)
+            else:
+                corr_matrix = numpy.corrcoef(temp_y[len(y_adds):len(temp_y)-len(y_adds)], y_gaussian_scaled[len(y_adds):len(temp_y)-len(y_adds)])
+                corr = corr_matrix[0,1]
+                R_sq = corr**2
+            fits_list.append((R_sq, temp_x[len(y_adds):len(temp_y)-len(y_adds)], temp_y[len(y_adds):len(temp_y)-len(y_adds)], y_gaussian_scaled[len(y_adds):len(temp_y)-len(y_adds)]))
     fits_list = sorted(fits_list, reverse=True)
     return fits_list[0]
     
@@ -816,86 +836,100 @@ def peaks_from_eic(rt_int,
         A list of dictionaries with each one containing numerous peaks information.
     '''
     peaks = []
-    temp_start = 0
-    temp_max = 0
-    temp_max_id_iu = 0
-    temp_min = inf
-    temp_min_id_iu = 0
-    going_up = False
-    going_down = False
-    datapoints_per_time = int(0.2/(rt_int[0][rt_int[1].index(max(rt_int[1]))]-rt_int[0][rt_int[1].index(max(rt_int[1]))-1]))
-    slope_threshold = 50*datapoints_per_time
-    threshold = int(datapoints_per_time/3) #this is tolerance for stopping a peak
-    down_count = 0
-    end_count = 0
-    for i_i, i in enumerate(rt_int_smoothed[1]):
-        if (rt_int[0][i_i] >= rt_interval[1] or rt_int[0][i_i] == rt_int[0][-2]):
-            break    
-        if rt_int[0][i_i] >= rt_interval[0]:
-            slope = (rt_int_smoothed[1][i_i+1]-i)/(rt_int[0][i_i+1]-rt_int[0][i_i])
-            # print(rt_int[0][i_i], i, rt_int_smoothed[1][i_i+1], slope, going_up, going_down, datapoints_per_time, slope_threshold)
-            if rt_int[1][i_i] > temp_max and (going_up or going_down):
-                temp_max = rt_int[1][i_i]
-                temp_max_id_iu = i_i
-            if (going_up and (slope < 0 or rt_int_smoothed[1][i_i] == 0.0)):
-                if down_count <= threshold:
-                    down_count += 1
-                elif down_count > threshold or rt_int_smoothed[1][i_i] == 0:
-                    down_count = 0
-                    going_up = False
-                    going_down = True
-            if (going_down and (slope >= 0 or rt_int_smoothed[1][i_i] == 0.0)):
-                if i < temp_min:
-                    temp_min = i
-                    temp_min_id_iu = i_i
-                    lowest = rt_int_smoothed[1][temp_start]
-                    new_start = None
-                    for k in range(temp_start, temp_start-(temp_min_id_iu-temp_start)//3, -1):
-                        if rt_int_smoothed[1][k] < lowest:
-                            lowest = rt_int_smoothed[1][k]
-                            new_start = k
-                    if new_start != None:
-                        temp_start = new_start
-                if end_count <= threshold:
-                    end_count += 1
-                elif end_count > threshold or rt_int_smoothed[1][i_i] == 0.0:
-                    end_count = 0
-                    going_down = False
-                    found_start = False
-                    temp_start_2 = 0
-                    for k_k, k in enumerate(rt_int_smoothed[1][temp_start:temp_min_id_iu+1]): #trims leading and/or tailing part of the picked pick
-                        if not found_start and k > temp_max*0.02:
-                            temp_start_2 = temp_start+k_k
-                            found_start = True
-                        if k_k > temp_max_id_iu-temp_start and k < temp_max*0.02:
-                            temp_min_id_iu = temp_start+k_k
-                            break
-                    temp_start = temp_start_2
-                    good = False
-                    if min_ppp[0]:
-                        if temp_min_id_iu-temp_start >= min_ppp[1] or glycan == "Internal Standard":
-                            good = True
-                    else:
-                        if temp_min_id_iu-temp_start >= datapoints_per_time or glycan == "Internal Standard":
-                            good = True
-                    if temp_max_id_iu >= temp_min_id_iu or rt_int[0][temp_min_id_iu] < rt_interval[0]+0.1: #this avoids slopes as peaks
-                        good = False
-                    if good:
-                        temp_peak_width = (rt_int[0][temp_min_id_iu]-rt_int[0][temp_start])
-                        peaks.append({'id': temp_max_id_iu, 'rt': rt_int[0][temp_max_id_iu], 'int': temp_max, 'peak_width': temp_peak_width, 'peak_interval': (rt_int[0][temp_start], rt_int[0][temp_min_id_iu]), 'peak_interval_id': (temp_start, temp_min_id_iu)})
-                        # print(peaks[-1])
-                        temp_max = 0
-                        temp_max_id_iu = 0
-                        temp_min = inf
-                        temp_min_id_iu = 0
-                    if not good:
-                        temp_max = 0
-                        temp_max_id_iu = 0
-                        temp_min = inf
-                        temp_min_id_iu = 0
-            if (i_i != 0 and slope >= slope_threshold and not going_up and not going_down):
-                temp_start = i_i-1
-                going_up = True
+    peaks_ranges = []
+    datapoints_per_time = int((0.2/(rt_int[0][rt_int[1].index(max(rt_int[1]))]-rt_int[0][rt_int[1].index(max(rt_int[1]))-1]))*(rt_int[0][-1]/60))
+    maximums_index = []
+    array_max = max(rt_int_smoothed[1])
+    min_relative_int_peak = 0.02
+    cutoff = array_max
+    while cutoff > min_relative_int_peak*max(rt_int_smoothed[1]):
+        for i_i, i in enumerate(rt_int_smoothed[1]):
+            if (rt_int[0][i_i] >= rt_interval[1] or rt_int[0][i_i] == rt_int[0][-2]):
+                break    
+            if rt_int[0][i_i] >= rt_interval[0]:
+                if i >= cutoff:
+                    if i_i not in maximums_index:
+                        if rt_int_smoothed[1][i_i-1] <= i and rt_int_smoothed[1][i_i+1] <= i:
+                            found = False
+                            for k in maximums_index:
+                                if abs(k-i_i) < datapoints_per_time:
+                                    found = True
+                                    break
+                            if not found:
+                                maximums_index.append(i_i)
+        cutoff = cutoff-(array_max*min_relative_int_peak)
+    
+    #print(datapoints_per_time, sorted(maximums_index))
+    
+    former_peak_limit = 0
+    for i_i, i in enumerate(sorted(maximums_index)):
+        #print('starting id: ', i, 'former peak limit: ', former_peak_limit)
+        peak_limits = []
+        temp_min = inf
+        temp_min_rt_index = 0
+        for k_k in range(i, 0, -1):
+            #print('before peak: ', k_k, rt_int[0][k_k], rt_int_smoothed[1][k_k], temp_min)
+            if rt_int_smoothed[1][k_k] < temp_min:
+                temp_min = rt_int_smoothed[1][k_k]
+                temp_min_rt_index = k_k
+            if rt_int_smoothed[1][k_k] < rt_int_smoothed[1][i]*min_relative_int_peak:
+                #print('breaking due to low intensity')
+                break
+            if rt_int[0][k_k] < rt_interval[0] or k_k == former_peak_limit:
+                #print('breaking due to stumbling upon last peak')
+                break
+        if temp_min != inf:
+            peak_limits.append(temp_min_rt_index)
+                    
+        temp_min = inf
+        temp_min_rt_index = 0
+        next_peak_limit = sorted(maximums_index)[i_i+1] if i_i != len(maximums_index)-1 else len(rt_int[0])-1
+        
+        for k_k in range(i, len(rt_int[0])):
+            #print('after peak: ', k_k, rt_int[0][k_k], rt_int_smoothed[1][k_k], temp_min)
+            if rt_int_smoothed[1][k_k] < temp_min:
+                temp_min = rt_int_smoothed[1][k_k]
+                temp_min_rt_index = k_k
+            if rt_int_smoothed[1][k_k] < rt_int_smoothed[1][i]*min_relative_int_peak:
+                #print('breaking due to low intensity')
+                break
+            if rt_int[0][k_k] > rt_interval[1] or k_k == next_peak_limit:
+                #print('breaking due to stumbling upon next peak')
+                break
+        if temp_min != inf:
+            peak_limits.append(temp_min_rt_index)
+            former_peak_limit = temp_min_rt_index
+        #print(peak_limits)
+        if len(peak_limits) == 2:
+            peaks_ranges = peaks_ranges + peak_limits
+            
+    #print(peaks_ranges)
+    
+    removal = []        
+    for i_i, i in enumerate(peaks_ranges):
+        if i_i > 1:
+            #print(peaks_ranges[i_i-1], peaks_ranges[i_i])
+            if peaks_ranges[i_i] == peaks_ranges[i_i-1]:
+                #print("True!")
+                if (rt_int_smoothed[1][i] > max(rt_int_smoothed[1][peaks_ranges[i_i-2]:peaks_ranges[i_i+1]])*0.7 or 
+                    abs(max(rt_int_smoothed[1][peaks_ranges[i_i-2]:peaks_ranges[i_i-1]])-rt_int_smoothed[1][peaks_ranges[i_i]]) < rt_int_smoothed[1][peaks_ranges[i_i]]*0.1 or 
+                    abs(max(rt_int_smoothed[1][peaks_ranges[i_i]:peaks_ranges[i_i+1]])-rt_int_smoothed[1][peaks_ranges[i_i]]) < rt_int_smoothed[1][peaks_ranges[i_i]]*0.1):
+                    
+                    removal.append(i_i-1)
+                    removal.append(i_i)
+    for i in sorted(removal, reverse=True):
+        del peaks_ranges[i]
+        
+    #print(peaks_ranges)
+    
+    for i_i, i in enumerate(peaks_ranges):
+        if i_i % 2 == 0:
+            peak_limits = [i, peaks_ranges[i_i+1]]
+            temp_peak_width = (rt_int[0][peak_limits[1]]-rt_int[0][peak_limits[0]])
+            peaks.append({'id': i, 'rt': rt_int[0][rt_int_smoothed[1].index(max(rt_int_smoothed[1][peak_limits[0]:peak_limits[1]]))], 'int': max(rt_int_smoothed[1][peak_limits[0]:peak_limits[1]]), 'peak_width': temp_peak_width, 'peak_interval': (rt_int[0][peak_limits[0]], rt_int[0][peak_limits[1]]), 'peak_interval_id': (peak_limits[0], peak_limits[1])})
+    
+    #print(peaks)
+        
     if close_peaks[0] or glycan == "Internal Standard":
         peaks = sorted(peaks, key=lambda x: x['int'], reverse = True)
         for i_i, i in enumerate(peaks):

@@ -281,14 +281,14 @@ def config_handler(from_GUI = False, param_file_path = ''):
         if samples_path[-1] != "/":
             samples_path = samples_path+"/"
         samples_list = Execution_Functions.samples_path_to_list(samples_path)
-        if len(samples_list) == 0:                                             
+        if len(samples_list) == 0 and not from_GUI:                                             
             if not os.isatty(0):
                 Execution_Functions.print_sep()
                 print("No sample files to analyze.")
                 os._exit(1)
             else:
                 Execution_Functions.print_sep()
-                input("No sample files to analyzed. Press Enter\nto exit.")
+                input("No sample files to analyze. Press Enter\nto exit.")
                 os._exit(1)
         
         samples_names = Execution_Functions.sample_names(samples_list)

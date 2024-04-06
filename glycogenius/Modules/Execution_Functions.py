@@ -151,7 +151,10 @@ def samples_path_to_list(path):
             path = path[:i_i]+"/"+path[i_i+1:]
     if path[-1] != "/":
         path+= "/"
-    dir_list = os.listdir(path)
+    try:
+        dir_list = os.listdir(path)
+    except:
+        return []
     samples_list = []
     for i_i, i in enumerate(dir_list):
         if i.split('.')[-1] in file_extensions:
@@ -482,7 +485,21 @@ def imp_exp_gen_library(custom_glycans_list,
         custom_glycans_comp = []
         print('Building custom glycans library...', end = "", flush = True)
         for i in custom_glycans_list[1]:
-            custom_glycans_comp.append(General_Functions.sum_monos(General_Functions.form_to_comp(i)))
+            glycan_comp = General_Functions.form_to_comp(i)
+            for i in glycan_comp:
+                if i not in General_Functions.monosaccharides:
+                    print(f"\n\nUnrecognized monosaccharide in glycan list: {i}\nCheck your custom glycans list.\n")
+                    if os.isatty(0):
+                        input("\nPress Enter to exit.")
+                        os._exit(1)
+                    else:
+                        print("Close the window or press CTRL+C to exit.")
+                        try:
+                            while True:
+                                time.sleep(3600)
+                        except KeyboardInterrupt:
+                            os._exit(1)
+            custom_glycans_comp.append(General_Functions.sum_monos(glycan_comp))
         full_library = Library_Tools.full_glycans_library(custom_glycans_comp,
                                             max_adducts,
                                             adducts_exclusion,
@@ -662,6 +679,8 @@ def align_assignments(df, df_type, deltas = None, rt_tol = None):
         ids_per_sample = []
         deltas_per_sample = [] #this is a list that will contain every delta of aligned glycans per sample, in a dictionary of 'rt : delta'
         skips = 0
+        if biggest_df == inf:
+            biggest_df = 0
         for i_i, i in enumerate(dataframe[biggest_df]['Glycan']): #goes through each glycan in the reference df to align the other samples with
             if skips != 0:
                 skips -= 1
@@ -3070,10 +3089,10 @@ def analyze_glycan_ms2(ms2_index,
                         max_int = max(k[l]['intensity array'])
                         for m_m, m in enumerate(k[l]['m/z array']):
                         
-                            if k[l]['intensity array'][m_m] < max_int*0.05: #this avoids picking on super small intensity peaks... since MS2 data noise is sometimes almost boolean, it's easier to just filter by intensity related to base peak
+                            if k[l]['intensity array'][m_m] < max_int*0.02: #this avoids picking on super small intensity peaks... since MS2 data noise is sometimes almost boolean, it's easier to just filter by intensity related to base peak
                                 continue
                                 
-                            if abs(m+former_peak_mz+General_Functions.h_mass) < General_Functions.tolerance_calc(tolerance[0], tolerance[1], m) or abs(m-former_peak_mz+(General_Functions.h_mass/2)) < General_Functions.tolerance_calc(tolerance[0], tolerance[1], m): #this stack makes it so that fragments are not picked as peaks of the envelope of former peaks. checks for singly or doubly charged fragments only
+                            if abs(m-(former_peak_mz+General_Functions.h_mass)) < General_Functions.tolerance_calc(tolerance[0], tolerance[1], m) or abs(m-(former_peak_mz+(General_Functions.h_mass/2))) < General_Functions.tolerance_calc(tolerance[0], tolerance[1], m) or abs(m-(former_peak_mz+(General_Functions.h_mass/3))) < General_Functions.tolerance_calc(tolerance[0], tolerance[1], m): #this stack makes it so that fragments are not picked as peaks of the envelope of former peaks. checks for singly, doubly or triply charged fragments only
                                 former_peak_mz = m
                                 continue
                             former_peak_mz = m
