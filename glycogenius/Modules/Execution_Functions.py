@@ -2096,6 +2096,7 @@ def arrange_raw_data(analyzed_data,
                      samples_names,
                      analyze_ms2,
                      save_path,
+                     parameters,
                      from_GUI = False):
     '''Arrange the raw results data into pickled files to be processed by output_filtered_data.
 
@@ -2292,6 +2293,10 @@ def arrange_raw_data(analyzed_data,
     with open(temp_path+'raw_data_6', 'wb') as f:
         dill.dump(isotopic_fits_dataframes, f)
         del isotopic_fits_dataframes
+        f.close()
+    with open(temp_path+'raw_data_7', 'wb') as f:
+        parameters.append(begin_time)
+        dill.dump(parameters, f)
         f.close()
     General_Functions.make_gg(temp_path, save_path, begin_time+"_Analysis")
     if from_GUI:
