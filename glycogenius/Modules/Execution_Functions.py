@@ -676,11 +676,11 @@ def align_assignments(df, df_type, deltas = None, rt_tol = None):
             if len(i['Glycan']) > biggest_df_size:
                 biggest_df_size = len(i['Glycan'])
                 biggest_df = i_i
+        if biggest_df == inf:
+            biggest_df = 0
         ids_per_sample = []
         deltas_per_sample = [] #this is a list that will contain every delta of aligned glycans per sample, in a dictionary of 'rt : delta'
         skips = 0
-        if biggest_df == inf:
-            biggest_df = 0
         for i_i, i in enumerate(dataframe[biggest_df]['Glycan']): #goes through each glycan in the reference df to align the other samples with
             if skips != 0:
                 skips -= 1
@@ -726,25 +726,27 @@ def align_assignments(df, df_type, deltas = None, rt_tol = None):
                             if not found:
                                 deltas_per_sample[j_j][rts[l_l]] = [inf, k]
                         break
-                        
-        #pre-cleanup step to remove odd variations
-        for i_i, i in enumerate(deltas_per_sample):
-            if len(i) > 0:
-                x_list = []
-                y_list = []
-                for j_j, j in enumerate(i):
-                    if i[j][0] != inf:
-                        x_list.append(j)
-                        y_list.append(i[j][0])
-                if len(x_list) > 0:
-                    outliers = General_Functions.linear_regression(x_list, y_list, 1)[2]
-                    if len(outliers) > 0:
-                        for j_j, j in enumerate(outliers):
-                            i[x_list[j]][0] = inf
-                            
-        # for i in dict(sorted(deltas_per_sample[0].items())):
-            # print(i, deltas_per_sample[0][i][0])                          
+                          
+        # print(deltas_per_sample)                         
         # print()
+        
+        # #pre-cleanup step to remove odd variations
+        # for i_i, i in enumerate(deltas_per_sample):
+            # if len(i) > 0:
+                # x_list = []
+                # y_list = []
+                # for j_j, j in enumerate(i):
+                    # if i[j][0] != inf:
+                        # x_list.append(j)
+                        # y_list.append(i[j][0])
+                # if len(x_list) > 0:
+                    # outliers = General_Functions.linear_regression(x_list, y_list)[2]
+                    # if len(outliers) > 0:
+                        # for j_j, j in enumerate(outliers):
+                            # i[x_list[j]][0] = inf
+                            
+        #print(deltas_per_sample)                         
+        #print()
                         
         for i_i, i in enumerate(deltas_per_sample):
             if len(i) == 0:
@@ -773,9 +775,8 @@ def align_assignments(df, df_type, deltas = None, rt_tol = None):
                 for j_j, j in enumerate(i):
                     i[j][0] = mean(all_deltas)
                     
-        # for i in dict(sorted(deltas_per_sample[0].items())):
-            # print(i, deltas_per_sample[0][i][0])                          
-        # print()
+        #print(deltas_per_sample[2])                         
+        #print()
                     
         for i_i, i in enumerate(deltas_per_sample):
             if len(i) > 0:
@@ -786,14 +787,13 @@ def align_assignments(df, df_type, deltas = None, rt_tol = None):
                         x_list.append(j)
                         y_list.append(i[j][0])
                 if len(x_list) > 0:
-                    outliers = General_Functions.linear_regression(x_list, y_list)[2]
+                    outliers = General_Functions.linear_regression(x_list, y_list, 2)[2]
                     if len(outliers) > 0:
                         for j_j, j in enumerate(outliers):
                             i[x_list[j]][0] = inf
-                            
-        # for i in dict(sorted(deltas_per_sample[0].items())):
-            # print(i, deltas_per_sample[0][i][0])                          
-        # print()
+                           
+        #print(deltas_per_sample[2])                         
+        #print()
         
         for i_i, i in enumerate(dataframe): #this will apply the alignment based on ids and deltas
             rts_list_original = sorted(i['RT'])
@@ -853,9 +853,8 @@ def align_assignments(df, df_type, deltas = None, rt_tol = None):
                         i['RT'][to_fix_id[to_fix_rt.index(j)]] = fixed_RT
         for i_i, i in enumerate(deltas_per_sample):
             deltas_per_sample[i_i] = dict(sorted(i.items()))
-            
-        # for i in deltas_per_sample[0]:
-            # print(i, deltas_per_sample[0][i][0])
+        
+        # print(deltas_per_sample[2])
             
         return dataframe, deltas_per_sample, biggest_df
         
@@ -1579,21 +1578,29 @@ def output_filtered_data(curve_fit_score,
     #hook for alignment tool. it'll use the total_dataframes (total_glycans) 
     if align_chromatograms:
         if len(total_dataframes) > 1:
-            aligned_total_glycans = align_assignments(total_dataframes, 'total_glycans', rt_tol = rt_tolerance)
-            total_dataframes = aligned_total_glycans[0]
-            df2["Average Delta t"] = []
-            for i_i, i in enumerate(aligned_total_glycans[1]):
-                temp_list = []
-                for k_k, k in enumerate(i):
-                    temp_list.append(i[k][0])
-                if len(temp_list) != 0:
-                    average_delta = float("%.2f" % round(sum(temp_list)/len(temp_list), 2))
-                    df2["Average Delta t"].append(average_delta)
-                else:
-                    if i_i == aligned_total_glycans[2]:
-                        df2["Average Delta t"].append("Reference Sample")
+            good_alignment = False
+            for i in total_dataframes:
+                if len(i['Glycan']) > 0:
+                    good_alignment = True
+                    break
+            if not good_alignment:
+                print("No good glycans to align the data with.")
+            else:
+                aligned_total_glycans = align_assignments(total_dataframes, 'total_glycans', rt_tol = rt_tolerance)
+                total_dataframes = aligned_total_glycans[0]
+                df2["Average Delta t"] = []
+                for i_i, i in enumerate(aligned_total_glycans[1]):
+                    temp_list = []
+                    for k_k, k in enumerate(i):
+                        temp_list.append(i[k][0])
+                    if len(temp_list) != 0:
+                        average_delta = float("%.2f" % round(sum(temp_list)/len(temp_list), 2))
+                        df2["Average Delta t"].append(average_delta)
                     else:
-                        df2["Average Delta t"].append("No peaks to align")
+                        if i_i == aligned_total_glycans[2]:
+                            df2["Average Delta t"].append("Reference Sample")
+                        else:
+                            df2["Average Delta t"].append("No peaks to align")
     #hook for alignment tool. it'll use the total_dataframes (total_glycans)         
                 
     glycans_count = [] #glycans composition counts
@@ -1888,8 +1895,8 @@ def output_filtered_data(curve_fit_score,
         smoothed_eic_dataframes = dill.load(f)
         f.close()
             
-    if align_chromatograms:        
-        if len(df2['Sample_Number']) > 1: #aligns the chromatograms, may take some time (around 1 minute per sample, depending on run length)
+    if align_chromatograms:
+        if len(df2['Sample_Number']) > 1 and good_alignment: #aligns the chromatograms, may take some time (around 1 minute per sample, depending on run length)
             print("Aligning chromatograms...", end='', flush=True)
             smoothed_eic_dataframes = align_assignments(smoothed_eic_dataframes, 'chromatograms', aligned_total_glycans[1])
             print("Done!")
@@ -2390,10 +2397,13 @@ def pre_processing(data,
         for i_i, i in enumerate(temp_avg_noise):
             if i != 1.0:
                 list_for_avg.append(i)
-        avg = sum(list_for_avg)/len(list_for_avg)        
-        for i_i, i in enumerate(temp_avg_noise):
-            if i == 1.0:
-                temp_avg_noise[i_i] = avg
+        if len(list_for_avg) != 0:
+            avg = sum(list_for_avg)/len(list_for_avg)        
+            for i_i, i in enumerate(temp_avg_noise):
+                if i == 1.0:
+                    temp_avg_noise[i_i] = avg
+        else:
+            print("WARNING: Data seems denoised. Don't trust S/N\nmeasurements.")
         
         return zeroes_arrays, inf_arrays, threads_arrays, ms1_id, rt_array_report, temp_noise, temp_avg_noise, data_id
     except KeyboardInterrupt:

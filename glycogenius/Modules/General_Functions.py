@@ -59,6 +59,26 @@ times during a run.
 ##General functions (these functions use only external libraries, such as itertools and
 ##pyteomics).
 
+def binary_search_with_tolerance(arr, target, low, high, tolerance):
+    '''
+    '''
+    # Base case: if the range is invalid, the target is not in the array
+    if low > high:
+        return -1  # Target not found
+    
+    # Find the middle index
+    mid = (low + high) // 2
+    
+    # Check if the target is within the tolerance range of the middle element
+    if abs(arr[mid] - target) <= tolerance:
+        return mid  # Target found within tolerance at index mid
+    elif arr[mid] < target:
+        # If target is greater, ignore the left half
+        return binary_search_with_tolerance(arr, target, mid + 1, high, tolerance)
+    else:
+        # If target is smaller, ignore the right half
+        return binary_search_with_tolerance(arr, target, low, mid - 1, tolerance)
+
 def linear_regression(x, y, th = 2.5):
     '''Traces a linear regression of supplied 2d data points and returns the slope,
     y-intercept and the indices of the outliers outside the determined threshold.
@@ -110,6 +130,24 @@ def linear_regression(x, y, th = 2.5):
     outlier_indices = where(abs(residuals) > threshold)[0]
     # Final equation is used as (y = mx + b)
     return m, b, outlier_indices
+    
+def cleanup_by_average(x, y, th = 2.5):
+    '''
+    '''
+    if len(x) != len(y): # Ensure x and y have the same length
+        raise ValueError("Input arrays x and y must have the same length.")
+    if len(x) == 0:
+        return 0, 0, []
+    if len(x) == 1:
+        return 0, y[0], []
+    x = array(x) # Convert input data to numpy arrays
+    y = array(y) # Convert input data to numpy arrays
+    predicted_y = mean(y)
+    residuals = y - predicted_y
+    threshold = th * std(residuals)
+    outlier_indices = where(abs(residuals) > threshold)[0]
+    # Final equation is used as (y = mx + b)
+    return mean, residuals, outlier_indices
     
 def make_gg(temp_dir, save_dir, filename):
     '''Creates a zipped file with extension .gg containing raw_data files.

@@ -479,7 +479,7 @@ def fragments_library(min_max_mono,
     def_glycan_comp = {"H": 0, "N": 0, "S": 0, "Am": 0, "E": 0, "F": 0, "G": 0, "T" : 0}
     for i in range(1, 18):
         if lactonized_ethyl_esterified:
-            for j in combinations_with_replacement("HNLEFG", i):
+            for j in combinations_with_replacement("HNLEFGT", i):
                 glycans.append(General_Functions.sum_monos(def_glycan_comp, General_Functions.count_seq_letters("".join(j))))
         else:
             for j in combinations_with_replacement("HNSFGT", i):
