@@ -272,7 +272,6 @@ def eic_from_glycan(files,
             buffer = []
             buffer_good = 0
             for k_k, k in enumerate(thread_numbers):
-                print(j[k]['retentionTime'])
                 analyze_mz_array(j[k]['m/z array'],
                                  j[k]['intensity array'],
                                  glycan_info,
@@ -478,15 +477,10 @@ def analyze_mz_array(sliced_mz,
                             break
                         else:
                             break
-                print('isotopic peaks found: ', isos_found)
                         
             if bad:
-                print('bad data')
                 buffer.append(None)
-                print('current buffer length: ', len(buffer))
-                print('buffer data: ', buffer)
             else:
-                print('good data')
                 dotp = []
                 weights = []
                 number = range(0, isos_found+1)
@@ -515,8 +509,6 @@ def analyze_mz_array(sliced_mz,
                 mz_isos = [glycan_info['Adducts_mz'][glycan_id]]+mz_isos
                 
                 buffer.append(([glycan_id, file_id, ms1_id, float("%.4f" % round(ret_time, 4))], [ppm_error, iso_quali, intensity, [mz_isos, iso_target, iso_actual, iso_quali]]))
-                print('current buffer length: ', len(buffer))
-                print('buffer data: ', buffer)
         
         #dynamical clean-up of buffer
         min_in_a_row = 4
