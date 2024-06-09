@@ -467,6 +467,28 @@ def imp_exp_gen_library(custom_glycans_list,
             lib_module = importlib.util.module_from_spec(spec)
             spec.loader.exec_module(lib_module)
             full_library = lib_module.full_library
+            try:
+                library_metadata = lib_module.metadata
+            except:
+                library_metadata = []
+            if len(library_metadata) > 0:
+                min_max_monos = library_metadata[0]
+                min_max_hex = library_metadata[1]
+                min_max_hexnac = library_metadata[2]
+                min_max_fuc = library_metadata[3]
+                min_max_sia = library_metadata[4]
+                min_max_ac = library_metadata[5]
+                min_max_gc = library_metadata[6]
+                force_nglycan = library_metadata[7]
+                max_adducts = library_metadata[8]
+                max_charges = library_metadata[9]
+                tag_mass = library_metadata[10]
+                internal_standard = library_metadata[11]
+                permethylated = library_metadata[12]
+                lactonized_ethyl_esterified = library_metadata[13]
+                reduced = library_metadata[14]
+                fast_iso = library_metadata[15]
+                high_res = library_metadata[16]
             print("Done!")
             shutil.rmtree(save_path+begin_time+"_Temp")
         except:
@@ -556,7 +578,8 @@ def imp_exp_gen_library(custom_glycans_list,
             exp_lib_name = begin_time+'_glycans_lib'
         if not imp_exp_library[0]:
             with open(save_path+exp_lib_name+'.ggl', 'w') as f:
-                f.write('full_library = '+str(full_library))
+                f.write(f'full_library = {str(full_library)}\n')
+                f.write(f'metadata = {[min_max_monos, min_max_hex, min_max_hexnac, min_max_fuc, min_max_sia, min_max_ac, min_max_gc, force_nglycan, max_adducts, max_charges, tag_mass, internal_standard, permethylated, lactonized_ethyl_esterified, reduced, fast_iso, high_res]}')
                 f.close()
         if lactonized_ethyl_esterified:
             df = {'Glycan' : [], 'Hex' : [], 'HexNAc' : [], 'dHex' : [], 'a2,3-Neu5Ac' : [], 'a2,6-Neu5Ac' : [], 'Neu5Gc' : [], 'Isotopic Distribution' : [], 'Neutral Mass + Tag' : []}
@@ -1789,11 +1812,12 @@ def output_filtered_data(curve_fit_score,
         for j_j, j in enumerate(i['Glycan']):
             if j not in total_glycans_compositions and j != 'Internal Standard':
                 total_glycans_compositions.append(j)
+    adducts = []
     for i_i, i in enumerate(df1_refactor): #get all possible adducts
-        adducts = []
         for j_j, j in enumerate(i['Adduct']):
             if j not in adducts and i['Glycan'][j_j] != 'Internal Standard':
                 adducts.append(j)
+                
     meta_dataframe = {'No.' : [], 'Composition' : []}
     if nglycan:
         meta_dataframe['Class'] = []
@@ -2961,6 +2985,17 @@ def analyze_ms2(ms2_index,
                                   reduced,
                                   lactonized_ethyl_esterified,
                                   nglycan)
+                                  
+    print(f"Fragments library length: {len(fragments)}")
+    indexed_fragments = {} #index the fragments, arranged by mz, for binary search
+    for i_i, i in enumerate(fragments):
+        for j in i['Adducts_mz']:
+            value = i['Adducts_mz'][j]
+            while value in indexed_fragments.keys():
+                value+= 0.0001 #maybe change this later
+            indexed_fragments[value] = [i_i, j]
+    indexed_fragments = dict(sorted(indexed_fragments.items()))
+                
     fragments_data = {}
     print('Scanning MS2 spectra...')
     scan_begin_time = datetime.datetime.now()
@@ -2987,6 +3022,7 @@ def analyze_ms2(ms2_index,
             result = executor.submit(analyze_glycan_ms2,
                                      ms2_index,
                                      fragments,
+                                     indexed_fragments,
                                      data, 
                                      analyzed_data, 
                                      lactonized_ethyl_esterified,
@@ -3017,6 +3053,7 @@ def analyze_ms2(ms2_index,
                                  
 def analyze_glycan_ms2(ms2_index,
                        fragments,
+                       indexed_fragments,
                        data, 
                        analyzed_data,
                        lactonized_ethyl_esterified,
@@ -3089,10 +3126,10 @@ def analyze_glycan_ms2(ms2_index,
                 if len(analyzed_data[0][i]['Adducts_mz_data'][j][k_k][1]) == 0 and not unrestricted_fragments: #checks if found the adduct
                     continue
                 for l in ms2_index[k_k]:
-                    if len(k[l]['intensity array']) == 0:
+                    if len(k[l]['intensity array']) == 0: #skips spectra without peaks
                         continue
                     if unrestricted_fragments:
-                        if k[l]['retentionTime'] < rt_interval[0] or k[l]['retentionTime'] > rt_interval[1]:
+                        if k[l]['retentionTime'] < rt_interval[0] or k[l]['retentionTime'] > rt_interval[1]: #unrestricted_fragments checks for glycans not found in MS1 analysis, so it looks through the whole retention time selected
                             continue
                     else:
                         if k[l]['retentionTime'] < analyzed_data[0][i]['Adducts_mz_data'][j][k_k][1][0]['peak_interval'][0] - rt_tolerance or k[l]['retentionTime'] > analyzed_data[0][i]['Adducts_mz_data'][j][k_k][1][-1]['peak_interval'][1] + rt_tolerance: #skips spectra outside peak interval of peaks found
@@ -3112,116 +3149,115 @@ def analyze_glycan_ms2(ms2_index,
                                 continue
                             former_peak_mz = m
                             
-                            found = False
-                            for n_n, n in enumerate(fragments):
-                                if 'Monos_Composition' in list(n.keys()):
+                            fragments_mz_list = list(indexed_fragments.keys())
+                            fragment_id = General_Functions.binary_search_with_tolerance(fragments_mz_list, m, 0, len(indexed_fragments)-1, General_Functions.tolerance_calc(tolerance[0], tolerance[1], m))
+                            if fragment_id == -1:
+                                continue
+                            n = fragments[indexed_fragments[fragments_mz_list[fragment_id]][0]]
+                            
+                            if 'Monos_Composition' in list(n.keys()):
+                                if lactonized_ethyl_esterified:
+                                    if (n['Monos_Composition']['H'] == analyzed_data[0][i]['Monos_Composition']['H']
+                                        and n['Monos_Composition']['N'] == analyzed_data[0][i]['Monos_Composition']['N']
+                                        and n['Monos_Composition']['Am'] == analyzed_data[0][i]['Monos_Composition']['Am']
+                                        and n['Monos_Composition']['E'] == analyzed_data[0][i]['Monos_Composition']['E']
+                                        and n['Monos_Composition']['F'] == analyzed_data[0][i]['Monos_Composition']['F']
+                                        and n['Monos_Composition']['G'] == analyzed_data[0][i]['Monos_Composition']['G']):
+                                        continue
+                                else:
+                                    if (n['Monos_Composition']['H'] == analyzed_data[0][i]['Monos_Composition']['H']
+                                        and n['Monos_Composition']['N'] == analyzed_data[0][i]['Monos_Composition']['N']
+                                        and n['Monos_Composition']['S'] == analyzed_data[0][i]['Monos_Composition']['S']
+                                        and n['Monos_Composition']['F'] == analyzed_data[0][i]['Monos_Composition']['F']
+                                        and n['Monos_Composition']['G'] == analyzed_data[0][i]['Monos_Composition']['G']):
+                                        continue
+                            combo = False
+                            if filter_output:
+                                if "/" in n['Formula']:
+                                    combo = True
+                                    fragments_comp = []
+                                    formula_splitted = n['Formula'].split("/")
+                                    for o in formula_splitted:
+                                        for p_p, p in enumerate(o):
+                                            if p == "-" or p == "+" or p == "_":
+                                                fragments_comp.append(o[:p_p])
+                                                break
+                                    for o_o, o in enumerate(fragments_comp):
+                                        fragments_comp[o_o] = General_Functions.form_to_comp(o)
+                                    viable = []
+                                    for o in fragments_comp:
+                                        if lactonized_ethyl_esterified:
+                                            if 'H' not in o.keys():
+                                                o['H'] = 0
+                                            if 'N' not in o.keys():
+                                                o['N'] = 0
+                                            if 'Am' not in o.keys():
+                                                o['Am'] = 0
+                                            if 'E' not in o.keys():
+                                                o['E'] = 0
+                                            if 'F' not in o.keys():
+                                                o['F'] = 0
+                                            if 'G' not in o.keys():
+                                                o['G'] = 0
+                                            if (o['H'] > analyzed_data[0][i]['Monos_Composition']['H']
+                                                or o['N'] > analyzed_data[0][i]['Monos_Composition']['N']
+                                                or o['Am'] > analyzed_data[0][i]['Monos_Composition']['Am']
+                                                or o['E'] > analyzed_data[0][i]['Monos_Composition']['E']
+                                                or o['F'] > analyzed_data[0][i]['Monos_Composition']['F']
+                                                or o['G'] > analyzed_data[0][i]['Monos_Composition']['G']):
+                                                viable.append(False)
+                                                break
+                                            else:
+                                                viable.append(True)
+                                        else:
+                                            if 'H' not in o.keys():
+                                                o['H'] = 0
+                                            if 'N' not in o.keys():
+                                                o['N'] = 0
+                                            if 'S' not in o.keys():
+                                                o['S'] = 0
+                                            if 'F' not in o.keys():
+                                                o['F'] = 0
+                                            if 'G' not in o.keys():
+                                                o['G'] = 0
+                                            if (o['H'] > analyzed_data[0][i]['Monos_Composition']['H']
+                                                or o['N'] > analyzed_data[0][i]['Monos_Composition']['N']
+                                                or o['S'] > analyzed_data[0][i]['Monos_Composition']['S']
+                                                or o['F'] > analyzed_data[0][i]['Monos_Composition']['F']
+                                                or o['G'] > analyzed_data[0][i]['Monos_Composition']['G']):
+                                                viable.append(False)
+                                                break
+                                            else:
+                                                viable.append(True)
+                                    if True not in viable:
+                                        continue
+                                    else:
+                                        count = 0
+                                        new_formula = ""
+                                        for o_o, o in enumerate(viable):
+                                            if count == 0:
+                                                if o:
+                                                    new_formula = formula_splitted[o_o]
+                                                    count+= 1
+                                            else:
+                                                if o:
+                                                    new_formula+= "/"+formula_splitted[o_o]
+                                                    count+= 1
+                                elif "/" not in n['Formula'] and not combo:
                                     if lactonized_ethyl_esterified:
-                                        if (n['Monos_Composition']['H'] == analyzed_data[0][i]['Monos_Composition']['H']
-                                            and n['Monos_Composition']['N'] == analyzed_data[0][i]['Monos_Composition']['N']
-                                            and n['Monos_Composition']['Am'] == analyzed_data[0][i]['Monos_Composition']['Am']
-                                            and n['Monos_Composition']['E'] == analyzed_data[0][i]['Monos_Composition']['E']
-                                            and n['Monos_Composition']['F'] == analyzed_data[0][i]['Monos_Composition']['F']
-                                            and n['Monos_Composition']['G'] == analyzed_data[0][i]['Monos_Composition']['G']):
+                                        if (n['Monos_Composition']['H'] > analyzed_data[0][i]['Monos_Composition']['H'] or n['Monos_Composition']['N'] > analyzed_data[0][i]['Monos_Composition']['N'] or n['Monos_Composition']['Am'] > analyzed_data[0][i]['Monos_Composition']['Am'] or n['Monos_Composition']['E'] > analyzed_data[0][i]['Monos_Composition']['E'] or n['Monos_Composition']['F'] > analyzed_data[0][i]['Monos_Composition']['F'] or n['Monos_Composition']['G'] > analyzed_data[0][i]['Monos_Composition']['G']):
                                             continue
                                     else:
-                                        if (n['Monos_Composition']['H'] == analyzed_data[0][i]['Monos_Composition']['H']
-                                            and n['Monos_Composition']['N'] == analyzed_data[0][i]['Monos_Composition']['N']
-                                            and n['Monos_Composition']['S'] == analyzed_data[0][i]['Monos_Composition']['S']
-                                            and n['Monos_Composition']['F'] == analyzed_data[0][i]['Monos_Composition']['F']
-                                            and n['Monos_Composition']['G'] == analyzed_data[0][i]['Monos_Composition']['G']):
+                                        if (n['Monos_Composition']['H'] > analyzed_data[0][i]['Monos_Composition']['H'] or n['Monos_Composition']['N'] > analyzed_data[0][i]['Monos_Composition']['N'] or n['Monos_Composition']['S'] > analyzed_data[0][i]['Monos_Composition']['S'] or n['Monos_Composition']['F'] > analyzed_data[0][i]['Monos_Composition']['F'] or n['Monos_Composition']['G'] > analyzed_data[0][i]['Monos_Composition']['G']):
                                             continue
-                                if found:
-                                    break
-                                combo = False
-                                if filter_output:
-                                    if "/" in n['Formula']:
-                                        combo = True
-                                        fragments_comp = []
-                                        formula_splitted = n['Formula'].split("/")
-                                        for o in formula_splitted:
-                                            for p_p, p in enumerate(o):
-                                                if p == "-" or p == "+" or p == "_":
-                                                    fragments_comp.append(o[:p_p])
-                                                    break
-                                        for o_o, o in enumerate(fragments_comp):
-                                            fragments_comp[o_o] = General_Functions.form_to_comp(o)
-                                        viable = []
-                                        for o in fragments_comp:
-                                            if lactonized_ethyl_esterified:
-                                                if 'H' not in o.keys():
-                                                    o['H'] = 0
-                                                if 'N' not in o.keys():
-                                                    o['N'] = 0
-                                                if 'Am' not in o.keys():
-                                                    o['Am'] = 0
-                                                if 'E' not in o.keys():
-                                                    o['E'] = 0
-                                                if 'F' not in o.keys():
-                                                    o['F'] = 0
-                                                if 'G' not in o.keys():
-                                                    o['G'] = 0
-                                                if (o['H'] > analyzed_data[0][i]['Monos_Composition']['H']
-                                                    or o['N'] > analyzed_data[0][i]['Monos_Composition']['N']
-                                                    or o['Am'] > analyzed_data[0][i]['Monos_Composition']['Am']
-                                                    or o['E'] > analyzed_data[0][i]['Monos_Composition']['E']
-                                                    or o['F'] > analyzed_data[0][i]['Monos_Composition']['F']
-                                                    or o['G'] > analyzed_data[0][i]['Monos_Composition']['G']):
-                                                    viable.append(False)
-                                                    break
-                                                else:
-                                                    viable.append(True)
-                                            else:
-                                                if 'H' not in o.keys():
-                                                    o['H'] = 0
-                                                if 'N' not in o.keys():
-                                                    o['N'] = 0
-                                                if 'S' not in o.keys():
-                                                    o['S'] = 0
-                                                if 'F' not in o.keys():
-                                                    o['F'] = 0
-                                                if 'G' not in o.keys():
-                                                    o['G'] = 0
-                                                if (o['H'] > analyzed_data[0][i]['Monos_Composition']['H']
-                                                    or o['N'] > analyzed_data[0][i]['Monos_Composition']['N']
-                                                    or o['S'] > analyzed_data[0][i]['Monos_Composition']['S']
-                                                    or o['F'] > analyzed_data[0][i]['Monos_Composition']['F']
-                                                    or o['G'] > analyzed_data[0][i]['Monos_Composition']['G']):
-                                                    viable.append(False)
-                                                    break
-                                                else:
-                                                    viable.append(True)
-                                        if True not in viable:
-                                            continue
-                                        else:
-                                            count = 0
-                                            new_formula = ""
-                                            for o_o, o in enumerate(viable):
-                                                if count == 0:
-                                                    if o:
-                                                        new_formula = formula_splitted[o_o]
-                                                        count+= 1
-                                                else:
-                                                    if o:
-                                                        new_formula+= "/"+formula_splitted[o_o]
-                                                        count+= 1
-                                    elif "/" not in n['Formula'] and not combo:
-                                        if lactonized_ethyl_esterified:
-                                            if (n['Monos_Composition']['H'] > analyzed_data[0][i]['Monos_Composition']['H'] or n['Monos_Composition']['N'] > analyzed_data[0][i]['Monos_Composition']['N'] or n['Monos_Composition']['Am'] > analyzed_data[0][i]['Monos_Composition']['Am'] or n['Monos_Composition']['E'] > analyzed_data[0][i]['Monos_Composition']['E'] or n['Monos_Composition']['F'] > analyzed_data[0][i]['Monos_Composition']['F'] or n['Monos_Composition']['G'] > analyzed_data[0][i]['Monos_Composition']['G']):
-                                                continue
-                                        else:
-                                            if (n['Monos_Composition']['H'] > analyzed_data[0][i]['Monos_Composition']['H'] or n['Monos_Composition']['N'] > analyzed_data[0][i]['Monos_Composition']['N'] or n['Monos_Composition']['S'] > analyzed_data[0][i]['Monos_Composition']['S'] or n['Monos_Composition']['F'] > analyzed_data[0][i]['Monos_Composition']['F'] or n['Monos_Composition']['G'] > analyzed_data[0][i]['Monos_Composition']['G']):
-                                                continue
-                                for o in n['Adducts_mz']:
-                                    if abs(n['Adducts_mz'][o]-m) <= General_Functions.tolerance_calc(tolerance[0], tolerance[1], n['Adducts_mz'][o]): #fragments data outputted in the form of (Glycan, Adduct, Fragment, Fragment mz, intensity, retention time, precursor)
-                                        if "_" not in n['Formula']:
-                                            fragments_data[j][k_k].append((i, j, n['Formula']+'_'+o, n['Adducts_mz'][o], k[l]['intensity array'][m_m], k[l]['retentionTime'], k[l]['precursorMz'][0]['precursorMz'], total))
-                                        elif "_" in n['Formula'] and combo:
-                                            fragments_data[j][k_k].append((i, j, new_formula, n['Adducts_mz'][o], k[l]['intensity array'][m_m], k[l]['retentionTime'], k[l]['precursorMz'][0]['precursorMz'], total))
-                                        else:
-                                            fragments_data[j][k_k].append((i, j, n['Formula'], n['Adducts_mz'][o], k[l]['intensity array'][m_m], k[l]['retentionTime'], k[l]['precursorMz'][0]['precursorMz'], total))
-                                        found = True
-                                        found_count += k[l]['intensity array'][m_m]
-                                        break
+                                            
+                            if "_" not in n['Formula']: #fragments data outputted in the form of (Glycan, Adduct, Fragment, Fragment mz, intensity, retention time, precursor)
+                                fragments_data[j][k_k].append((i, j, n['Formula']+'_'+indexed_fragments[fragments_mz_list[fragment_id]][1], n['Adducts_mz'][indexed_fragments[fragments_mz_list[fragment_id]][1]], k[l]['intensity array'][m_m], k[l]['retentionTime'], k[l]['precursorMz'][0]['precursorMz'], total))
+                            elif "_" in n['Formula'] and combo:
+                                fragments_data[j][k_k].append((i, j, new_formula, n['Adducts_mz'][indexed_fragments[fragments_mz_list[fragment_id]][1]], k[l]['intensity array'][m_m], k[l]['retentionTime'], k[l]['precursorMz'][0]['precursorMz'], total))
+                            else:
+                                fragments_data[j][k_k].append((i, j, n['Formula'], n['Adducts_mz'][indexed_fragments[fragments_mz_list[fragment_id]][1]], k[l]['intensity array'][m_m], k[l]['retentionTime'], k[l]['precursorMz'][0]['precursorMz'], total))
+                            found_count += k[l]['intensity array'][m_m]
         return fragments_data, i
     except KeyboardInterrupt:
         print("\n\n----------Execution cancelled by user.----------\n", flush=True)

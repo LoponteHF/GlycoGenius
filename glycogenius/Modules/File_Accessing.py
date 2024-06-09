@@ -499,10 +499,10 @@ def analyze_mz_array(sliced_mz,
                     starting_points = [m, iso_target[m_m]]
                     dotproduct = numpy.dot(normalized_actual, normalized_target)
                     dotp.append(numpy.average([(dotproduct+1)/2, intensity_score], weights = [3, 2]))
-                    weights.append(1/m)
+                    weights.append(1/(exp(1.25*m)))
                 iso_quali = numpy.average(dotp, weights = weights)
             
-                #reduces score if fewer isotopic peaks are found: punishing for only 2 peaks, normal score from 3 and over
+                #reduces score if fewer isotopic peaks are found: punishing for only 1 peaks, normal score from 2 and over (besides the monoisotopic)
                 if len(iso_actual) == 2:
                     iso_quali = (iso_quali*0.8)
                 

@@ -26,8 +26,14 @@ import sys
 import os
 import datetime
 import configparser
+import shutil
+import tempfile
+import pathlib
+import importlib
 
-
+date = datetime.datetime.now()
+begin_time = str(date)[2:4]+str(date)[5:7]+str(date)[8:10]+"_"+str(date)[11:13]+str(date)[14:16]+str(date)[17:19]
+temp_folder = os.path.join(tempfile.gettempdir(), "gg_"+begin_time)
 
 def config_handler(from_GUI = False, param_file_path = ''):
     '''A function that handles the input of configs through a pipelined
@@ -352,7 +358,35 @@ def config_handler(from_GUI = False, param_file_path = ''):
         
     if from_GUI:
         return (custom_glycans_list, min_max_monos, min_max_hex, min_max_hexnac, min_max_sia, min_max_fuc, min_max_ac, min_max_gc, force_nglycan, max_adducts, adducts_exclusion, max_charges, reducing_end_tag, permethylated, reduced, lactonized_ethyl_esterified, fast_iso, high_res, internal_standard, imp_exp_library, exp_lib_name, library_path, only_gen_lib), (multithreaded_analysis, number_cores, analyze_ms2, reporter_ions, tolerance, ret_time_interval, rt_tolerance_frag, min_isotopologue_peaks, min_ppp, close_peaks, align_chromatograms, percentage_auc, max_ppm, iso_fit_score, curve_fit_score, s_to_n, custom_noise, samples_path, save_path, plot_metaboanalyst, compositions, iso_fittings, reanalysis, reanalysis_path, output_plot_data)
-        
+    
+    
+    shutil.copy(library_path, os.path.join(temp_folder, 'glycans_library.py'))
+    spec = importlib.util.spec_from_file_location("glycans_library", temp_folder+"/glycans_library.py")
+    lib_module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(lib_module)
+    try:
+        library_metadata = lib_module.metadata
+    except:
+        library_metadata = []
+    if len(library_metadata) > 0:
+        min_max_monos = library_metadata[0]
+        min_max_hex = library_metadata[1]
+        min_max_hexnac = library_metadata[2]
+        min_max_fuc = library_metadata[3]
+        min_max_sia = library_metadata[4]
+        min_max_ac = library_metadata[5]
+        min_max_gc = library_metadata[6]
+        force_nglycan = library_metadata[7]
+        max_adducts = library_metadata[8]
+        max_charges = library_metadata[9]
+        tag_mass = library_metadata[10]
+        internal_standard = library_metadata[11]
+        permethylated = library_metadata[12]
+        lactonized_ethyl_esterified = library_metadata[13]
+        reduced = library_metadata[14]
+        fast_iso = library_metadata[15]
+        high_res = library_metadata[16]
+                
     #args to execution functions:
     output_filtered_data_args = [curve_fit_score, iso_fit_score, s_to_n, max_ppm, percentage_auc, reanalysis, reanalysis_path, save_path, analyze_ms2[0], analyze_ms2[2], reporter_ions, plot_metaboanalyst, compositions, align_chromatograms, force_nglycan, ret_time_interval[2], rt_tolerance_frag, iso_fittings, output_plot_data, multithreaded_analysis, number_cores, 0.0]
 
