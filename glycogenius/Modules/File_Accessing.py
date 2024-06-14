@@ -428,7 +428,10 @@ def analyze_mz_array(sliced_mz,
     target_mz = glycan_info['Adducts_mz'][glycan_id]
     local_noise = General_Functions.local_noise_calc(noise[file_id][ms1_id], target_mz, avg_noise[file_id])
     sliced_mz_length = len(sliced_mz)-1
-    mz_id = General_Functions.binary_search_with_tolerance(sliced_mz, target_mz, 0, sliced_mz_length, General_Functions.tolerance_calc(tolerance[0], tolerance[1], target_mz))
+    if target_mz > sliced_mz[-1]:
+        mz_id = -1
+    else:
+        mz_id = General_Functions.binary_search_with_tolerance(sliced_mz, target_mz, 0, sliced_mz_length, General_Functions.tolerance_calc(tolerance[0], tolerance[1], target_mz))
     
     if mz_id != -1 and sliced_int[mz_id] >= local_noise*0.5:
         charge_range = range(1, abs(max_charges)*2)

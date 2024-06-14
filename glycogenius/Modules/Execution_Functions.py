@@ -579,7 +579,7 @@ def imp_exp_gen_library(custom_glycans_list,
         if not imp_exp_library[0]:
             with open(save_path+exp_lib_name+'.ggl', 'w') as f:
                 f.write(f'full_library = {str(full_library)}\n')
-                f.write(f'metadata = {[min_max_monos, min_max_hex, min_max_hexnac, min_max_fuc, min_max_sia, min_max_ac, min_max_gc, force_nglycan, max_adducts, max_charges, tag_mass, internal_standard, permethylated, lactonized_ethyl_esterified, reduced, fast_iso, high_res]}')
+                f.write(f'metadata = {[min_max_monos, min_max_hex, min_max_hexnac, min_max_fuc, min_max_sia, min_max_ac, min_max_gc, force_nglycan, max_adducts, max_charges, tag_mass, internal_standard, permethylated, lactonized_ethyl_esterified, reduced, fast_iso, high_res, custom_glycans_list]}')
                 f.close()
         if lactonized_ethyl_esterified:
             df = {'Glycan' : [], 'Hex' : [], 'HexNAc' : [], 'dHex' : [], 'a2,3-Neu5Ac' : [], 'a2,6-Neu5Ac' : [], 'Neu5Gc' : [], 'Isotopic Distribution' : [], 'Neutral Mass + Tag' : []}

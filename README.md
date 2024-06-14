@@ -38,6 +38,11 @@ In order to do that, this tool is able to do several different tasks:
 ~~~
         cat .\glycogenius_parameters.ini | glycogenius
 ~~~
+
+## Citation
+
+> Article for citation currently being finished.
+
 ## Credits
 
 Pyteomics:
