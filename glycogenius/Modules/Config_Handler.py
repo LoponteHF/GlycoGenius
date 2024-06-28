@@ -31,9 +31,10 @@ import tempfile
 import pathlib
 import importlib
 
-# date = datetime.datetime.now()
-# begin_time = str(date)[2:4]+str(date)[5:7]+str(date)[8:10]+"_"+str(date)[11:13]+str(date)[14:16]+str(date)[17:19]
-# temp_folder = os.path.join(tempfile.gettempdir(), "gg_"+begin_time)
+global begin_time, temp_folder
+date = datetime.datetime.now()
+begin_time = str(date)[2:4]+str(date)[5:7]+str(date)[8:10]+"_"+str(date)[11:13]+str(date)[14:16]+str(date)[17:19]
+temp_folder = os.path.join(tempfile.gettempdir(), "gg_"+begin_time)
 
 def config_handler(from_GUI = False, param_file_path = ''):
     '''A function that handles the input of configs through a pipelined
@@ -57,10 +58,7 @@ def config_handler(from_GUI = False, param_file_path = ''):
     functions arguments
         Organized arguments for the various functions used in core module.
     '''
-
-    date = datetime.datetime.now()
-    begin_time = str(date)[2:4]+str(date)[5:7]+str(date)[8:10]+"_"+str(date)[11:13]+str(date)[14:16]+str(date)[17:19]
-    temp_folder = os.path.join(tempfile.gettempdir(), "gg_"+begin_time)
+    global begin_time, temp_folder
     
     custom_glycans_list = [False, []]
     min_max_monos = [0, 0]
