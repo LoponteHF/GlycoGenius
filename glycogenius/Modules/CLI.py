@@ -281,7 +281,7 @@ def interactive_terminal():
                 else:
                     continue
         if input_order[1] == 2:
-            lib_settings = [None, None, None, None, None, None, None, None, None, None, None, None, None, None, None]
+            lib_settings = [None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None]
             for i in range(len(lib_settings)):
                 if i == 0:
                     while lib_settings[0] == None:
@@ -344,6 +344,26 @@ def interactive_terminal():
                             continue
                         lib_settings[5] = var
                 if i == 6:
+                    while lib_settings[4] == None:
+                        var = input("Type the minimum amount of Xyloses (default: 0): ")
+                        if var == '':
+                            lib_settings[15] = 0
+                        try:
+                            var = int(var)
+                        except:
+                            continue
+                        lib_settings[4] = var
+                if i == 7:
+                    while lib_settings[5] == None:
+                        var = input("Type the maximum amount of Xyloses (default: 0): ")
+                        if var == '':
+                            lib_settings[16] = 0
+                        try:
+                            var = int(var)
+                        except:
+                            continue
+                        lib_settings[5] = var
+                if i == 8:
                     while lib_settings[6] == None:
                         var = input("Type the minimum amount of dHex (default: 0): ")
                         if var == '':
@@ -353,7 +373,7 @@ def interactive_terminal():
                         except:
                             continue
                         lib_settings[6] = var
-                if i == 7:
+                if i == 9:
                     while lib_settings[7] == None:
                         var = input("Type the maximum amount of dHex (default: 2): ")
                         if var == '':
@@ -363,7 +383,7 @@ def interactive_terminal():
                         except:
                             continue
                         lib_settings[7] = var
-                if i == 8:
+                if i == 10:
                     while lib_settings[8] == None:
                         var = input("Type the minimum amount of Neu5Ac (default: 0): ")
                         if var == '':
@@ -373,7 +393,7 @@ def interactive_terminal():
                         except:
                             continue
                         lib_settings[8] = var
-                if i == 9:
+                if i == 11:
                     while lib_settings[9] == None:
                         var = input("Type the maximum amount of Neu5Ac (default: 4): ")
                         if var == '':
@@ -383,7 +403,7 @@ def interactive_terminal():
                         except:
                             continue
                         lib_settings[9] = var
-                if i == 10:
+                if i == 12:
                     while lib_settings[10] == None:
                         var = input("Type the minimum amount of Neu5Gc (default: 0): ")
                         if var == '':
@@ -393,7 +413,7 @@ def interactive_terminal():
                         except:
                             continue
                         lib_settings[10] = var
-                if i == 11:
+                if i == 13:
                     while lib_settings[11] == None:
                         var = input("Type the maximum amount of Neu5Gc (default: 0): ")
                         if var == '':
@@ -403,7 +423,7 @@ def interactive_terminal():
                         except:
                             continue
                         lib_settings[11] = var
-                if i == 12:
+                if i == 14:
                     while lib_settings[12] == None:
                         var = input("Type the minimum amount of total sialic acids\n(default: 0): ")
                         if var == '':
@@ -413,7 +433,7 @@ def interactive_terminal():
                         except:
                             continue
                         lib_settings[12] = var
-                if i == 13:
+                if i == 15:
                     while lib_settings[13] == None:
                         var = input("Type the maximum amount of total sialic acids\n(default: 4): ")
                         if var == '':
@@ -423,7 +443,7 @@ def interactive_terminal():
                         except:
                             continue
                         lib_settings[13] = var
-                if i == 14:
+                if i == 16:
                     while lib_settings[14] == None:
                         var = input("Force compositions to N-glycans structure\n (default: yes) (y/n): ")
                         if var == '':
@@ -870,6 +890,7 @@ def CLI():
     min_max_monos = [0, 0]
     min_max_hex = [0, 0]
     min_max_hexnac = [0, 0]
+    min_max_xyl = [0, 0]
     min_max_sia = [0, 0]
     min_max_fuc = [0, 0]
     min_max_ac = [0, 0]
@@ -935,6 +956,7 @@ def CLI():
             min_max_monos = (parameters[1][0], parameters[1][1])
             min_max_hex = (parameters[1][2], parameters[1][3])
             min_max_hexnac = (parameters[1][4], parameters[1][5])
+            min_max_xyl = (parameters[1][15], parameters[1][16])
             min_max_fuc = (parameters[1][6], parameters[1][7])
             min_max_ac = (parameters[1][8], parameters[1][9])
             min_max_gc = (parameters[1][10], parameters[1][11])
@@ -1030,12 +1052,14 @@ def CLI():
             lactonized_ethyl_esterified = library_metadata[13]
             reduced = library_metadata[14]
             fast_iso = library_metadata[15]
-            high_res = library_metadata[16]    
+            high_res = library_metadata[16]   
+            if len(library_metadata) > 18:
+                min_max_xyl = library_metadata[18] 
         
     #args to execution functions:
     output_filtered_data_args = [curve_fit_score, iso_fit_score, s_to_n, max_ppm, percentage_auc, reanalysis, reanalysis_path, save_path, analyze_ms2[0], analyze_ms2[2], reporter_ions, plot_metaboanalyst, compositions, align_chromatograms, force_nglycan, ret_time_interval[2], rt_tolerance_frag, iso_fittings, output_plot_data, multithreaded_analysis, number_cores, 0.0]
 
-    imp_exp_gen_library_args = [custom_glycans_list, min_max_monos, min_max_hex, min_max_hexnac, min_max_sia, min_max_fuc, min_max_ac, min_max_gc, force_nglycan, max_adducts, adducts_exclusion, max_charges, reducing_end_tag, fast_iso, high_res, imp_exp_library, library_path, exp_lib_name, only_gen_lib, save_path, internal_standard, permethylated, lactonized_ethyl_esterified, reduced]
+    imp_exp_gen_library_args = [custom_glycans_list, min_max_monos, min_max_hex, min_max_hexnac, min_max_xyl, min_max_sia, min_max_fuc, min_max_ac, min_max_gc, force_nglycan, max_adducts, adducts_exclusion, max_charges, reducing_end_tag, fast_iso, high_res, imp_exp_library, library_path, exp_lib_name, only_gen_lib, save_path, internal_standard, permethylated, lactonized_ethyl_esterified, reduced]
 
     list_of_data_args = [samples_list]
 
@@ -1045,9 +1069,9 @@ def CLI():
 
     analyze_files_args = [None, None, None, None, tolerance, ret_time_interval, min_isotopologue_peaks, min_ppp, max_charges, custom_noise, close_peaks, multithreaded_analysis, number_cores]
 
-    analyze_ms2_args = [None, None, None, ret_time_interval, tolerance, min_max_monos, min_max_hex, min_max_hexnac,  min_max_sia, min_max_fuc, min_max_ac, min_max_gc, max_charges, reducing_end_tag, force_nglycan, permethylated, reduced, lactonized_ethyl_esterified, analyze_ms2[1], analyze_ms2[2], ret_time_interval[2], multithreaded_analysis, number_cores]
+    analyze_ms2_args = [None, None, None, ret_time_interval, tolerance, min_max_monos, min_max_hex, min_max_hexnac, min_max_xyl,  min_max_sia, min_max_fuc, min_max_ac, min_max_gc, max_charges, reducing_end_tag, force_nglycan, permethylated, reduced, lactonized_ethyl_esterified, analyze_ms2[1], analyze_ms2[2], ret_time_interval[2], multithreaded_analysis, number_cores]
 
-    arrange_raw_data_args = [None, samples_names, analyze_ms2[0], save_path, [(custom_glycans_list, min_max_monos, min_max_hex, min_max_hexnac, min_max_sia, min_max_fuc, min_max_ac, min_max_gc, force_nglycan, max_adducts, adducts_exclusion, max_charges, reducing_end_tag, permethylated, reduced, lactonized_ethyl_esterified, fast_iso, high_res, internal_standard, imp_exp_library, exp_lib_name, library_path, only_gen_lib), (multithreaded_analysis, number_cores, analyze_ms2, reporter_ions, tolerance, ret_time_interval, rt_tolerance_frag, min_isotopologue_peaks, min_ppp, close_peaks, align_chromatograms, percentage_auc, max_ppm, iso_fit_score, curve_fit_score, s_to_n, custom_noise, samples_path, save_path, plot_metaboanalyst, compositions, iso_fittings, reanalysis, reanalysis_path, output_plot_data)]]
+    arrange_raw_data_args = [None, samples_names, analyze_ms2[0], save_path, [(custom_glycans_list, min_max_monos, min_max_hex, min_max_hexnac, min_max_sia, min_max_fuc, min_max_ac, min_max_gc, force_nglycan, max_adducts, adducts_exclusion, max_charges, reducing_end_tag, permethylated, reduced, lactonized_ethyl_esterified, fast_iso, high_res, internal_standard, imp_exp_library, exp_lib_name, library_path, only_gen_lib, min_max_xyl), (multithreaded_analysis, number_cores, analyze_ms2, reporter_ions, tolerance, ret_time_interval, rt_tolerance_frag, min_isotopologue_peaks, min_ppp, close_peaks, align_chromatograms, percentage_auc, max_ppm, iso_fit_score, curve_fit_score, s_to_n, custom_noise, samples_path, save_path, plot_metaboanalyst, compositions, iso_fittings, reanalysis, reanalysis_path, output_plot_data)]]
 
     return output_filtered_data_args, imp_exp_gen_library_args, list_of_data_args, index_spectra_from_file_ms1_args, index_spectra_from_file_ms2_args, analyze_files_args, analyze_ms2_args, arrange_raw_data_args, samples_names, reanalysis, analyze_ms2[0]
     

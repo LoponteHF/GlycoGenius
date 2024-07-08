@@ -322,6 +322,7 @@ def imp_exp_gen_library(custom_glycans_list,
                         min_max_monos,
                         min_max_hex,
                         min_max_hexnac,
+                        min_max_xyl,
                         min_max_sia,
                         min_max_fuc,
                         min_max_ac,
@@ -489,6 +490,8 @@ def imp_exp_gen_library(custom_glycans_list,
                 reduced = library_metadata[14]
                 fast_iso = library_metadata[15]
                 high_res = library_metadata[16]
+                if len(library_metadata) > 18:
+                    min_max_xyl = library_metadata[18]
             print("Done!")
             shutil.rmtree(save_path+begin_time+"_Temp")
         except:
@@ -538,6 +541,7 @@ def imp_exp_gen_library(custom_glycans_list,
         monos_library = Library_Tools.generate_glycans_library(min_max_monos,
                                                  min_max_hex,
                                                  min_max_hexnac,
+                                                 min_max_xyl,
                                                  min_max_sia,
                                                  min_max_fuc,
                                                  min_max_ac,
@@ -579,17 +583,21 @@ def imp_exp_gen_library(custom_glycans_list,
         if not imp_exp_library[0]:
             with open(save_path+exp_lib_name+'.ggl', 'w') as f:
                 f.write(f'full_library = {str(full_library)}\n')
-                f.write(f'metadata = {[min_max_monos, min_max_hex, min_max_hexnac, min_max_fuc, min_max_sia, min_max_ac, min_max_gc, force_nglycan, max_adducts, max_charges, tag_mass, internal_standard, permethylated, lactonized_ethyl_esterified, reduced, fast_iso, high_res, custom_glycans_list]}')
+                f.write(f'metadata = {[min_max_monos, min_max_hex, min_max_hexnac, min_max_fuc, min_max_sia, min_max_ac, min_max_gc, force_nglycan, max_adducts, max_charges, tag_mass, internal_standard, permethylated, lactonized_ethyl_esterified, reduced, fast_iso, high_res, custom_glycans_list, min_max_xyl]}')
                 f.close()
         if lactonized_ethyl_esterified:
-            df = {'Glycan' : [], 'Hex' : [], 'HexNAc' : [], 'dHex' : [], 'a2,3-Neu5Ac' : [], 'a2,6-Neu5Ac' : [], 'Neu5Gc' : [], 'Isotopic Distribution' : [], 'Neutral Mass + Tag' : []}
+            df = {'Glycan' : [], 'Hex' : [], 'HexNAc' : [], 'Xylose' : [], 'dHex' : [], 'a2,3-Neu5Ac' : [], 'a2,6-Neu5Ac' : [], 'Neu5Gc' : [], 'Isotopic Distribution' : [], 'Neutral Mass + Tag' : []}
         else:
-            df = {'Glycan' : [], 'Hex' : [], 'HexNAc' : [], 'dHex' : [], 'Neu5Ac' : [], 'Neu5Gc' : [], 'Isotopic Distribution' : [], 'Neutral Mass + Tag' : []}
+            df = {'Glycan' : [], 'Hex' : [], 'HexNAc' : [], 'Xylose' : [], 'dHex' : [], 'Neu5Ac' : [], 'Neu5Gc' : [], 'Isotopic Distribution' : [], 'Neutral Mass + Tag' : []}
         for i_i, i in enumerate(full_library):
             if lactonized_ethyl_esterified:
                 df['Glycan'].append(i)
                 df['Hex'].append(full_library[i]['Monos_Composition']['H'])
                 df['HexNAc'].append(full_library[i]['Monos_Composition']['N'])
+                if 'X' in full_library[i]['Monos_Composition']:
+                    df['Xylose'].append(full_library[i]['Monos_Composition']['X'])
+                else:
+                    df['Xylose'].append(0)
                 df['dHex'].append(full_library[i]['Monos_Composition']['F'])
                 df['a2,3-Neu5Ac'].append(full_library[i]['Monos_Composition']['Am'])
                 df['a2,6-Neu5Ac'].append(full_library[i]['Monos_Composition']['E'])
@@ -598,6 +606,10 @@ def imp_exp_gen_library(custom_glycans_list,
                 df['Glycan'].append(i)
                 df['Hex'].append(full_library[i]['Monos_Composition']['H'])
                 df['HexNAc'].append(full_library[i]['Monos_Composition']['N'])
+                if 'X' in full_library[i]['Monos_Composition']:
+                    df['Xylose'].append(full_library[i]['Monos_Composition']['X'])
+                else:
+                    df['Xylose'].append(0)
                 df['dHex'].append(full_library[i]['Monos_Composition']['F'])
                 df['Neu5Ac'].append(full_library[i]['Monos_Composition']['S'])
                 df['Neu5Gc'].append(full_library[i]['Monos_Composition']['G'])
@@ -651,7 +663,7 @@ def imp_exp_gen_library(custom_glycans_list,
                 os._exit(1)
     return full_library
     
-def align_assignments(df, df_type, deltas = None, rt_tol = None):
+def align_assignments(df, df_type, multithreaded, number_cores, deltas = None, rt_tol = None):
     '''Aligns the results obtained from running the whole program and uses
     the identifications to align the chromatograms between samples for 
     visualization purposes.
@@ -882,95 +894,131 @@ def align_assignments(df, df_type, deltas = None, rt_tol = None):
         return dataframe, deltas_per_sample, biggest_df
         
     if df_type == "chromatograms": #for when you want to align chromatograms based on existing deltas calculated previously
-        for i_i, i in enumerate(dataframe): #sample by sample
-            if len(deltas[i_i]) > 0:
-                chromatogram_length_rt = i['RTs_'+str(i_i)][-1]
-                chromatogram_beg_rt = i['RTs_'+str(i_i)][0]
-                chromatogram_length = len(i['RTs_'+str(i_i)])
-                chromatogram_interval = i['RTs_'+str(i_i)][-1]/len(i['RTs_'+str(i_i)])
-                points_per_minute = int(1/chromatogram_interval)
-                interval_list_rts = []
-                interval_list = []
-                for j in range(len(i['RTs_'+str(i_i)])-1, -1, -1):
-                    if i['RTs_'+str(i_i)][j] < list(deltas[i_i].keys())[0]: #this finds the zero before the peaks
-                        zero = True
-                        for k_k, k in enumerate(i):
-                            if k_k != 0:
-                                if i[k][j] > max(i[k])*0.01:
-                                    zero = False
-                                    break
-                        if zero:
-                            # print("Found zero before the peak: "+str(i['RTs_'+str(i_i)][j])+", "+str(j)+", Delta RT: "+str(list(deltas[i_i].keys())[0]))
-                            interval_list_rts.append(i['RTs_'+str(i_i)][j])
-                            interval_list.append(j)
-                            break
-                if not zero:
-                    interval_list_rts.append(i['RTs_'+str(i_i)][0])
-                    interval_list.append(0)
-                            
-                for j_j, j in enumerate(i['RTs_'+str(i_i)]):
-                    if j > list(deltas[i_i].keys())[-1]: #this finds the zero after the peaks
-                        zero = True
-                        for k_k, k in enumerate(i):
-                            if k_k != 0:
-                                if i[k][j_j] > max(i[k])*0.1:
-                                    zero = False
-                                    break
-                        if zero:
-                            # print("Found zero after the peak: "+str(j)+","+str(j_j)+", Delta RT: "+str(list(deltas[i_i].keys())[-1]))
-                            interval_list_rts.append(j)
-                            interval_list.append(j_j)
-                            break
-                if not zero:
-                    interval_list_rts.append(i['RTs_'+str(i_i)][-1])
-                    interval_list.append(len(i['RTs_'+str(i_i)])-1)
-                for j_j, j in enumerate(interval_list):
-                    x = []
-                    y = []
-                    if j_j == len(interval_list)-1:
-                        last_range = len(i['RTs_'+str(i_i)])-1
-                    else:
-                        last_range = interval_list[j_j+1]
-                    for k_k, k in enumerate(deltas[i_i]):
-                        if k > i['RTs_'+str(i_i)][j] and k < i['RTs_'+str(i_i)][last_range]:
-                            x.append(float(k))
-                            y.append(deltas[i_i][k][0])
-                    if len(x) == 0:
-                        continue
-                    linear_equation = General_Functions.linear_regression(x, y)
-                    lower_boundary = i['RTs_'+str(i_i)][j-1]
-                    upper_boundary = i['RTs_'+str(i_i)][last_range]
-                    lowest = inf
-                    lowest_id = 0
-                    highest = 0
-                    highest_id = inf
-                    for k in range(j, last_range):
-                        i['RTs_'+str(i_i)][k] = i['RTs_'+str(i_i)][k] + (i['RTs_'+str(i_i)][k]*linear_equation[0])+linear_equation[1]
-                        if i['RTs_'+str(i_i)][k] < lowest:
-                            lowest = i['RTs_'+str(i_i)][k]
-                            lowest_id = k
-                        if i['RTs_'+str(i_i)][k] > highest:
-                            highest = i['RTs_'+str(i_i)][k]
-                            highest_id = k
-                    if lowest != inf and lowest < lower_boundary:
-                        if j_j > 0:
-                            interval = (lowest-i['RTs_'+str(i_i)][interval_list[j_j-1]])/(lowest_id+1-interval_list[j_j-1])
-                            for l_l, l in enumerate(range(lowest_id-1, interval_list[j_j-1], -1)):
-                                i['RTs_'+str(i_i)][l] = float("%.4f" % round(lowest-(interval*(l_l+1)), 4))
-                        else:
-                            interval = (lowest)/(lowest_id+1)   
-                            for l_l, l in enumerate(range(lowest_id-1, -1, -1)):
-                                i['RTs_'+str(i_i)][l] = float("%.4f" % round(lowest-(interval*(l_l+1)), 4))
-                    if highest != 0 and highest > upper_boundary:
-                        if j_j != len(interval_list)-2:
-                            interval = (i['RTs_'+str(i_i)][interval_list[j_j+2]]-highest)/(interval_list[j_j+2]-highest_id)
-                            for l_l, l in enumerate(range(highest_id+1, interval_list[j_j+1])):
-                                i['RTs_'+str(i_i)][l] = float("%.4f" % round(highest+(interval*(l_l+1)), 4))
-                        else:
-                            interval = (chromatogram_length_rt-highest)/(chromatogram_length-1-highest_id)
-                            for l_l, l in enumerate(range(highest_id+1, chromatogram_length)):
-                                i['RTs_'+str(i_i)][l] = float("%.4f" % round(highest+(interval*(l_l+1)), 4))
+    
+        results = []
+        if multithreaded:
+            if number_cores == 'all':
+                cpu_count = (os.cpu_count())-2
+                if cpu_count <= 0:
+                    cpu_count = 1
+            else:
+                number_cores = int(number_cores)
+                if number_cores > (os.cpu_count())-2:
+                    cpu_count = (os.cpu_count())-2
+                    if cpu_count <= 0:
+                        cpu_count = 1
+                else:
+                    cpu_count = number_cores
+        else:
+            cpu_count = 1
+            
+        with concurrent.futures.ProcessPoolExecutor(max_workers = cpu_count) as executor:
+            for i_i, i in enumerate(dataframe): #sample by sample
+                result = executor.submit(adjust_chromatogram,
+                                         i,
+                                         i_i,
+                                         deltas)
+                results.append(result)
+            
+        for i in results:
+            result_data = i.result()
+            dataframe[result_data[0]] = result_data[1]
+            
         return dataframe
+
+def adjust_chromatogram(i,
+                        i_i,
+                        deltas):
+    '''
+    '''
+    if len(deltas[i_i]) > 0:
+        chromatogram_length_rt = i['RTs_'+str(i_i)][-1]
+        chromatogram_beg_rt = i['RTs_'+str(i_i)][0]
+        chromatogram_length = len(i['RTs_'+str(i_i)])
+        chromatogram_interval = i['RTs_'+str(i_i)][-1]/len(i['RTs_'+str(i_i)])
+        points_per_minute = int(1/chromatogram_interval)
+        interval_list_rts = []
+        interval_list = []
+        for j in range(len(i['RTs_'+str(i_i)])-1, -1, -1):
+            if i['RTs_'+str(i_i)][j] < list(deltas[i_i].keys())[0]: #this finds the zero before the peaks
+                zero = True
+                for k_k, k in enumerate(i):
+                    if k_k != 0:
+                        if i[k][j] > max(i[k])*0.01:
+                            zero = False
+                            break
+                if zero:
+                    # print("Found zero before the peak: "+str(i['RTs_'+str(i_i)][j])+", "+str(j)+", Delta RT: "+str(list(deltas[i_i].keys())[0]))
+                    interval_list_rts.append(i['RTs_'+str(i_i)][j])
+                    interval_list.append(j)
+                    break
+        if not zero:
+            interval_list_rts.append(i['RTs_'+str(i_i)][0])
+            interval_list.append(0)
+                    
+        for j_j, j in enumerate(i['RTs_'+str(i_i)]):
+            if j > list(deltas[i_i].keys())[-1]: #this finds the zero after the peaks
+                zero = True
+                for k_k, k in enumerate(i):
+                    if k_k != 0:
+                        if i[k][j_j] > max(i[k])*0.1:
+                            zero = False
+                            break
+                if zero:
+                    # print("Found zero after the peak: "+str(j)+","+str(j_j)+", Delta RT: "+str(list(deltas[i_i].keys())[-1]))
+                    interval_list_rts.append(j)
+                    interval_list.append(j_j)
+                    break
+        if not zero:
+            interval_list_rts.append(i['RTs_'+str(i_i)][-1])
+            interval_list.append(len(i['RTs_'+str(i_i)])-1)
+        for j_j, j in enumerate(interval_list):
+            x = []
+            y = []
+            if j_j == len(interval_list)-1:
+                last_range = len(i['RTs_'+str(i_i)])-1
+            else:
+                last_range = interval_list[j_j+1]
+            for k_k, k in enumerate(deltas[i_i]):
+                if k > i['RTs_'+str(i_i)][j] and k < i['RTs_'+str(i_i)][last_range]:
+                    x.append(float(k))
+                    y.append(deltas[i_i][k][0])
+            if len(x) == 0:
+                continue
+            linear_equation = General_Functions.linear_regression(x, y)
+            lower_boundary = i['RTs_'+str(i_i)][j-1]
+            upper_boundary = i['RTs_'+str(i_i)][last_range]
+            lowest = inf
+            lowest_id = 0
+            highest = 0
+            highest_id = inf
+            for k in range(j, last_range):
+                i['RTs_'+str(i_i)][k] = i['RTs_'+str(i_i)][k] + (i['RTs_'+str(i_i)][k]*linear_equation[0])+linear_equation[1]
+                if i['RTs_'+str(i_i)][k] < lowest:
+                    lowest = i['RTs_'+str(i_i)][k]
+                    lowest_id = k
+                if i['RTs_'+str(i_i)][k] > highest:
+                    highest = i['RTs_'+str(i_i)][k]
+                    highest_id = k
+            if lowest != inf and lowest < lower_boundary:
+                if j_j > 0:
+                    interval = (lowest-i['RTs_'+str(i_i)][interval_list[j_j-1]])/(lowest_id+1-interval_list[j_j-1])
+                    for l_l, l in enumerate(range(lowest_id-1, interval_list[j_j-1], -1)):
+                        i['RTs_'+str(i_i)][l] = float("%.4f" % round(lowest-(interval*(l_l+1)), 4))
+                else:
+                    interval = (lowest)/(lowest_id+1)   
+                    for l_l, l in enumerate(range(lowest_id-1, -1, -1)):
+                        i['RTs_'+str(i_i)][l] = float("%.4f" % round(lowest-(interval*(l_l+1)), 4))
+            if highest != 0 and highest > upper_boundary:
+                if j_j != len(interval_list)-2:
+                    interval = (i['RTs_'+str(i_i)][interval_list[j_j+2]]-highest)/(interval_list[j_j+2]-highest_id)
+                    for l_l, l in enumerate(range(highest_id+1, interval_list[j_j+1])):
+                        i['RTs_'+str(i_i)][l] = float("%.4f" % round(highest+(interval*(l_l+1)), 4))
+                else:
+                    interval = (chromatogram_length_rt-highest)/(chromatogram_length-1-highest_id)
+                    for l_l, l in enumerate(range(highest_id+1, chromatogram_length)):
+                        i['RTs_'+str(i_i)][l] = float("%.4f" % round(highest+(interval*(l_l+1)), 4))
+    return i_i, i
         
 def output_filtered_data(curve_fit_score,
                          iso_fit_score,
@@ -1609,7 +1657,7 @@ def output_filtered_data(curve_fit_score,
             if not good_alignment:
                 print("No good glycans to align the data with.")
             else:
-                aligned_total_glycans = align_assignments(total_dataframes, 'total_glycans', rt_tol = rt_tolerance)
+                aligned_total_glycans = align_assignments(total_dataframes, 'total_glycans', multithreaded, number_cores, rt_tol = rt_tolerance)
                 total_dataframes = aligned_total_glycans[0]
                 df2["Average Delta t"] = []
                 for i_i, i in enumerate(aligned_total_glycans[1]):
@@ -1752,7 +1800,7 @@ def output_filtered_data(curve_fit_score,
                         if "Internal Standard" in j["Glycan"]:
                             glycan_line_IS.append(str(temp_AUC_IS))
                         else:
-                            glycan_line_IS.append(0.0)
+                            glycan_line_IS.append("0.0")
                         glycan_line.append(str(temp_AUC))
                         continue
                     if not found:
@@ -1793,7 +1841,7 @@ def output_filtered_data(curve_fit_score,
                             if 'Internal Standard' in j['Glycan']:
                                 glycan_line_IS.append(str(j['AUC'][j['Glycan'].index(i)]/j['AUC'][j['Glycan'].index('Internal Standard')]))
                             else:
-                                glycan_line_IS.append(0.0)
+                                glycan_line_IS.append("0.0")
                         else:
                             glycan_line.append('0.0')
                             glycan_line_IS.append('0.0')
@@ -1922,7 +1970,7 @@ def output_filtered_data(curve_fit_score,
     if align_chromatograms:
         if len(df2['Sample_Number']) > 1 and good_alignment: #aligns the chromatograms, may take some time (around 1 minute per sample, depending on run length)
             print("Aligning chromatograms...", end='', flush=True)
-            smoothed_eic_dataframes = align_assignments(smoothed_eic_dataframes, 'chromatograms', aligned_total_glycans[1])
+            smoothed_eic_dataframes = align_assignments(smoothed_eic_dataframes, 'chromatograms', multithreaded, number_cores, aligned_total_glycans[1])
             print("Done!")
         
     for i_i, i in enumerate(df1_refactor): #this selects only the found glycans to draw their EIC
@@ -2827,6 +2875,7 @@ def analyze_ms2(ms2_index,
                 min_max_monos,
                 min_max_hex,
                 min_max_hexnac,
+                min_max_xyl,
                 min_max_sia,
                 min_max_fuc,
                 min_max_ac,
@@ -2974,6 +3023,7 @@ def analyze_ms2(ms2_index,
     fragments = Library_Tools.fragments_library(min_max_monos,
                                   min_max_hex,
                                   min_max_hexnac,
+                                  min_max_xyl,
                                   min_max_sia,
                                   min_max_fuc,
                                   min_max_ac,

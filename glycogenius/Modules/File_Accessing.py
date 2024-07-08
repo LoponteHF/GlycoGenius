@@ -484,26 +484,20 @@ def analyze_mz_array(sliced_mz,
             if bad:
                 buffer.append(None)
             else:
-                dotp = []
-                weights = []
-                number = range(0, isos_found+1)
-                starting_points = [0, 1]
                 iso_target = glycan_info['Isotopic_Distribution'][:isos_found+1]
-                for m_m, m in enumerate(number):
-                    if m_m == 0:
+                
+                ratios = []
+                weights = []
+                for i_i, i in enumerate(iso_target):
+                    if i_i == 0:
                         continue
-                    intensities = [iso_actual[m_m], iso_target[m_m]]
-                    intensity_score = min(intensities)/max(intensities)
-                    vector_actual = [m-starting_points[0], iso_actual[m_m]-starting_points[1]]
-                    vector_target = [m-starting_points[0], iso_target[m_m]-starting_points[1]]
-                    magnitude_target = sqrt(vector_target[0]**2 + vector_target[1]**2)
-                    normalized_actual = vector_actual/numpy.linalg.norm(vector_actual)
-                    normalized_target = vector_target/numpy.linalg.norm(vector_target)
-                    starting_points = [m, iso_target[m_m]]
-                    dotproduct = numpy.dot(normalized_actual, normalized_target)
-                    dotp.append(numpy.average([(dotproduct+1)/2, intensity_score], weights = [3, 2]))
-                    weights.append(1/(exp(1.25*m)))
-                iso_quali = numpy.average(dotp, weights = weights)
+                    intensities = [i, iso_actual[i_i]]
+                    ratio = min(intensities)/max(intensities)
+                    corrected_ratio = 1 - (1 - ratio) ** 1.35
+                    ratios.append(corrected_ratio)
+                    weights.append(1/(exp(1.25*i_i)))
+                
+                iso_quali = numpy.average(ratios, weights = weights)
             
                 #reduces score if fewer isotopic peaks are found: punishing for only 1 peaks, normal score from 2 and over (besides the monoisotopic)
                 if len(iso_actual) == 2:

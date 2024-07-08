@@ -39,6 +39,7 @@ import os
 monosaccharides = {
     "H": ("Hexose", "C6O6H12", {"C": 6, "O": 5, "N": 0, "H": 10}),
     "N": ("N-Acetyl Hexosamine", "C8O6NH15", {"C": 8, "O": 5, "N": 1, "H": 13}),
+    "X": ("Xylose", "C5O5H10", {"C": 5, "O": 4, "N": 0, "H": 8}),
     "S": ("Acetyl Neuraminic Acid", "C11O9NH19", {"C": 11, "O": 8, "N": 1, "H": 17}),
     "Am": ("Lactonized Acetyl Neuraminic Acid alpha2,3 bound", "C11O8N2H20", {"C": 11, "O": 7, "N": 2, "H": 18}),
     "E": ("Ethyl-Esterified Acetyl Neuraminic Acid alpha2,6 bound", "C13O9NH23", {"C": 13, "O": 8, "N": 1, "H": 21}),
@@ -71,7 +72,21 @@ def binary_search_with_tolerance(arr, target, low, high, tolerance):
     
     # Check if the target is within the tolerance range of the middle element
     if abs(arr[mid] - target) <= tolerance:
-        return mid  # Target found within tolerance at index mid
+        mid_distance = abs(arr[mid] - target)
+        smallest_distance = mid_distance
+        smallest_distance_id = mid
+        if mid != len(arr)-1 and arr[mid+1] <= tolerance:
+            mid_plus_distance = abs(arr[mid+1] - target)
+            if mid_plus_distance < smallest_distance:
+                smallest_distance = mid_plus_distance
+                smallest_distance_id = mid+1
+        if mid != 0 and arr[mid-1] <= tolerance:
+            mid_minus_distance = abs(arr[mid-1] - target)
+            if mid_minus_distance < smallest_distance:
+                smallest_distance = mid_minus_distance
+                smallest_distance_id = mid-1
+                
+        return smallest_distance_id  # Closest target found within tolerance at or around index mid
     elif arr[mid] < target:
         # If target is greater, ignore the left half
         return binary_search_with_tolerance(arr, target, mid + 1, high, tolerance)
@@ -578,9 +593,7 @@ def count_seq_letters(string):
             count = string.count(i)
             if i == "L":
                 friendly_letters['Am'] = count
-            if i == "E":
-                friendly_letters['E'] = count
-            elif i != "L" and i != "E":
+            elif i != "L":
                 friendly_letters[i] = count
     return friendly_letters
 
@@ -622,7 +635,7 @@ def sum_monos(*compositions):
     summed_comp : dict
         Dictionary containing the sum of each monosaccharides of the compositions.
     '''
-    summed_comp = {"H": 0, "N": 0, "S": 0, "Am": 0, "E": 0, "F": 0, "G": 0, "T": 0}
+    summed_comp = {"H": 0, "N": 0, "X": 0, "S": 0, "Am": 0, "E": 0, "F": 0, "G": 0, "T": 0}
     for i in compositions:
         for j in i:
             summed_comp[j]+=i[j]

@@ -77,6 +77,7 @@ custom_glycans_list = H3N2, H5N2, H5N4S2F1
 total_monosaccharides = 5, 22
 hexoses = 3, 10
 hexnacs = 2, 8
+xylose = 0, 0
 sialic_acids = 0, 4
 fucoses = 0, 2
 neu5ac = 0, 4
