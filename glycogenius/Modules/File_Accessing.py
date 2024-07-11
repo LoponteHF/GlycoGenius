@@ -444,15 +444,18 @@ def analyze_mz_array(sliced_mz,
             iso_actual = [1]
             bad = False #here starts quality checks
             for i in charge_range: #check if it's monoisotopic and correct charge
-                temp_id = General_Functions.binary_search_with_tolerance(sliced_mz, target_mz-(General_Functions.h_mass/i), 0, mz_id, General_Functions.tolerance_calc(tolerance[0], tolerance[1], target_mz-(General_Functions.h_mass/i)))
-                if temp_id != -1:
-                    expected_value = 1/((sliced_mz[temp_id]*i*0.0006)+0.1401) #based on linear regression of the relationship between masses and the second isotopic peak relative intensity of the average of different organic macromolecules
-                    if (sliced_int[temp_id] > mono_int*expected_value*0.6):
-                        bad = True
-                        break
+                if len(buffer) > 1 and buffer[-1] != None and buffer[-2] != None:
+                    pass
+                else: #only check if it's monoisotopic if at least one of the last 2 RT got nothing...
+                    temp_id = General_Functions.binary_search_with_tolerance(sliced_mz, target_mz-(General_Functions.h_mass/i), 0, mz_id, General_Functions.tolerance_calc(tolerance[0], tolerance[1], target_mz-(General_Functions.h_mass/i))) #check monoisotopic
+                    if temp_id != -1:
+                        expected_value = 1/((sliced_mz[temp_id]*i*0.0006)+0.1401) #based on linear regression of the relationship between masses and the second isotopic peak relative intensity of the average of different organic macromolecules
+                        if (sliced_int[temp_id] > mono_int*expected_value*0.6):
+                            bad = True
+                            break
                 if i == 1: #ignores charge 1 due to the fact that any charge distribution will find a hit on that one
                     continue
-                temp_id = General_Functions.binary_search_with_tolerance(sliced_mz, target_mz+(General_Functions.h_mass/i), mz_id, sliced_mz_length, General_Functions.tolerance_calc(tolerance[0], tolerance[1], target_mz+(General_Functions.h_mass/i)))
+                temp_id = General_Functions.binary_search_with_tolerance(sliced_mz, target_mz+(General_Functions.h_mass/i), mz_id, sliced_mz_length, General_Functions.tolerance_calc(tolerance[0], tolerance[1], target_mz+(General_Functions.h_mass/i))) #check for correct charge
                 if temp_id != -1:
                     expected_value = (sliced_mz[temp_id]*i*0.0006)+0.1401 #based on linear regression of the relationship between masses and the second isotopic peak relative intensity of the average of different organic macromolecules
                     if i != adduct_charge and (sliced_int[temp_id] > mono_int*expected_value*0.6):
@@ -493,7 +496,8 @@ def analyze_mz_array(sliced_mz,
                         continue
                     intensities = [i, iso_actual[i_i]]
                     ratio = min(intensities)/max(intensities)
-                    corrected_ratio = 1 - (1 - ratio) ** 1.35
+                    gamma = 5 #scales the score
+                    corrected_ratio = 1 - (1 - ratio) ** gamma
                     ratios.append(corrected_ratio)
                     weights.append(1/(exp(1.25*i_i)))
                 
@@ -782,30 +786,20 @@ def peaks_from_eic(rt_int,
     peaks_ranges = []
     datapoints_per_time = int((0.2/(rt_int[0][rt_int[1].index(max(rt_int[1]))]-rt_int[0][rt_int[1].index(max(rt_int[1]))-1]))*(rt_int[0][-1]/60))
     maximums_index = []
-    array_max = max(rt_int_smoothed[1])
     min_relative_int_peak = 0.001
-    cutoff = array_max
-    while cutoff > min_relative_int_peak*max(rt_int_smoothed[1]):
-        for i_i, i in enumerate(rt_int_smoothed[1]):
-            if (rt_int[0][i_i] >= rt_interval[1] or rt_int[0][i_i] == rt_int[0][-2]):
-                break    
-            if rt_int[0][i_i] >= rt_interval[0]:
-                if i >= cutoff:
-                    if i_i not in maximums_index:
-                        if rt_int_smoothed[1][i_i-1] <= i and rt_int_smoothed[1][i_i+1] <= i:
-                            found = False
-                            for k in maximums_index:
-                                if abs(k-i_i) < datapoints_per_time:
-                                    found = True
-                                    break
-                            if not found:
-                                maximums_index.append(i_i)
-        cutoff = cutoff-(array_max*min_relative_int_peak)
-    
-    # print(datapoints_per_time, sorted(maximums_index))
+    threshold = min_relative_int_peak*max(rt_int_smoothed[1])
+    for i_i, i in enumerate(rt_int_smoothed[1]):
+        if (rt_int[0][i_i] > rt_interval[1] or rt_int[0][i_i] == rt_int[0][-2]):
+            break    
+        if rt_int[0][i_i] >= rt_interval[0]:
+            if i > threshold and rt_int_smoothed[1][i_i-1] <= i and rt_int_smoothed[1][i_i+1] <= i:
+                if len(maximums_index) == 0:
+                    maximums_index.append(i_i)
+                elif len(maximums_index) > 0 and i_i-maximums_index[-1] >= datapoints_per_time:
+                    maximums_index.append(i_i)
     
     former_peak_limit = 0
-    for i_i, i in enumerate(sorted(maximums_index)):
+    for i_i, i in enumerate(maximums_index):
         #print('starting id: ', i, 'former peak limit: ', former_peak_limit)
         peak_limits = []
         temp_min = inf
@@ -846,30 +840,32 @@ def peaks_from_eic(rt_int,
         if len(peak_limits) == 2:
             peaks_ranges = peaks_ranges + peak_limits
             
-    # print(peaks_ranges)
+    #print(peaks_ranges)
     
     removal = []        
     for i_i, i in enumerate(peaks_ranges):
-        if i_i > 1:
+        if i_i > 1 and i != peaks_ranges[-1]:
             #print(peaks_ranges[i_i-1], peaks_ranges[i_i])
             if peaks_ranges[i_i] == peaks_ranges[i_i-1]:
                 #print("True!")
-                if (rt_int_smoothed[1][i] > max(rt_int_smoothed[1][peaks_ranges[i_i-2]:peaks_ranges[i_i+1]])*0.8 or 
-                    abs(max(rt_int_smoothed[1][peaks_ranges[i_i-2]:peaks_ranges[i_i-1]])-rt_int_smoothed[1][peaks_ranges[i_i]]) < rt_int_smoothed[1][peaks_ranges[i_i]]*0.1 or 
-                    abs(max(rt_int_smoothed[1][peaks_ranges[i_i]:peaks_ranges[i_i+1]])-rt_int_smoothed[1][peaks_ranges[i_i]]) < rt_int_smoothed[1][peaks_ranges[i_i]]*0.1):
+                if (rt_int_smoothed[1][i] > max(rt_int_smoothed[1][peaks_ranges[i_i-2]:peaks_ranges[i_i+1]])*0.8 
+                    or abs(max(rt_int_smoothed[1][peaks_ranges[i_i-2]:peaks_ranges[i_i-1]])-rt_int_smoothed[1][peaks_ranges[i_i]]) < rt_int_smoothed[1][peaks_ranges[i_i]]*0.1 
+                    or abs(max(rt_int_smoothed[1][peaks_ranges[i_i]:peaks_ranges[i_i+1]])-rt_int_smoothed[1][peaks_ranges[i_i]]) < rt_int_smoothed[1][peaks_ranges[i_i]]*0.1):
                     
                     removal.append(i_i-1)
                     removal.append(i_i)
     for i in sorted(removal, reverse=True):
         del peaks_ranges[i]
         
-    # print(peaks_ranges)
+    #print(peaks_ranges)
     
     for i_i, i in enumerate(peaks_ranges):
         if i_i % 2 == 0:
             peak_limits = [i, peaks_ranges[i_i+1]]
+            if peak_limits[0] == peak_limits[1]:
+                continue
             temp_peak_width = (rt_int[0][peak_limits[1]]-rt_int[0][peak_limits[0]])
-            peaks.append({'id': i, 'rt': rt_int[0][rt_int_smoothed[1].index(max(rt_int_smoothed[1][peak_limits[0]:peak_limits[1]]))], 'int': max(rt_int_smoothed[1][peak_limits[0]:peak_limits[1]]), 'peak_width': temp_peak_width, 'peak_interval': (rt_int[0][peak_limits[0]], rt_int[0][peak_limits[1]]), 'peak_interval_id': (peak_limits[0], peak_limits[1])})
+            peaks.append({'id': i, 'rt': rt_int[0][rt_int_smoothed[1].index(max(rt_int_smoothed[1][peak_limits[0]:peak_limits[1]+1]))], 'int': max(rt_int_smoothed[1][peak_limits[0]:peak_limits[1]+1]), 'peak_width': temp_peak_width, 'peak_interval': (rt_int[0][peak_limits[0]], rt_int[0][peak_limits[1]]), 'peak_interval_id': (peak_limits[0], peak_limits[1])})
     
     #print(peaks)
         

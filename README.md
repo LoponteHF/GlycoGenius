@@ -20,9 +20,13 @@ In order to do that, this tool is able to do several different tasks:
 - Many other features.
 
 ## Installation
-~~~
-	pip install glycogenius
-~~~
+
+There are two ways to install it:
+1. Download the latest version of the Graphical User Interface from Releases page on https://github.com/LoponteHF/GlycoGenius_GUI, unzip it and run the executable file (Windows only, for other OS, you can install the GUI from PyPI);
+2. Install from PyPI:
+	1. Install Python from python.org or from your OS package distributor;
+	2. Type "pip install glycogenius" on a terminal
+	
 ## Usage
 
 1. Export your MS data to an MzXML or MzML file;

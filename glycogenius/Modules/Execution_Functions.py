@@ -586,7 +586,7 @@ def imp_exp_gen_library(custom_glycans_list,
                 f.write(f'metadata = {[min_max_monos, min_max_hex, min_max_hexnac, min_max_fuc, min_max_sia, min_max_ac, min_max_gc, force_nglycan, max_adducts, max_charges, tag_mass, internal_standard, permethylated, lactonized_ethyl_esterified, reduced, fast_iso, high_res, custom_glycans_list, min_max_xyl]}')
                 f.close()
         if lactonized_ethyl_esterified:
-            df = {'Glycan' : [], 'Hex' : [], 'HexNAc' : [], 'Xylose' : [], 'dHex' : [], 'a2,3-Neu5Ac' : [], 'a2,6-Neu5Ac' : [], 'Neu5Gc' : [], 'Isotopic Distribution' : [], 'Neutral Mass + Tag' : []}
+            df = {'Glycan' : [], 'Hex' : [], 'HexNAc' : [], 'Xylose' : [], 'dHex' : [], 'a2,3-Neu5Ac' : [], 'a2,6-Neu5Ac' : [], 'a2,3-Neu5Gc' : [], 'a2,6-Neu5Gc' : [], 'Isotopic Distribution' : [], 'Neutral Mass + Tag' : []}
         else:
             df = {'Glycan' : [], 'Hex' : [], 'HexNAc' : [], 'Xylose' : [], 'dHex' : [], 'Neu5Ac' : [], 'Neu5Gc' : [], 'Isotopic Distribution' : [], 'Neutral Mass + Tag' : []}
         for i_i, i in enumerate(full_library):
@@ -601,7 +601,8 @@ def imp_exp_gen_library(custom_glycans_list,
                 df['dHex'].append(full_library[i]['Monos_Composition']['F'])
                 df['a2,3-Neu5Ac'].append(full_library[i]['Monos_Composition']['Am'])
                 df['a2,6-Neu5Ac'].append(full_library[i]['Monos_Composition']['E'])
-                df['Neu5Gc'].append(full_library[i]['Monos_Composition']['G'])
+                df['a2,3-Neu5Gc'].append(full_library[i]['Monos_Composition']['AmG'])
+                df['a2,6-Neu5Gc'].append(full_library[i]['Monos_Composition']['EG'])
             else:
                 df['Glycan'].append(i)
                 df['Hex'].append(full_library[i]['Monos_Composition']['H'])
@@ -1195,11 +1196,18 @@ def output_filtered_data(curve_fit_score,
                         to_remove_glycan.append(df1[i_i]["Glycan"][j_j])
                         to_remove_adduct.append(j)
                         continue
-                    if abs(float(temp_ppm[k_k])) > max_ppm:
-                        to_remove.append(k_k)
-                        to_remove_glycan.append(df1[i_i]["Glycan"][j_j])
-                        to_remove_adduct.append(j)
-                        continue
+                    if type(max_ppm) == int:
+                        if abs(float(temp_ppm[k_k])) > max_ppm:
+                            to_remove.append(k_k)
+                            to_remove_glycan.append(df1[i_i]["Glycan"][j_j])
+                            to_remove_adduct.append(j)
+                            continue
+                    else:
+                        if float(temp_ppm[k_k]) < max_ppm[0] or float(temp_ppm[k_k]) > max_ppm[1]:
+                            to_remove.append(k_k)
+                            to_remove_glycan.append(df1[i_i]["Glycan"][j_j])
+                            to_remove_adduct.append(j)
+                            continue
             if len(to_remove) != 0:
                 to_remove.reverse()
                 to_remove_glycan.reverse()
@@ -1912,7 +1920,11 @@ def output_filtered_data(curve_fit_score,
     #start of excel data printing
     df2 = DataFrame(df2) 
     meta_df = DataFrame(meta_dataframe)
-    with ExcelWriter(save_path+begin_time+'_Results_'+str(max_ppm)+'_'+str(iso_fit_score)+'_'+str(curve_fit_score)+'_'+str(sn)+'.xlsx') as writer:
+    if type(max_ppm) == int:
+        ppm_title_label = str(max_ppm)
+    else:
+        ppm_title_label = str(max_ppm[0])+"-"+str(max_ppm[1])
+    with ExcelWriter(save_path+begin_time+'_Results_'+ppm_title_label+'_'+str(iso_fit_score)+'_'+str(curve_fit_score)+'_'+str(sn)+'.xlsx') as writer:
         dfs = [df2, meta_df]
         sheets_names = ['Index references', 'Detected Glycans']
         print("Creating results file...", end="", flush=True)

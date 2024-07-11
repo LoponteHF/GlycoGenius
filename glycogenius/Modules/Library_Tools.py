@@ -62,6 +62,10 @@ def generate_combinations_with_constraints(characters, length, constraints):
     for counts in valid_count_combinations:
         if 'L' in counts:
             counts['Am'] = counts.pop('L')
+        if 'A' in counts:
+            counts['AmG'] = counts.pop('A')
+        if 'R' in counts:
+            counts['EG'] = counts.pop('R')
         valid_combinations.append(counts)
 
     return valid_combinations
@@ -141,24 +145,26 @@ def generate_glycans_library(min_max_mono,
         glycans generated.
     '''
     glycans = []
-    def_glycan_comp = {"H": 0, "N": 0, "X": 0, "S": 0, "Am": 0, "E": 0, "F": 0, "G": 0}
+    def_glycan_comp = {"H": 0, "N": 0, "X": 0, "S": 0, "Am": 0, "E": 0, "F": 0, "G": 0, "AmG": 0, "EG": 0}
     
     if lactonized_ethyl_esterified:
-        monos_chars = "HNXLEFG"
+        monos_chars = "HNXLEFAR" #H = Hexose, N = HexNAc, X = Xylose, L = Amidated Neu5Ac, E = Ethyl-esterified Neu5Ac, F = DeoxyHexose, A = Amidated Neu5Gc, R = Ethyl-esterified Neu5Gc, S = Neu5Ac, G = Neu5Gc
     else:
         monos_chars = "HNXSFG"
         
     constraints = {'H': (min_max_hex[0], min_max_hex[1]),
                    'N': (min_max_hexnac[0], min_max_hexnac[1]),
                    'X': (min_max_xyl[0], min_max_xyl[1]),
-                   'F': (min_max_fuc[0], min_max_fuc[1]),
-                   'G': (min_max_gc[0], min_max_gc[1])}
+                   'F': (min_max_fuc[0], min_max_fuc[1])}
                    
     if lactonized_ethyl_esterified:
         constraints['L'] = (min_max_ac[0], min_max_ac[1])
         constraints['E'] = (min_max_ac[0], min_max_ac[1])
+        constraints['A'] = (min_max_gc[0], min_max_gc[1])
+        constraints['R'] = (min_max_gc[0], min_max_gc[1])
     else:
         constraints['S'] = (min_max_ac[0], min_max_ac[1])
+        constraints['G'] = (min_max_gc[0], min_max_gc[1])
         
     for i in range(min_max_mono[0], min_max_mono[1]+1):
         combinations = generate_combinations_with_constraints(monos_chars, i, constraints)
@@ -168,10 +174,12 @@ def generate_glycans_library(min_max_mono,
     to_be_removed = []
     for i_i, i in enumerate(glycans):
         if lactonized_ethyl_esterified:
-            if ((i['Am']+i['E']+i['G'] < min_max_sialics[0])
-                or (i['Am']+i['E']+i['G'] > min_max_sialics[1])
+            if ((i['Am']+i['E']+i['AmG']+i['EG'] < min_max_sialics[0])
+                or (i['Am']+i['E']+i['AmG']+i['EG'] > min_max_sialics[1])
                 or (i['Am']+i['E'] < min_max_ac[0]) 
-                or (i['Am']+i['E'] > min_max_ac[1])):
+                or (i['Am']+i['E'] > min_max_ac[1])
+                or (i['AmG']+i['EG'] < min_max_gc[0])
+                or (i['AmG']+i['EG'] > min_max_gc[1])):
                 to_be_removed.append(i)
         else:
             if ((i['S']+i['G'] < min_max_sialics[0])
@@ -180,9 +188,9 @@ def generate_glycans_library(min_max_mono,
     if n_glycan:
         if lactonized_ethyl_esterified:
             for i_i, i in enumerate(glycans):
-                if ((i['Am']+i['E']+i['G'] > i['N']-2)
+                if ((i['Am']+i['E']+i['AmG']+i['EG'] > i['N']-2)
                     or (i['F'] >= i['N']) 
-                    or (i['Am']+i['E']+i['G'] > i['H']-2)
+                    or (i['Am']+i['E']+i['AmG']+i['EG'] > i['H']-2)
                     or (i['H'] < 3) 
                     or (i['N'] < 2)):
                     if i not in to_be_removed:
@@ -524,10 +532,10 @@ def fragments_library(min_max_mono,
     '''
     print("Building fragments library...", end = "", flush = True)
     glycans = []
-    def_glycan_comp = {"H": 0, "N": 0, "X": 0, "S": 0, "Am": 0, "E": 0, "F": 0, "G": 0, "T" : 0}
+    def_glycan_comp = {"H": 0, "N": 0, "X": 0, "S": 0, "Am": 0, "E": 0, "F": 0, "G": 0, "AmG": 0, "EG": 0, "T" : 0}
     
     if lactonized_ethyl_esterified:
-        monos_chars = "HNXLEFGT"
+        monos_chars = "HNXLEFART"
     else:
         monos_chars = "HNXSFGT"
         
@@ -535,12 +543,13 @@ def fragments_library(min_max_mono,
                    'N': (0, min_max_hexnac[1]),
                    'X': (0, min_max_xyl[1]),
                    'F': (0, min_max_fuc[1]),
-                   'G': (0, min_max_gc[1]),
                    'T': (0, 1)}
                    
     if lactonized_ethyl_esterified:
         constraints['L'] = (0, min_max_ac[1])
         constraints['E'] = (0, min_max_ac[1])
+        constraints['A'] = (0, min_max_gc[1])
+        constraints['R'] = (0, min_max_gc[1])
     else:
         constraints['S'] = (0, min_max_ac[1])
         
@@ -553,8 +562,9 @@ def fragments_library(min_max_mono,
     for i_i, i in enumerate(glycans):
         if lactonized_ethyl_esterified:
             if ((i['T'] == 1 and i['N'] == 0)
-                or (i['Am']+i['E']+i['G'] > min_max_sialics[1])
-                or (i['Am']+i['E'] > min_max_ac[1])):
+                or (i['Am']+i['E']+i['AmG']+i['EG'] > min_max_sialics[1])
+                or (i['Am']+i['E'] > min_max_ac[1])
+                or (i['AmG']+i['EG'] > min_max_gc[1])):
                 to_be_removed.append(i_i)
         else:
             if ((i['T'] == 1 and i['N'] == 0)
@@ -562,15 +572,15 @@ def fragments_library(min_max_mono,
                 to_be_removed.append(i_i)
         if nglycan and i_i not in to_be_removed: #some rules and hardcoded exceptions for N-Glycans
             if lactonized_ethyl_esterified:
-                if ((i['T'] == 1 and sum(i.values()) < 8 and i['S']+i['G'] > 0)
-                    or (sum(i.values()) < 6 and i['S'] >= 1 and i['N'] > 1)
+                if ((i['T'] == 1 and sum(i.values()) < 8 and i['Am']+i['E']+i['AmG']+i['EG'] > 0)
+                    or (sum(i.values()) < 6 and i['Am']+i['E'] >= 1 and i['N'] > 1)
                     or (i['H'] > 0 and i['T'] == 1 and i['N'] < 2)
-                    or (i['H'] == 2 and i['N'] == 1 and i['Am']+i['E'] == 0 and i['F'] == 0 and i['G'] == 0 and i['T'] == 1)
-                    or (i['H'] == 0 and i['N'] == 1 and (i['Am']+i['E'] == 1 or i['G'] == 1) and i['F'] == 0 and i['T'] == 0)
-                    or (i['H'] == 1 and i['N'] == 3 and i['Am']+i['E'] == 0 and i['F'] == 0 and i['G'] == 0 and i['T'] == 1)
-                    or (i['H'] > 1 and i['N'] == 0 and (i['Am']+i['E'] == 1 or i['G'] == 1) and i['F'] == 0 and i['T'] == 0)
-                    or (i['H'] == 1 and i['N'] == 1 and i['Am']+i['E'] == 0 and i['F'] == 0 and i['G'] == 0 and i['T'] == 1)
-                    or (i['H'] == 3 and i['N'] == 1 and i['Am']+i['E'] == 0 and i['F'] == 0 and i['G'] == 0 and i['T'] == 1)):
+                    or (i['H'] == 2 and i['N'] == 1 and i['Am']+i['E'] == 0 and i['F'] == 0 and i['AmG']+i['EG'] == 0 and i['T'] == 1)
+                    or (i['H'] == 0 and i['N'] == 1 and (i['Am']+i['E'] == 1 or i['AmG']+i['EG'] == 1) and i['F'] == 0 and i['T'] == 0)
+                    or (i['H'] == 1 and i['N'] == 3 and i['Am']+i['E'] == 0 and i['F'] == 0 and i['AmG']+i['EG'] == 0 and i['T'] == 1)
+                    or (i['H'] > 1 and i['N'] == 0 and (i['Am']+i['E'] == 1 or i['AmG']+i['EG'] == 1) and i['F'] == 0 and i['T'] == 0)
+                    or (i['H'] == 1 and i['N'] == 1 and i['Am']+i['E'] == 0 and i['F'] == 0 and i['AmG']+i['EG'] == 0 and i['T'] == 1)
+                    or (i['H'] == 3 and i['N'] == 1 and i['Am']+i['E'] == 0 and i['F'] == 0 and i['AmG']+i['EG'] == 0 and i['T'] == 1)):
                     to_be_removed.append(i_i)
             else:
                 if ((i['T'] == 1 and sum(i.values()) < 8 and i['S']+i['G'] > 0)

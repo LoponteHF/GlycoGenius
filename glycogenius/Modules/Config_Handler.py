@@ -371,7 +371,11 @@ def config_handler(from_GUI = False, param_file_path = ''):
                     reporter_ions = reporter_ions[:i_i]+reporter_ions[i_i+1:]
         align_chromatograms = config['post-analysis/reanalysis'].getboolean('align_chromatograms')
         percentage_auc = float(config['post-analysis/reanalysis']['auc_percentage_threshold'])/100
-        max_ppm = int(config['post-analysis/reanalysis']['max_ppm_threshold'])
+        ppm_setting = config['post-analysis/reanalysis']['max_ppm_threshold'].split(",")
+        if len(ppm_setting) > 1:
+            max_ppm = float(config['post-analysis/reanalysis']['max_ppm_threshold'])
+        else:
+            max_ppm = (float(ppm_setting[0]), float(ppm_setting[1]))
         iso_fit_score = float(config['post-analysis/reanalysis']['isotopic_fitting_score_threshold'])
         curve_fit_score = float(config['post-analysis/reanalysis']['curve_fitting_score_threshold'])
         s_to_n = float(config['post-analysis/reanalysis']['signal_to_noise_threshold'])
