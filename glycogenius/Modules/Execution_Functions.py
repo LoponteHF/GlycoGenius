@@ -1516,6 +1516,7 @@ def output_filtered_data(curve_fit_score,
             
     total_dataframes = [] #total glycans AUC dataframe
     for i_i, i in enumerate(df1_refactor):
+        ambiguities_solved = []
         total_dataframes.append({"Glycan": [], "RT": [], "AUC": []})
         current_glycan = ""
         RTs = []
@@ -1535,22 +1536,41 @@ def output_filtered_data(curve_fit_score,
                     AUCs.append(i["AUC"][j_j])
             if j != current_glycan:
                 if j_j != 0:
-                    for k_k, k in enumerate(RTs):
-                            total_dataframes[i_i]["Glycan"].append(current_glycan)
-                            total_dataframes[i_i]["RT"].append(k)
-                            total_dataframes[i_i]["AUC"].append(AUCs[k_k])
+                    if current_glycan not in ambiguities_solved:
+                        glycan_name = current_glycan
+                        if i["Ambiguity"][current_glycan_index] != "No":
+                            ambiguities = i["Ambiguity"][current_glycan_index].split(", ")
+                            for k in ambiguities:
+                                current_ambiguity = k.split("_")[0]
+                                if current_ambiguity not in ambiguities_solved:
+                                    ambiguities_solved.append(current_ambiguity)
+                                    glycan_name+=f"/{current_ambiguity}"
+                        for k_k, k in enumerate(RTs):
+                                total_dataframes[i_i]["Glycan"].append(glycan_name)
+                                total_dataframes[i_i]["RT"].append(k)
+                                total_dataframes[i_i]["AUC"].append(AUCs[k_k])
                     RTs = []
                     AUCs = []
                 current_glycan = j
+                current_glycan_index = j_j
                 RTs.append(i["RT"][j_j])
                 AUCs.append(i["AUC"][j_j])
             if j_j == len(i["Glycan"])-1:
-                for k_k, k in enumerate(RTs):
-                    total_dataframes[i_i]["Glycan"].append(current_glycan)
-                    total_dataframes[i_i]["RT"].append(k)
-                    total_dataframes[i_i]["AUC"].append(AUCs[k_k])
-                RTs = []
-                AUCs = [] #total glycans AUC dataframe
+                if current_glycan not in ambiguities_solved:
+                    glycan_name = current_glycan
+                    if i["Ambiguity"][current_glycan_index] != "No":
+                        ambiguities = i["Ambiguity"][current_glycan_index].split(", ")
+                        for k in ambiguities:
+                            current_ambiguity = k.split("_")[0]
+                            if current_ambiguity not in ambiguities_solved:
+                                ambiguities_solved.append(current_ambiguity)
+                                glycan_name+=f"/{current_ambiguity}"
+                    for k_k, k in enumerate(RTs):
+                        total_dataframes[i_i]["Glycan"].append(glycan_name)
+                        total_dataframes[i_i]["RT"].append(k)
+                        total_dataframes[i_i]["AUC"].append(AUCs[k_k])
+                    RTs = []
+                    AUCs = [] #total glycans AUC dataframe
     
     arranged_total_dataframes = []
     for i_i, i in enumerate(total_dataframes):
@@ -1861,8 +1881,7 @@ def output_filtered_data(curve_fit_score,
                 f.close()
                 
         print("Done!") #end of metaboanalyst plot
-        
-        
+    
     total_glycans_compositions = []  #start to build meta_dataframe
     for i_i, i in enumerate(compositions_dataframes): #get all possible compositions
         for j_j, j in enumerate(i['Glycan']):
@@ -1883,11 +1902,13 @@ def output_filtered_data(curve_fit_score,
         meta_dataframe['In Samples - '+i] = []
     meta_dataframe['No. Samples'] = []
     for i_i, i in enumerate(sorted(total_glycans_compositions)):
+        raw_i = i
+        i = i.split("/")[0]
         total_replicates = []
         if nglycan:
-            meta_dataframe['Class'].append(glycan_class[i])
+            meta_dataframe['Class'].append(glycan_class[raw_i])
         meta_dataframe['No.'].append(i_i+1)
-        meta_dataframe['Composition'].append(i)
+        meta_dataframe['Composition'].append(raw_i)
         for j_j, j in enumerate(sorted(adducts)):
             meta_dataframe['[M+'+j+']'].append("-")
             current_adduct_PPM_Error = []
