@@ -552,8 +552,9 @@ def fragments_library(min_max_mono,
         constraints['R'] = (0, min_max_gc[1])
     else:
         constraints['S'] = (0, min_max_ac[1])
+        constraints['G'] = (0, min_max_gc[1])
         
-    for i in range(1, min_max_mono[1]):
+    for i in range(1, min_max_mono[1]+2):
         combinations = generate_combinations_with_constraints(monos_chars, i, constraints)
         for j in combinations:
             glycans.append(General_Functions.sum_monos(def_glycan_comp, j))

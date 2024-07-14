@@ -743,6 +743,7 @@ def average_ppm_calc(ppm_array,
 
 def peaks_from_eic(rt_int, 
                    rt_int_smoothed,
+                   raw_rt_int,
                    rt_interval,
                    min_ppp,
                    close_peaks,
@@ -865,7 +866,7 @@ def peaks_from_eic(rt_int,
             if peak_limits[0] == peak_limits[1]:
                 continue
             temp_peak_width = (rt_int[0][peak_limits[1]]-rt_int[0][peak_limits[0]])
-            peaks.append({'id': i, 'rt': rt_int[0][rt_int_smoothed[1].index(max(rt_int_smoothed[1][peak_limits[0]:peak_limits[1]+1]))], 'int': max(rt_int_smoothed[1][peak_limits[0]:peak_limits[1]+1]), 'peak_width': temp_peak_width, 'peak_interval': (rt_int[0][peak_limits[0]], rt_int[0][peak_limits[1]]), 'peak_interval_id': (peak_limits[0], peak_limits[1])})
+            peaks.append({'id': i, 'rt': rt_int[0][rt_int_smoothed[1].index(max(rt_int_smoothed[1][peak_limits[0]:peak_limits[1]+1]))], 'int': max(raw_rt_int[1][peak_limits[0]:peak_limits[1]+1]), 'peak_width': temp_peak_width, 'peak_interval': (rt_int[0][peak_limits[0]], rt_int[0][peak_limits[1]]), 'peak_interval_id': (peak_limits[0], peak_limits[1])})
     
     #print(peaks)
         

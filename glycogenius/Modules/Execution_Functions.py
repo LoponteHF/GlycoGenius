@@ -525,6 +525,30 @@ def imp_exp_gen_library(custom_glycans_list,
                         except KeyboardInterrupt:
                             os._exit(1)
             custom_glycans_comp.append(General_Functions.sum_monos(glycan_comp))
+        monos = {}
+        max_monos = 0
+        min_monos = 99
+        for i in General_Functions.monosaccharides:
+            monos[i] = 0
+        for i in custom_glycans_comp:
+            count_monos = 0
+            for j in i:
+                count_monos+=i[j]
+            if count_monos > max_monos:
+                max_monos = count_monos
+            if count_monos < min_monos:
+                min_monos = count_monos
+            for j in monos:
+                if j in list(i.keys()) and i[j] > monos[j]:
+                    monos[j] = i[j]
+        min_max_monos = (min_monos-1, max_monos)
+        min_max_hex = (0, monos['H']+1)
+        min_max_hexnac = (0, monos['N']+1)
+        min_max_fuc = (0, monos['F']+1)
+        min_max_sia = (0, max([monos['S'], monos['G'], monos['Am'], monos['E'], monos['AmG'], monos['EG']])+1)
+        min_max_ac = (0, max([monos['S'], monos['Am'], monos['E']])+1)
+        min_max_gc = (0, max([monos['S'], monos['AmG'], monos['EG']])+1)
+        min_max_xyl = (0, monos['X']+1)
         full_library = Library_Tools.full_glycans_library(custom_glycans_comp,
                                             max_adducts,
                                             adducts_exclusion,
@@ -2866,6 +2890,7 @@ def analyze_glycan(library,
                 if i == "Internal Standard":
                     temp_peaks = File_Accessing.peaks_from_eic(temp_eic[4][j][k],
                                                                temp_eic_smoothed,
+                                                               temp_eic[4][j][k],
                                                                ret_time_interval,
                                                                min_ppp,
                                                                close_peaks,
@@ -2873,6 +2898,7 @@ def analyze_glycan(library,
                 else:
                     temp_peaks = File_Accessing.peaks_from_eic(temp_eic[0][j][k],
                                                                temp_eic_smoothed,
+                                                               temp_eic[4][j][k],
                                                                ret_time_interval,
                                                                min_ppp,
                                                                close_peaks,
@@ -3221,39 +3247,31 @@ def analyze_glycan_ms2(ms2_index,
                         found_count = 0
                         total = sum(k[l]['intensity array'])
                         former_peak_mz = 0
+                        former_peak_intensity = 0
+                        former_peak_identified_mz = 0
                         max_int = max(k[l]['intensity array'])
                         for m_m, m in enumerate(k[l]['m/z array']):
                         
-                            if k[l]['intensity array'][m_m] < max_int*0.02: #this avoids picking on super small intensity peaks... since MS2 data noise is sometimes almost boolean, it's easier to just filter by intensity related to base peak
+                            #this will work as a moving threshold, allowing to ignore minuscule peaks that are between isotopologues
+                            if k[l]['intensity array'][m_m] < former_peak_intensity*0.01:
                                 continue
                                 
                             if abs(m-(former_peak_mz+General_Functions.h_mass)) < General_Functions.tolerance_calc(tolerance[0], tolerance[1], m) or abs(m-(former_peak_mz+(General_Functions.h_mass/2))) < General_Functions.tolerance_calc(tolerance[0], tolerance[1], m) or abs(m-(former_peak_mz+(General_Functions.h_mass/3))) < General_Functions.tolerance_calc(tolerance[0], tolerance[1], m): #this stack makes it so that fragments are not picked as peaks of the envelope of former peaks. checks for singly, doubly or triply charged fragments only
+                                if abs(m-(former_peak_identified_mz+General_Functions.h_mass)) < General_Functions.tolerance_calc(tolerance[0], tolerance[1], m) or abs(m-(former_peak_identified_mz+(General_Functions.h_mass/2))) < General_Functions.tolerance_calc(tolerance[0], tolerance[1], m) or abs(m-(former_peak_identified_mz+(General_Functions.h_mass/3))) < General_Functions.tolerance_calc(tolerance[0], tolerance[1], m):
+                                    former_peak_identified_mz = m
+                                    total-= k[l]['intensity array'][m_m] #this is a way to be more true in regards to the % of ms2 TIC identified
                                 former_peak_mz = m
                                 continue
                             former_peak_mz = m
+                            former_peak_intensity = k[l]['intensity array'][m_m]
                             
                             fragments_mz_list = list(indexed_fragments.keys())
                             fragment_id = General_Functions.binary_search_with_tolerance(fragments_mz_list, m, 0, len(indexed_fragments)-1, General_Functions.tolerance_calc(tolerance[0], tolerance[1], m))
                             if fragment_id == -1:
                                 continue
+                                
                             n = fragments[indexed_fragments[fragments_mz_list[fragment_id]][0]]
                             
-                            if 'Monos_Composition' in list(n.keys()):
-                                if lactonized_ethyl_esterified:
-                                    if (n['Monos_Composition']['H'] == analyzed_data[0][i]['Monos_Composition']['H']
-                                        and n['Monos_Composition']['N'] == analyzed_data[0][i]['Monos_Composition']['N']
-                                        and n['Monos_Composition']['Am'] == analyzed_data[0][i]['Monos_Composition']['Am']
-                                        and n['Monos_Composition']['E'] == analyzed_data[0][i]['Monos_Composition']['E']
-                                        and n['Monos_Composition']['F'] == analyzed_data[0][i]['Monos_Composition']['F']
-                                        and n['Monos_Composition']['G'] == analyzed_data[0][i]['Monos_Composition']['G']):
-                                        continue
-                                else:
-                                    if (n['Monos_Composition']['H'] == analyzed_data[0][i]['Monos_Composition']['H']
-                                        and n['Monos_Composition']['N'] == analyzed_data[0][i]['Monos_Composition']['N']
-                                        and n['Monos_Composition']['S'] == analyzed_data[0][i]['Monos_Composition']['S']
-                                        and n['Monos_Composition']['F'] == analyzed_data[0][i]['Monos_Composition']['F']
-                                        and n['Monos_Composition']['G'] == analyzed_data[0][i]['Monos_Composition']['G']):
-                                        continue
                             combo = False
                             if filter_output:
                                 if "/" in n['Formula']:
@@ -3333,14 +3351,18 @@ def analyze_glycan_ms2(ms2_index,
                                     else:
                                         if (n['Monos_Composition']['H'] > analyzed_data[0][i]['Monos_Composition']['H'] or n['Monos_Composition']['N'] > analyzed_data[0][i]['Monos_Composition']['N'] or n['Monos_Composition']['S'] > analyzed_data[0][i]['Monos_Composition']['S'] or n['Monos_Composition']['F'] > analyzed_data[0][i]['Monos_Composition']['F'] or n['Monos_Composition']['G'] > analyzed_data[0][i]['Monos_Composition']['G']):
                                             continue
-                                            
-                            if "_" not in n['Formula']: #fragments data outputted in the form of (Glycan, Adduct, Fragment, Fragment mz, intensity, retention time, precursor)
-                                fragments_data[j][k_k].append((i, j, n['Formula']+'_'+indexed_fragments[fragments_mz_list[fragment_id]][1], n['Adducts_mz'][indexed_fragments[fragments_mz_list[fragment_id]][1]], k[l]['intensity array'][m_m], k[l]['retentionTime'], k[l]['precursorMz'][0]['precursorMz'], total))
+                             
+                            former_peak_identified_mz = m               
+                            if "_" not in n['Formula']: #fragments data outputted in the form of (Glycan, Adduct, Fragment, Fragment mz, intensity, retention time, precursor, total)
+                                fragments_data[j][k_k].append([i, j, n['Formula']+'_'+indexed_fragments[fragments_mz_list[fragment_id]][1], n['Adducts_mz'][indexed_fragments[fragments_mz_list[fragment_id]][1]], k[l]['intensity array'][m_m], k[l]['retentionTime'], k[l]['precursorMz'][0]['precursorMz'], total])
                             elif "_" in n['Formula'] and combo:
-                                fragments_data[j][k_k].append((i, j, new_formula, n['Adducts_mz'][indexed_fragments[fragments_mz_list[fragment_id]][1]], k[l]['intensity array'][m_m], k[l]['retentionTime'], k[l]['precursorMz'][0]['precursorMz'], total))
+                                fragments_data[j][k_k].append([i, j, new_formula, n['Adducts_mz'][indexed_fragments[fragments_mz_list[fragment_id]][1]], k[l]['intensity array'][m_m], k[l]['retentionTime'], k[l]['precursorMz'][0]['precursorMz'], total])
                             else:
-                                fragments_data[j][k_k].append((i, j, n['Formula'], n['Adducts_mz'][indexed_fragments[fragments_mz_list[fragment_id]][1]], k[l]['intensity array'][m_m], k[l]['retentionTime'], k[l]['precursorMz'][0]['precursorMz'], total))
+                                fragments_data[j][k_k].append([i, j, n['Formula'], n['Adducts_mz'][indexed_fragments[fragments_mz_list[fragment_id]][1]], k[l]['intensity array'][m_m], k[l]['retentionTime'], k[l]['precursorMz'][0]['precursorMz'], total])
                             found_count += k[l]['intensity array'][m_m]
+                        for m in fragments_data[j][k_k]:
+                            if m[5] == k[l]['retentionTime']:
+                                m[7] = total
         return fragments_data, i
     except KeyboardInterrupt:
         print("\n\n----------Execution cancelled by user.----------\n", flush=True)
