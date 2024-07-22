@@ -242,7 +242,7 @@ def interactive_terminal():
         print_sep()
         if input_order[1] == 1:
             glycans_list = []
-            print("Warning: Glycans must be inputted in the format\nof 'H5N4S1F1G1' where 'H' = Hexose,'N' =\nN-Acetylhexosamine, 'S' = N-Acetyl-Neuraminic\nAcid, 'F' = Deoxyhexose, 'G' =\nN-Glycolyl-Neuraminic Acid and each number next\nto it corresponds to the amount of said\nmonosaccharide\n")
+            print("Warning: Glycans must be inputted in the format\nof 'H5N4S1F1G1' where 'H' = Hexose,'N' =\nN-Acetylhexosamine, 'X' = Xylose, 'S' =\nN-Acetyl-Neuraminic Acid, 'Am' = Amidated\nNeu5Ac, 'E' = Ethyl-Esterified Neu5Ac, 'F' =\nDeoxyhexose, 'G' = N-Glycolyl-Neuraminic Acid,\n'Am' = Amidated Neu5Ac, 'E' = Ethyl-Esterified\nNeu5Ac, and each number next to it corresponds\nto the amount of said monosaccharide\n")
             while True:
                 var = input("Insert a glycan, leave blank to end list: ")
                 var = var.strip()
@@ -261,7 +261,7 @@ def interactive_terminal():
                     input("\nWrong Input. Press Enter to try again.\n")
                     continue
                 for i in comp:
-                    if i != 'H' and i != 'N' and i != 'S' and i != 'F' and i != 'G':
+                    if i != 'H' and i != 'N' and i != 'X' and i != 'S' and i != 'Am' and i != 'E' and i != 'F' and i != 'G' and i != 'AmG' and i != 'EG':
                         input("\nWrong Input. Press Enter to try again.\n")
                         continue
                 glycans_list.append(var)

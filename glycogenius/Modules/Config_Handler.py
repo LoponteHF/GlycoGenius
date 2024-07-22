@@ -229,13 +229,21 @@ def config_handler(from_GUI = False, param_file_path = ''):
                     if len(custom_glycans) == 1:
                         custom_glycans = temp_custom_glycans_list.split("\n")
                     to_remove = []
+                    to_add = []
                     if len(custom_glycans) > 1:
                         for i_i, i in enumerate(custom_glycans):
                             custom_glycans[i_i] = i.strip()
-                            if len(i) == 0:
+                            if len(custom_glycans[i_i]) == 0:
                                 to_remove.append(i_i)
+                                continue
+                            if len(custom_glycans[i_i].split("/")) > 1:
+                                splitted_glycan = custom_glycans[i_i].split("/")
+                                custom_glycans[i_i] = splitted_glycan[0]
+                                to_add.append(splitted_glycan[1])
                     for i in sorted(to_remove, reverse = True):
                         del custom_glycans[i]
+                    for i in to_add:
+                        custom_glycans.append(i)
                 except:
                     print("Custom glycans file not found. Check the path to\nthe file you've inputted in the parameters file.")
                     print("Close the window or press CTRL+C to exit.")
@@ -246,10 +254,18 @@ def config_handler(from_GUI = False, param_file_path = ''):
                         os._exit(1)
             else:
                 custom_glycans = config['library_building_modes']['custom_glycans_list'].split(",")
+                to_add = []
                 for i_i, i in enumerate(custom_glycans):
                     custom_glycans[i_i] = i.strip()
-                    if len(i) == 0:
+                    if len(custom_glycans[i_i]) == 0:
                         custom_glycans = custom_glycans[:i_i]+custom_glycans[i_i+1:]
+                        continue
+                    if len(custom_glycans[i_i].split("/")) > 1:
+                        splitted_glycan = custom_glycans[i_i].split("/")
+                        custom_glycans[i_i] = splitted_glycan[0]
+                        to_add.append(splitted_glycan[1])
+                for i in to_add:
+                    custom_glycans.append(i)
             custom_glycans_list[1] = custom_glycans
     elif library_mode != 'custom_library' and library_mode != 'import_library' and library_mode != 'generate_library':
         print("Wrong mode selected. Use 'import_library',\n'custom_library' or 'generate_library' in mode\nunder 'library_building_modes', in the\nparameters file.")

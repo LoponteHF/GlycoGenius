@@ -1653,13 +1653,13 @@ def output_filtered_data(curve_fit_score,
             for j_j, j in enumerate(i['Glycan']):
                 if j != 'Internal Standard' and j not in glycan_class.keys():
                     comp = General_Functions.form_to_comp(j)
-                    if comp['N'] == 2 and comp['H'] <= 3:
+                    if 'N' in comp.keys() and 'H' in comp.keys() and comp['N'] == 2 and comp['H'] <= 3:
                         glycan_class[j] = 'Paucimannose'
                         continue
-                    if comp['H'] > comp['N']+1 and comp['N'] > 2:
+                    if 'N' in comp.keys() and 'H' in comp.keys() and comp['H'] > comp['N']+1 and comp['N'] > 2:
                         glycan_class[j] = 'Hybrid'
                         continue
-                    if comp['N'] == 2 and comp['H'] > 3:
+                    if 'N' in comp.keys() and 'H' in comp.keys() and comp['N'] == 2 and comp['H'] > 3:
                         glycan_class[j] = 'High-Mannose'
                         continue
                     else:
@@ -2680,7 +2680,17 @@ def analyze_files(library,
         rt_array_report[result_data[7]] = result_data[4]
         noise[result_data[7]] = result_data[5]
         noise_avg[result_data[7]] = percentile(result_data[6], 66.8)
-        
+    
+    ambiguities = {}
+    for i_i, i in enumerate(library):
+        for k_k, k in enumerate(library):
+            if k_k >= i_i:
+                break
+            if library[k]['Neutral_Mass'] == library[i]['Neutral_Mass']:
+                if i not in ambiguities.keys():
+                    ambiguities[i] = [k]
+                else:
+                    ambiguities[i].append(k)
         
     print('Done!')
     print("Pre-processing done in "+str(datetime.datetime.now() - begin_time)+"!")
@@ -2692,6 +2702,9 @@ def analyze_files(library,
     temp_results = []
     with concurrent.futures.ProcessPoolExecutor(max_workers = cpu_count) as executor:
         for i_i, i in enumerate(library):
+            if i in ambiguities.keys(): #skips ambiguities
+                print('Analyzing glycan '+str(i)+': '+str(i_i+1)+'/'+str(lib_size))
+                continue
             result = executor.submit(analyze_glycan, 
                                      library,
                                      lib_size,
@@ -2725,6 +2738,9 @@ def analyze_files(library,
     for i in results:
         result_data = i.result()
         analyzed_data[result_data[1]] = result_data[0]
+        
+    for i in ambiguities: #sorts ambiguities
+        analyzed_data[i] = analyzed_data[ambiguities[i][0]]
             
     print('Sample MS1 analysis done in '+str(datetime.datetime.now() - begin_time)+'!')
     return analyzed_data, rt_array_report, noise_avg
@@ -3253,7 +3269,7 @@ def analyze_glycan_ms2(ms2_index,
                         for m_m, m in enumerate(k[l]['m/z array']):
                         
                             #this will work as a moving threshold, allowing to ignore minuscule peaks that are between isotopologues
-                            if k[l]['intensity array'][m_m] < former_peak_intensity*0.01:
+                            if k[l]['intensity array'][m_m] < former_peak_intensity*0.05:
                                 continue
                                 
                             if abs(m-(former_peak_mz+General_Functions.h_mass)) < General_Functions.tolerance_calc(tolerance[0], tolerance[1], m) or abs(m-(former_peak_mz+(General_Functions.h_mass/2))) < General_Functions.tolerance_calc(tolerance[0], tolerance[1], m) or abs(m-(former_peak_mz+(General_Functions.h_mass/3))) < General_Functions.tolerance_calc(tolerance[0], tolerance[1], m): #this stack makes it so that fragments are not picked as peaks of the envelope of former peaks. checks for singly, doubly or triply charged fragments only

@@ -443,22 +443,25 @@ def analyze_mz_array(sliced_mz,
         if filtered == True:
             iso_actual = [1]
             bad = False #here starts quality checks
+            margin = 0.2 #0.2 = 20%, 0.4 = 40% - margin for checking, higher the margin, more strict is the checking and less glycans will probably be found
             for i in charge_range: #check if it's monoisotopic and correct charge
-                if len(buffer) > 1 and buffer[-1] != None and buffer[-2] != None:
-                    pass
-                else: #only check if it's monoisotopic if at least one of the last 2 RT got nothing...
+                if len(buffer) <= 2 or (len(buffer) > 2 and buffer[-3] == None): #only check if it's monoisotopic if at least one of the last 3 RT got nothing...
                     temp_id = General_Functions.binary_search_with_tolerance(sliced_mz, target_mz-(General_Functions.h_mass/i), 0, mz_id, General_Functions.tolerance_calc(tolerance[0], tolerance[1], target_mz-(General_Functions.h_mass/i))) #check monoisotopic
                     if temp_id != -1:
-                        expected_value = 1/((sliced_mz[temp_id]*i*0.0006)+0.1401) #based on linear regression of the relationship between masses and the second isotopic peak relative intensity of the average of different organic macromolecules
-                        if (sliced_int[temp_id] > mono_int*expected_value*0.6):
+                        expected_value = (sliced_mz[temp_id]*i*0.0006)+0.1401 #based on linear regression of the relationship between masses and the second isotopic peak relative intensity of the average of different organic macromolecules
+                        # print(f"RT: {ret_time}, Check mono, expected value: {expected_value}, theoretical mass of monoisotopic: {sliced_mz[temp_id]*i}, charges: {i}, second isotopic actual: {mono_int/sliced_int[temp_id]}")
+                        if (mono_int/sliced_int[temp_id] < expected_value*(1+(margin*2))):
+                            # print("bad")
                             bad = True
                             break
-                if i == 1: #ignores charge 1 due to the fact that any charge distribution will find a hit on that one
+                if i == 1 or i == adduct_charge: #ignores charge 1 due to the fact that any charge distribution will find a hit on that one
                     continue
                 temp_id = General_Functions.binary_search_with_tolerance(sliced_mz, target_mz+(General_Functions.h_mass/i), mz_id, sliced_mz_length, General_Functions.tolerance_calc(tolerance[0], tolerance[1], target_mz+(General_Functions.h_mass/i))) #check for correct charge
                 if temp_id != -1:
-                    expected_value = (sliced_mz[temp_id]*i*0.0006)+0.1401 #based on linear regression of the relationship between masses and the second isotopic peak relative intensity of the average of different organic macromolecules
-                    if i != adduct_charge and (sliced_int[temp_id] > mono_int*expected_value*0.6):
+                    expected_value = (target_mz*i*0.0006)+0.1401 #based on linear regression of the relationship between masses and the second isotopic peak relative intensity of the average of different organic macromolecules
+                    # print(f"RT: {ret_time}, Check charge, expected value: {expected_value}, theoretical mass of monoisotopic: {target_mz*i}, charges: {i}, second isotopic actual: {sliced_int[temp_id]/mono_int}")
+                    if (sliced_int[temp_id]/mono_int > expected_value*(1-margin)):
+                        # print("bad")
                         bad = True
                         break
             
@@ -483,6 +486,14 @@ def analyze_mz_array(sliced_mz,
                             break
                         else:
                             break
+                            
+            if not bad and iso_actual[1] < 0.2: #this should avoid situations where it's obvious that it's picking the wrong charge because the second peak is almost invisible compared to the third and first, which when z=2 means that it's very likely actually a singly charge compound, for example
+                if len(iso_actual) > 2:
+                    if iso_actual[2] > iso_actual[1]*10:
+                        bad = True
+                else:
+                    if iso_actual[1] < 0.2: #smallest glycan should have the second iso_actual somewhere around 0.5, so a cutoff lower than that is fine
+                        bad = True
                         
             if bad:
                 buffer.append(None)
@@ -510,47 +521,44 @@ def analyze_mz_array(sliced_mz,
                 mz_isos = [glycan_info['Adducts_mz'][glycan_id]]+mz_isos
                 
                 buffer.append(([glycan_id, file_id, ms1_id, float("%.4f" % round(ret_time, 4))], [ppm_error, iso_quali, intensity, [mz_isos, iso_target, iso_actual, iso_quali]]))
-        
-        #dynamical clean-up of buffer
-        min_in_a_row = 4
-        buffer_size = 10
-        if filtered and (len(buffer) >= buffer_size or ms1_id == last_ms1_id): 
-            highest_in_a_row = 0
-            in_a_row = 0
-            for i_i, i in enumerate(buffer):
-                if i != None:
-                    in_a_row += 1
-                    if in_a_row > highest_in_a_row:
-                        highest_in_a_row = in_a_row
-                else:
-                    if in_a_row > 0 and in_a_row < min_in_a_row:
-                        for k_k, k in enumerate(buffer):
-                            if k_k >= i_i:
-                                break
-                            if k_k >= i_i-in_a_row:
-                                buffer[k_k] = None
-                    in_a_row = 0
-            if highest_in_a_row >= min_in_a_row:
-                for i in buffer:
-                    if i != None:
-                        ppm_info[i[0][0]][i[0][1]][i[0][2]] = i[1][0]
-                        iso_fitting_quality[i[0][0]][i[0][1]][i[0][2]] = i[1][1]
-                        data[i[0][0]][i[0][1]][1][i[0][2]] = i[1][2]
-                        isotopic_fits[i[0][0]][i[0][1]][i[0][3]] = i[1][3]
-            buffer.pop(0)
                 
-        elif not filtered:
-            info = ([glycan_id, file_id, ms1_id, float("%.4f" % round(ret_time, 4))], [ppm_error, 1.0, mono_int, [[], [], [], 1.0]])
-            ppm_info[info[0][0]][info[0][1]][info[0][2]] = info[1][0]
-            iso_fitting_quality[info[0][0]][info[0][1]][info[0][2]] = info[1][1]
-            data[info[0][0]][info[0][1]][1][info[0][2]] = info[1][2]
-            isotopic_fits[info[0][0]][info[0][1]][info[0][3]] = info[1][3]
     else:
         if filtered == True:
             buffer.append(None)
         else:
             info = ([glycan_id, file_id, ms1_id, float("%.4f" % round(ret_time, 4))], [inf, 1.0, 0.0, [[], [], [], 1.0]])
             isotopic_fits[info[0][0]][info[0][1]][info[0][3]] = info[1][3]
+        
+    #dynamical clean-up of buffer
+    min_in_a_row = 4
+    buffer_size = 10
+    if filtered:
+        in_a_row = 0
+        for i_i, i in enumerate(buffer):
+            if i != None:
+                in_a_row += 1
+            else:
+                in_a_row = 0
+                for k_k, k in enumerate(buffer): #this clears the buffer up to the point where it was checked, only once "None" is found
+                    if k_k >= i_i:
+                        break
+                    buffer[k_k] = None
+        if in_a_row >= min_in_a_row:
+            for i in buffer:
+                if i != None:
+                    ppm_info[i[0][0]][i[0][1]][i[0][2]] = i[1][0]
+                    iso_fitting_quality[i[0][0]][i[0][1]][i[0][2]] = i[1][1]
+                    data[i[0][0]][i[0][1]][1][i[0][2]] = i[1][2]
+                    isotopic_fits[i[0][0]][i[0][1]][i[0][3]] = i[1][3]
+        if len(buffer) >= buffer_size: #this means that the buffer will be worked on once it gets to the buffer_size or over it or the end of the MS1 array is reached
+            buffer.pop(0)
+            
+    elif not filtered:
+        info = ([glycan_id, file_id, ms1_id, float("%.4f" % round(ret_time, 4))], [ppm_error, 1.0, mono_int, [[], [], [], 1.0]])
+        ppm_info[info[0][0]][info[0][1]][info[0][2]] = info[1][0]
+        iso_fitting_quality[info[0][0]][info[0][1]][info[0][2]] = info[1][1]
+        data[info[0][0]][info[0][1]][1][info[0][2]] = info[1][2]
+        isotopic_fits[info[0][0]][info[0][1]][info[0][3]] = info[1][3]
     
 def eic_smoothing(y, lmbd = 100, d = 2):
     '''Implementation of the Whittaker smoothing algorithm,
