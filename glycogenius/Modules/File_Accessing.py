@@ -454,7 +454,7 @@ def analyze_mz_array(sliced_mz,
                             # print("bad")
                             bad = True
                             break
-                if i == 1 or i == adduct_charge: #ignores charge 1 due to the fact that any charge distribution will find a hit on that one
+                if i == 1 or i == abs(adduct_charge): #ignores charge 1 due to the fact that any charge distribution will find a hit on that one
                     continue
                 temp_id = General_Functions.binary_search_with_tolerance(sliced_mz, target_mz+(General_Functions.h_mass/i), mz_id, sliced_mz_length, General_Functions.tolerance_calc(tolerance[0], tolerance[1], target_mz+(General_Functions.h_mass/i))) #check for correct charge
                 if temp_id != -1:
@@ -471,7 +471,7 @@ def analyze_mz_array(sliced_mz,
                 for i_i, i in enumerate(glycan_info['Isotopic_Distribution_Masses']): #check isotopic peaks and add to the intensity
                     if i_i == 0: #ignores monoisotopic this time around
                         continue
-                    temp_id = General_Functions.binary_search_with_tolerance(sliced_mz, (i+adduct_mass)/adduct_charge, mz_id, sliced_mz_length, General_Functions.tolerance_calc(tolerance[0], tolerance[1], (i+adduct_mass)/adduct_charge))
+                    temp_id = General_Functions.binary_search_with_tolerance(sliced_mz, (i+adduct_mass)/abs(adduct_charge), mz_id, sliced_mz_length, General_Functions.tolerance_calc(tolerance[0], tolerance[1], (i+adduct_mass)/abs(adduct_charge)))
                     if temp_id != -1:
                         isos_found += 1
                         mz_isos.append(sliced_mz[temp_id])
@@ -528,7 +528,9 @@ def analyze_mz_array(sliced_mz,
         else:
             info = ([glycan_id, file_id, ms1_id, float("%.4f" % round(ret_time, 4))], [inf, 1.0, 0.0, [[], [], [], 1.0]])
             isotopic_fits[info[0][0]][info[0][1]][info[0][3]] = info[1][3]
-        
+    
+    # print(f"Buffer before clean-up: {buffer}")
+    
     #dynamical clean-up of buffer
     min_in_a_row = 4
     buffer_size = 10
@@ -559,6 +561,8 @@ def analyze_mz_array(sliced_mz,
         iso_fitting_quality[info[0][0]][info[0][1]][info[0][2]] = info[1][1]
         data[info[0][0]][info[0][1]][1][info[0][2]] = info[1][2]
         isotopic_fits[info[0][0]][info[0][1]][info[0][3]] = info[1][3]
+        
+    # print(f"Buffer after clean-up: {buffer}")
     
 def eic_smoothing(y, lmbd = 100, d = 2):
     '''Implementation of the Whittaker smoothing algorithm,

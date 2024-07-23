@@ -541,14 +541,14 @@ def imp_exp_gen_library(custom_glycans_list,
             for j in monos:
                 if j in list(i.keys()) and i[j] > monos[j]:
                     monos[j] = i[j]
-        min_max_monos = (min_monos-1, max_monos)
-        min_max_hex = (0, monos['H']+1)
-        min_max_hexnac = (0, monos['N']+1)
-        min_max_fuc = (0, monos['F']+1)
-        min_max_sia = (0, max([monos['S'], monos['G'], monos['Am'], monos['E'], monos['AmG'], monos['EG']])+1)
-        min_max_ac = (0, max([monos['S'], monos['Am'], monos['E']])+1)
-        min_max_gc = (0, max([monos['S'], monos['AmG'], monos['EG']])+1)
-        min_max_xyl = (0, monos['X']+1)
+        min_max_monos = (min_monos-1, max_monos+1)
+        min_max_hex = (0, (monos['H']+1) if monos['H'] != 0 else 0)
+        min_max_hexnac = (0, (monos['N']+1) if monos['N'] != 0 else 0)
+        min_max_fuc = (0, (monos['F']+1) if monos['F'] != 0 else 0)
+        min_max_sia = (0, (max([monos['S'], monos['G'], monos['Am'], monos['E'], monos['AmG'], monos['EG']])+1) if (monos['S'] != 0 or monos['G'] != 0 or monos['Am'] != 0 or monos['E'] != 0 or monos['AmG'] != 0 or monos['EG'] != 0) else 0)
+        min_max_ac = (0, (max([monos['S'], monos['Am'], monos['E']])+1) if (monos['S'] != 0 or monos['Am'] != 0 or monos['E'] != 0) else 0)
+        min_max_gc = (0, (max([monos['G'], monos['AmG'], monos['EG']])+1) if (monos['G'] != 0 or monos['AmG'] != 0 or monos['EG'] != 0) else 0)
+        min_max_xyl = (0, (monos['X']+1) if monos['X'] != 0 else 0)
         full_library = Library_Tools.full_glycans_library(custom_glycans_comp,
                                             max_adducts,
                                             adducts_exclusion,
@@ -1652,18 +1652,24 @@ def output_filtered_data(curve_fit_score,
         for i_i, i in enumerate(total_dataframes):
             for j_j, j in enumerate(i['Glycan']):
                 if j != 'Internal Standard' and j not in glycan_class.keys():
-                    comp = General_Functions.form_to_comp(j)
-                    if 'N' in comp.keys() and 'H' in comp.keys() and comp['N'] == 2 and comp['H'] <= 3:
-                        glycan_class[j] = 'Paucimannose'
-                        continue
-                    if 'N' in comp.keys() and 'H' in comp.keys() and comp['H'] > comp['N']+1 and comp['N'] > 2:
-                        glycan_class[j] = 'Hybrid'
-                        continue
-                    if 'N' in comp.keys() and 'H' in comp.keys() and comp['N'] == 2 and comp['H'] > 3:
-                        glycan_class[j] = 'High-Mannose'
-                        continue
-                    else:
-                        glycan_class[j] = 'Complex'
+                    j_list = j.split("/")
+                    temp_class = ''
+                    for k in j_list:
+                        comp = General_Functions.form_to_comp(k)
+                        if len(temp_class) > 0:
+                            temp_class += '/'
+                        if 'N' in comp.keys() and 'H' in comp.keys() and comp['N'] == 2 and comp['H'] <= 3:
+                            temp_class += 'Paucimannose'
+                            continue
+                        if 'N' in comp.keys() and 'H' in comp.keys() and comp['H'] > comp['N']+1 and comp['N'] > 2:
+                            temp_class += 'Hybrid'
+                            continue
+                        if 'N' in comp.keys() and 'H' in comp.keys() and comp['N'] == 2 and comp['H'] > 3:
+                            temp_class += 'High-Mannose'
+                            continue
+                        else:
+                            temp_class += 'Complex'
+                    glycan_class[j] = temp_class
                 if j == 'Internal Standard':
                     glycan_class[j] = j
         for i_i, i in enumerate(total_dataframes):
@@ -1684,13 +1690,13 @@ def output_filtered_data(curve_fit_score,
             total_oligo = 0
             total_complex = 0
             for j_j, j in enumerate(i['Class']):
-                if j == 'Paucimannose':
+                if 'Paucimannose' in j:
                     total_pauci+= i['AUC'][j_j]
-                if j == 'Hybrid':
+                if 'Hybrid' in j:
                     total_hybrid+= i['AUC'][j_j]
-                if j == 'High-Mannose':
+                if 'High-Mannose' in j:
                     total_oligo+= i['AUC'][j_j]
-                if j == 'Complex':
+                if 'Complex' in j:
                     total_complex+= i['AUC'][j_j]
             proportion_classes['Paucimannose'].append(float("%.2f" % round((total_pauci/total_sample)*100, 2)))
             proportion_classes['Hybrid'].append(float("%.2f" % round((total_hybrid/total_sample)*100, 2)))
@@ -3259,7 +3265,7 @@ def analyze_glycan_ms2(ms2_index,
                     else:
                         if k[l]['retentionTime'] < analyzed_data[0][i]['Adducts_mz_data'][j][k_k][1][0]['peak_interval'][0] - rt_tolerance or k[l]['retentionTime'] > analyzed_data[0][i]['Adducts_mz_data'][j][k_k][1][-1]['peak_interval'][1] + rt_tolerance: #skips spectra outside peak interval of peaks found
                             continue
-                    if abs((k[l]['precursorMz'][0]['precursorMz']) - analyzed_data[0][i]['Adducts_mz'][j]) <= (1.0074/General_Functions.form_to_charge(j))+General_Functions.tolerance_calc(tolerance[0], tolerance[1], analyzed_data[0][i]['Adducts_mz'][j]): #checks if precursor matches adduct mz
+                    if abs((k[l]['precursorMz'][0]['precursorMz']) - analyzed_data[0][i]['Adducts_mz'][j]) <= (1.0074/abs(General_Functions.form_to_charge(j)))+General_Functions.tolerance_calc(tolerance[0], tolerance[1], analyzed_data[0][i]['Adducts_mz'][j]): #checks if precursor matches adduct mz
                         found_count = 0
                         total = sum(k[l]['intensity array'])
                         former_peak_mz = 0
