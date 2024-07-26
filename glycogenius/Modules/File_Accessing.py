@@ -454,7 +454,7 @@ def analyze_mz_array(sliced_mz,
                             # print("bad")
                             bad = True
                             break
-                if i == 1 or i == abs(adduct_charge): #ignores charge 1 due to the fact that any charge distribution will find a hit on that one
+                if i == 1 or i == abs(adduct_charge) or (i == 2 and abs(adduct_charge) == 4) or (i == 3 and abs(adduct_charge) == 6): #ignores charge 1 due to the fact that any charge distribution will find a hit on that one
                     continue
                 temp_id = General_Functions.binary_search_with_tolerance(sliced_mz, target_mz+(General_Functions.h_mass/i), mz_id, sliced_mz_length, General_Functions.tolerance_calc(tolerance[0], tolerance[1], target_mz+(General_Functions.h_mass/i))) #check for correct charge
                 if temp_id != -1:
@@ -487,12 +487,12 @@ def analyze_mz_array(sliced_mz,
                         else:
                             break
                             
-            if not bad and iso_actual[1] < 0.2: #this should avoid situations where it's obvious that it's picking the wrong charge because the second peak is almost invisible compared to the third and first, which when z=2 means that it's very likely actually a singly charge compound, for example
+            if not bad and (iso_actual[1] < 0.2 or iso_actual[1] > 5): #this should avoid situations where it's obvious that it's picking the wrong charge because the second peak is almost invisible compared to the third and first, which when z=2 means that it's very likely actually a singly charge compound, for example
                 if len(iso_actual) > 2:
-                    if iso_actual[2] > iso_actual[1]*10:
+                    if iso_actual[2] > iso_actual[1]*10 or iso_actual[1] > 5:
                         bad = True
                 else:
-                    if iso_actual[1] < 0.2: #smallest glycan should have the second iso_actual somewhere around 0.5, so a cutoff lower than that is fine
+                    if iso_actual[1] < 0.2 or iso_actual[1] > 5: #smallest glycan should have the second iso_actual somewhere around 0.5, so a cutoff lower than that is fine
                         bad = True
                         
             if bad:
@@ -507,8 +507,11 @@ def analyze_mz_array(sliced_mz,
                         continue
                     intensities = [i, iso_actual[i_i]]
                     ratio = min(intensities)/max(intensities)
-                    gamma = 5 #scales the score
-                    corrected_ratio = 1 - (1 - ratio) ** gamma
+                    
+                    #scales the score in a sigmoid, with steepness determine by k_value
+                    k_value = 10
+                    corrected_ratio = 1 / (1 + numpy.exp(-k_value * (ratio - 0.5)))
+                    
                     ratios.append(corrected_ratio)
                     weights.append(1/(exp(1.25*i_i)))
                 
@@ -704,7 +707,8 @@ def iso_fit_score_calc(iso_fits,
         Average of the isotopic fits score calculated for the interval of
         the peak of the glycan, weighted by the gaussian fit of it.
     '''
-    iso_fit_score = numpy.average(iso_fits[peak['peak_interval_id'][0]:peak['peak_interval_id'][1]+1], weights = weights_list)
+    new_weights = [i**2 for i in weights_list]
+    iso_fit_score = numpy.average(iso_fits[peak['peak_interval_id'][0]:peak['peak_interval_id'][1]+1], weights = new_weights)
     return iso_fit_score
     
 def average_ppm_calc(ppm_array,
@@ -741,6 +745,7 @@ def average_ppm_calc(ppm_array,
         The number of missing points in the peak has their ppm difference set to the
         tolerance of the analysis.
     '''
+    new_weights = [i**2 for i in weights_list]
     ppms = []
     ppm_default = General_Functions.calculate_ppm_diff(tolerance[2]-General_Functions.tolerance_calc(tolerance[0], tolerance[1], tolerance[2]), tolerance[2])
     missing_points = 0
@@ -750,7 +755,7 @@ def average_ppm_calc(ppm_array,
         else:
             ppms.append(ppm_default)
             missing_points+= 1
-    regular_mean = numpy.average(ppms, weights = weights_list)
+    regular_mean = numpy.average(ppms, weights = new_weights)
     return regular_mean, missing_points
 
 def peaks_from_eic(rt_int, 

@@ -194,7 +194,7 @@ def make_gg(temp_dir, save_dir, filename):
         Creates filename.gg file, containing files in temp_dir, at the save_dir.
     '''
     files_list = os.listdir(temp_dir)
-    with zipfile.ZipFile(save_dir+filename+".gg", 'w') as zipf:
+    with zipfile.ZipFile(save_dir+filename+".gg", 'w', compression=zipfile.ZIP_DEFLATED) as zipf:
         for file in files_list:
             zipf.write(temp_dir+"/"+str(file), arcname=file)
             
