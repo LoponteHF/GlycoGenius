@@ -245,7 +245,7 @@ def index_spectra_from_file(files,
     else:
         cpu_count = 1
     
-    with concurrent.futures.ProcessPoolExecutor(max_workers = cpu_count) as executor:
+    with concurrent.futures.ProcessPoolExecutor(max_workers = cpu_count if cpu_count < 60 else 60) as executor:
         for i_i, i in enumerate(files):
             result = executor.submit(get_indexes,
                                      i,
@@ -937,7 +937,7 @@ def align_assignments(df, df_type, multithreaded, number_cores, deltas = None, r
         else:
             cpu_count = 1
             
-        with concurrent.futures.ProcessPoolExecutor(max_workers = cpu_count) as executor:
+        with concurrent.futures.ProcessPoolExecutor(max_workers = cpu_count if cpu_count < 60 else 60) as executor:
             for i_i, i in enumerate(dataframe): #sample by sample
                 result = executor.submit(adjust_chromatogram,
                                          i,
@@ -2104,7 +2104,7 @@ def output_filtered_data(curve_fit_score,
         else:
             cpu_count = 1
             
-        with concurrent.futures.ProcessPoolExecutor(max_workers = cpu_count) as executor:
+        with concurrent.futures.ProcessPoolExecutor(max_workers = cpu_count if cpu_count < 60 else 60) as executor:
             for i_i, i in enumerate(isotopic_fits_dataframes): #sample
                 result = executor.submit(arrange_iso_outputs, i_i, i, isotopic_fits_dataframes)
                 results.append(result)
@@ -2117,7 +2117,7 @@ def output_filtered_data(curve_fit_score,
         del isotopic_fits_dataframes
         del results
         
-        with concurrent.futures.ProcessPoolExecutor(max_workers = cpu_count) as executor:
+        with concurrent.futures.ProcessPoolExecutor(max_workers = cpu_count if cpu_count < 60 else 60) as executor:
             for i_i, i in enumerate(isotopic_fits_dataframes_arranged):
                 executor.submit(write_iso_to_excel, save_path, begin_time, i_i, i, isotopic_fits_dataframes_arranged, biggest_len)
         del isotopic_fits_dataframes_arranged
@@ -2663,7 +2663,7 @@ def analyze_files(library,
     else:
         cpu_count = 1
     
-    with concurrent.futures.ProcessPoolExecutor(max_workers = cpu_count) as executor:
+    with concurrent.futures.ProcessPoolExecutor(max_workers = cpu_count if cpu_count < 60 else 60) as executor:
         for i_i, i in enumerate(data):
             zeroes_arrays.append([])
             inf_arrays.append([])
@@ -2706,7 +2706,7 @@ def analyze_files(library,
     
     results = []
     temp_results = []
-    with concurrent.futures.ProcessPoolExecutor(max_workers = cpu_count) as executor:
+    with concurrent.futures.ProcessPoolExecutor(max_workers = cpu_count if cpu_count < 60 else 60) as executor:
         for i_i, i in enumerate(library):
             if i in ambiguities.keys(): #skips ambiguities
                 print('Analyzing glycan '+str(i)+': '+str(i_i+1)+'/'+str(lib_size))
@@ -3148,7 +3148,7 @@ def analyze_ms2(ms2_index,
                 cpu_count = number_cores
     else:
         cpu_count = 1
-    with concurrent.futures.ProcessPoolExecutor(max_workers = cpu_count) as executor:
+    with concurrent.futures.ProcessPoolExecutor(max_workers = cpu_count if cpu_count < 60 else 60) as executor:
         for i_i, i in enumerate(analyzed_data[0]): #goes through each glycan found in analysis
             result = executor.submit(analyze_glycan_ms2,
                                      ms2_index,
