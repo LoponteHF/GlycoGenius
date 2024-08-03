@@ -27,7 +27,7 @@ with open("README.md", "r", encoding="utf-8") as f:
 
 setup(
     name='glycogenius',
-    version='1.1.26',
+    version='1.1.27',
     author='Hector Franco Loponte',
     author_email='hectorfloponte@gmail.com',
     description='GlycoGenius is an all-in-one solution for data analysis of glycomics data.',

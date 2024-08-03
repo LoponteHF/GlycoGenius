@@ -62,7 +62,7 @@ times during a run.
 ##General functions (these functions use only external libraries, such as itertools and
 ##pyteomics).
 
-def binary_search_with_tolerance(arr, target, low, high, tolerance):
+def binary_search_with_tolerance(arr, int_arr, target, low, high, tolerance):
     '''
     '''
     # Base case: if the range is invalid, the target is not in the array
@@ -74,27 +74,28 @@ def binary_search_with_tolerance(arr, target, low, high, tolerance):
     
     # Check if the target is within the tolerance range of the middle element
     if abs(arr[mid] - target) <= tolerance:
-        mid_distance = abs(arr[mid] - target)
-        smallest_distance = mid_distance
-        smallest_distance_id = mid
-        if mid != len(arr)-1 and arr[mid+1] <= tolerance:
-            mid_plus_distance = abs(arr[mid+1] - target)
-            if mid_plus_distance < smallest_distance:
-                smallest_distance = mid_plus_distance
-                smallest_distance_id = mid+1
-        if mid != 0 and arr[mid-1] <= tolerance:
-            mid_minus_distance = abs(arr[mid-1] - target)
-            if mid_minus_distance < smallest_distance:
-                smallest_distance = mid_minus_distance
-                smallest_distance_id = mid-1
-                
-        return smallest_distance_id  # Closest target found within tolerance at or around index mid
+        range_width = 5
+        range_search = [mid, mid+1]
+        for i in range(mid, mid-range_width, -1):
+            if i == 0 or arr[i] < target-tolerance:
+                break
+            range_search[0] = i
+        for i in range(mid+1, mid+range_width+1):
+            range_search[1] = i
+            if i > high or arr[i] > target+tolerance:
+                break
+        array_slice = int_arr[range_search[0]:range_search[1]]
+        if len(array_slice) == 0:
+            return -1
+        selected_id = range_search[0]+numpy.argmax(array_slice)
+        
+        return selected_id
     elif arr[mid] < target:
         # If target is greater, ignore the left half
-        return binary_search_with_tolerance(arr, target, mid + 1, high, tolerance)
+        return binary_search_with_tolerance(arr, int_arr, target, mid + 1, high, tolerance)
     else:
         # If target is smaller, ignore the right half
-        return binary_search_with_tolerance(arr, target, low, mid - 1, tolerance)
+        return binary_search_with_tolerance(arr, int_arr, target, low, mid - 1, tolerance)
 
 def linear_regression(x, y, th = 2.5):
     '''Traces a linear regression of supplied 2d data points and returns the slope,
