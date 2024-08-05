@@ -62,7 +62,7 @@ times during a run.
 ##General functions (these functions use only external libraries, such as itertools and
 ##pyteomics).
 
-def binary_search_with_tolerance(arr, int_arr, target, low, high, tolerance):
+def binary_search_with_tolerance(arr, target, low, high, tolerance, int_arr = []):
     '''
     '''
     # Base case: if the range is invalid, the target is not in the array
@@ -84,18 +84,24 @@ def binary_search_with_tolerance(arr, int_arr, target, low, high, tolerance):
             range_search[1] = i
             if i > high or arr[i] > target+tolerance:
                 break
-        array_slice = int_arr[range_search[0]:range_search[1]]
+        if len(int_arr) != 0:
+            array_slice = int_arr[range_search[0]:range_search[1]]
+        else:
+            array_slice = arr[range_search[0]:range_search[1]]
         if len(array_slice) == 0:
             return -1
-        selected_id = range_search[0]+numpy.argmax(array_slice)
+        if len(int_arr) != 0:
+            selected_id = range_search[0]+numpy.argmax(array_slice)
+        else:
+            selected_id = range_search[0]+(numpy.abs(array_slice - target).argmin())
         
         return selected_id
     elif arr[mid] < target:
         # If target is greater, ignore the left half
-        return binary_search_with_tolerance(arr, int_arr, target, mid + 1, high, tolerance)
+        return binary_search_with_tolerance(arr, target, mid + 1, high, tolerance, int_arr)
     else:
         # If target is smaller, ignore the right half
-        return binary_search_with_tolerance(arr, int_arr, target, low, mid - 1, tolerance)
+        return binary_search_with_tolerance(arr, target, low, mid - 1, tolerance, int_arr)
 
 def linear_regression(x, y, th = 2.5):
     '''Traces a linear regression of supplied 2d data points and returns the slope,

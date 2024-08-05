@@ -3249,6 +3249,8 @@ def analyze_glycan_ms2(ms2_index,
         print('Analyzing glycan '+str(i)+': '+str(i_i+1)+'/'+str(len(analyzed_data[0])))
         fragments_data = {}
         for j_j, j in enumerate(analyzed_data[0][i]['Adducts_mz_data']): #goes through each adduct
+            print(analyzed_data[0][i]['Adducts_mz_data'][j])
+            adduct_charge = General_Functions.form_to_charge(j)
             fragments_data[j] = {}
             for k_k, k in enumerate(data): #goes through each file
                 fragments_data[j][k_k] = []
@@ -3264,8 +3266,16 @@ def analyze_glycan_ms2(ms2_index,
                             continue
                     else:
                         if k[l]['retentionTime'] < analyzed_data[0][i]['Adducts_mz_data'][j][k_k][1][0]['peak_interval'][0] - rt_tolerance or k[l]['retentionTime'] > analyzed_data[0][i]['Adducts_mz_data'][j][k_k][1][-1]['peak_interval'][1] + rt_tolerance: #skips spectra outside peak interval of peaks found
-                            continue
-                    if abs((k[l]['precursorMz'][0]['precursorMz']) - analyzed_data[0][i]['Adducts_mz'][j]) <= (1.0074/abs(General_Functions.form_to_charge(j)))+General_Functions.tolerance_calc(tolerance[0], tolerance[1], analyzed_data[0][i]['Adducts_mz'][j]): #checks if precursor matches adduct mz
+                            continue       
+                    found_matching_mz = False #checks if precursor matches adduct mz
+                    for m_m, m in enumerate(analyzed_data[0][i]['Isotopic_Distribution_Masses']): 
+                        if m_m > 4:
+                            break
+                        target_mz = (m+(General_Functions.h_mass*adduct_charge))/abs(adduct_charge)
+                        if abs((k[l]['precursorMz'][0]['precursorMz']) - target_mz) <= General_Functions.tolerance_calc(tolerance[0], tolerance[1], target_mz)*5:
+                            found_matching_mz = True
+                            
+                    if found_matching_mz:
                         found_count = 0
                         total = sum(k[l]['intensity array'])
                         former_peak_mz = 0

@@ -461,7 +461,7 @@ def analyze_mz_array(sliced_mz,
     if target_mz > sliced_mz[-1]:
         mz_id = -1
     else:
-        mz_id = General_Functions.binary_search_with_tolerance(sliced_mz, sliced_int, target_mz, 0, sliced_mz_length, General_Functions.tolerance_calc(tolerance[0], tolerance[1], target_mz))
+        mz_id = General_Functions.binary_search_with_tolerance(sliced_mz, target_mz, 0, sliced_mz_length, General_Functions.tolerance_calc(tolerance[0], tolerance[1], target_mz), sliced_int)
     
     if mz_id != -1 and sliced_int[mz_id] >= local_noise*0.5:
         found_mz = sliced_mz[mz_id]
@@ -476,14 +476,14 @@ def analyze_mz_array(sliced_mz,
             bad = False #here starts quality checks
             margin = 0.2 #0.2 = 20%, 0.4 = 40% - margin for checking, higher the margin, more strict is the checking and less glycans will probably be found
             
-            temp_id = General_Functions.binary_search_with_tolerance(sliced_mz, sliced_int, found_mz+(General_Functions.h_mass/abs(adduct_charge)), mz_id, sliced_mz_length, General_Functions.tolerance_calc(tolerance[0], tolerance[1], found_mz+(General_Functions.h_mass/abs(adduct_charge)))) #check if second isotopic is actually present or not
+            temp_id = General_Functions.binary_search_with_tolerance(sliced_mz, found_mz+(General_Functions.h_mass/abs(adduct_charge)), mz_id, sliced_mz_length, General_Functions.tolerance_calc(tolerance[0], tolerance[1], found_mz+(General_Functions.h_mass/abs(adduct_charge))), sliced_int) #check if second isotopic is actually present or not
             if temp_id == -1:
                 bad = True
                 
             if not bad:
                 for i in charge_range: #check if it's monoisotopic and correct charge
                     if (len(buffer) <= 2 or (len(buffer) > 2 and buffer[-3] == None)) and not retest: #only check if it's monoisotopic if at least one of the last 3 RT got nothing...
-                        temp_id = General_Functions.binary_search_with_tolerance(sliced_mz, sliced_int, found_mz-(General_Functions.h_mass/i), 0, mz_id, General_Functions.tolerance_calc(tolerance[0], tolerance[1], found_mz-(General_Functions.h_mass/i))) #check monoisotopic
+                        temp_id = General_Functions.binary_search_with_tolerance(sliced_mz, found_mz-(General_Functions.h_mass/i), 0, mz_id, General_Functions.tolerance_calc(tolerance[0], tolerance[1], found_mz-(General_Functions.h_mass/i)), sliced_int) #check monoisotopic
                         if temp_id != -1 and sliced_int[temp_id] > 0:
                             expected_value = (sliced_mz[temp_id]*i*0.0006)+0.1401 #based on linear regression of the relationship between masses and the second isotopic peak relative intensity of the average of different organic macromolecules
                             # print(f"RT: {ret_time}, Check mono, expected value greater than: {expected_value*(1+(margin*2))}, theoretical mass of monoisotopic: {sliced_mz[temp_id]*i}, charges: {i}, second isotopic actual: {mono_int/sliced_int[temp_id]}")
@@ -494,7 +494,7 @@ def analyze_mz_array(sliced_mz,
                             # print("ok")                        
                     if i == 1 or i == abs(adduct_charge) or (i == 2 and abs(adduct_charge) == 4) or (i == 3 and abs(adduct_charge) == 6): #ignores charge 1 due to the fact that any charge distribution will find a hit on that one
                         continue
-                    temp_id = General_Functions.binary_search_with_tolerance(sliced_mz, sliced_int, found_mz+(General_Functions.h_mass/i), mz_id, sliced_mz_length, General_Functions.tolerance_calc(tolerance[0], tolerance[1], found_mz+(General_Functions.h_mass/i))) #check for correct charge
+                    temp_id = General_Functions.binary_search_with_tolerance(sliced_mz, found_mz+(General_Functions.h_mass/i), mz_id, sliced_mz_length, General_Functions.tolerance_calc(tolerance[0], tolerance[1], found_mz+(General_Functions.h_mass/i)), sliced_int) #check for correct charge
                     if temp_id != -1:
                         expected_value = (target_mz*i*0.0006)+0.1401 #based on linear regression of the relationship between masses and the second isotopic peak relative intensity of the average of different organic macromolecules
                         # print(f"RT: {ret_time}, Check charge, expected value smaller than: {expected_value*(1-margin)}, theoretical mass of monoisotopic: {target_mz*i}, charges: {i}, second isotopic actual: {sliced_int[temp_id]/mono_int}")
@@ -509,7 +509,7 @@ def analyze_mz_array(sliced_mz,
                 for i_i, i in enumerate(glycan_info['Isotopic_Distribution_Masses']): #check isotopic peaks and add to the intensity
                     if i_i == 0: #ignores monoisotopic this time around
                         continue
-                    temp_id = General_Functions.binary_search_with_tolerance(sliced_mz, sliced_int, found_mz+(i_i*(General_Functions.h_mass/abs(adduct_charge))), mz_id, sliced_mz_length, General_Functions.tolerance_calc(tolerance[0], tolerance[1], found_mz+(i_i*(General_Functions.h_mass/abs(adduct_charge)))))
+                    temp_id = General_Functions.binary_search_with_tolerance(sliced_mz, found_mz+(i_i*(General_Functions.h_mass/abs(adduct_charge))), mz_id, sliced_mz_length, General_Functions.tolerance_calc(tolerance[0], tolerance[1], found_mz+(i_i*(General_Functions.h_mass/abs(adduct_charge)))), sliced_int)
                     if temp_id != -1 and sliced_int[temp_id] > 0:
                         isos_found += 1
                         mz_isos.append(sliced_mz[temp_id])
