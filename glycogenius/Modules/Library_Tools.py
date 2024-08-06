@@ -667,34 +667,19 @@ def fragments_library(min_max_mono,
                                          charge = charges,
                                          charge_carrier = j,
                                          carrier_charge = charges)
-                found = False
-                for k_k, k in enumerate(adducts_mz[0]):
-                    if abs(mz - k) <= General_Functions.tolerance_calc(tolerance[0], tolerance[1], mz):
-                        combo_frags_lib.append({})
-                        combo_frags_lib[-1]['Formula'] = str(frag_library[adducts_mz[2][k_k]]['Formula']+'_'+adducts_mz[1][k_k]+'/'+frag_library[index]['Formula']+'_'+General_Functions.comp_to_formula(j))
-                        combo_frags_lib[-1]['Adducts_mz'] = {}
-                        combo_frags_lib[-1]['Adducts_mz'][General_Functions.comp_to_formula(j)] = mz
-                        combo_frags_lib[-1]['Adducts_mz'][adducts_mz[1][k_k]] = mz
-                        try:
-                            del frag_library[adducts_mz[2][k_k]]['Adducts_mz'][adducts_mz[1][k_k]]
-                        except:
-                            pass
-                        adducts_mz[0].append(mz)
-                        adducts_mz[1].append(General_Functions.comp_to_formula(j))
-                        adducts_mz[2].append(index)
-                        found = True
-                        break
-                if not found:
-                    adducts_mz[0].append(mz)
-                    adducts_mz[1].append(General_Functions.comp_to_formula(j))
-                    adducts_mz[2].append(index)
-                    frag_library[index]['Adducts_mz'][General_Functions.comp_to_formula(j)] = mz
-    to_remove = []
+                adducts_mz[0].append(mz)
+                adducts_mz[1].append(General_Functions.comp_to_formula(j))
+                adducts_mz[2].append(index)
+                frag_library[index]['Adducts_mz'][General_Functions.comp_to_formula(j)] = {'mz': mz, 'Ambiguities': []}
+                
     for i_i, i in enumerate(frag_library):
-        if len(i) == 0 or len(i['Adducts_mz']) == 0:
-            to_remove.append(i_i)
-    for i_i in sorted(to_remove, reverse = True):
-        del frag_library[i_i]
-    frag_library = frag_library+combo_frags_lib
+        for j_j, j in enumerate(i['Adducts_mz']):
+            for k_k, k in enumerate(frag_library):
+                if k_k == i_i:
+                    continue
+                for l in k['Adducts_mz']:
+                    if abs(k['Adducts_mz'][l]['mz'] - i['Adducts_mz'][j]['mz']) < General_Functions.tolerance_calc(tolerance[0], tolerance[1], k['Adducts_mz'][l]['mz']):
+                        i['Adducts_mz'][j]['Ambiguities'].append((k_k, l))
+                        
     print("Done!")
     return frag_library
