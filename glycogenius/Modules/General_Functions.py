@@ -74,6 +74,7 @@ def binary_search_with_tolerance(arr, target, low, high, tolerance, int_arr = []
     
     # Check if the target is within the tolerance range of the middle element
     if abs(arr[mid] - target) <= tolerance:
+    
         range_width = 5
         range_search = [mid, mid+1]
         for i in range(mid, mid-range_width, -1):
@@ -84,12 +85,15 @@ def binary_search_with_tolerance(arr, target, low, high, tolerance, int_arr = []
             range_search[1] = i
             if i > high or arr[i] > target+tolerance:
                 break
+                
         if len(int_arr) != 0:
             array_slice = int_arr[range_search[0]:range_search[1]]
         else:
             array_slice = arr[range_search[0]:range_search[1]]
+            
         if len(array_slice) == 0:
             return -1
+
         if len(int_arr) != 0:
             selected_id = range_search[0]+numpy.argmax(array_slice)
         else:

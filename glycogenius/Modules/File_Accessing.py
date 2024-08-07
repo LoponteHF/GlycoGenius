@@ -527,7 +527,7 @@ def analyze_mz_array(sliced_mz,
                             
             if not bad and (iso_actual[1] < 0.2 or iso_actual[1] > 5): #this should avoid situations where it's obvious that it's picking the wrong charge because the second peak is almost invisible compared to the third and first, which when z=2 means that it's very likely actually a singly charge compound, for example
                 if len(iso_actual) > 2:
-                    if iso_actual[2] > iso_actual[1]*10 or iso_actual[1] > 5:
+                    if iso_actual[2] > iso_actual[1]*10 or iso_actual[1] < 0.2 or iso_actual[1] > 5:
                         bad = True
                 else:
                     if iso_actual[1] < 0.2 or iso_actual[1] > 5: #smallest glycan should have the second iso_actual somewhere around 0.5, so a cutoff lower than that is fine
