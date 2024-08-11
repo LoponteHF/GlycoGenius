@@ -363,6 +363,10 @@ def imp_exp_gen_library(custom_glycans_list,
     min_max_hexnac : tuple
         Minimum and maximum amount of N-Acetyl hexosamines for the hypotethical glycans
         in the library. ie. (5, 20).
+
+    min_max_xyl : tuple
+        Minimum and maximum amount of Xyloses for the hypotethical glycans
+        in the library. ie. (5, 20).
         
     min_max_sia : tuple
         Minimum and maximum amount of sialic acids for the hypotethical glycans in the
@@ -411,6 +415,12 @@ def imp_exp_gen_library(custom_glycans_list,
         to import the library from a glycans_library.py file and the second one indicates
         whether or not the script should export the library to a glycans_library.py file and
         an excel file for visualization.
+        
+    library_path : str
+        Path to save library export files.
+        
+    exp_lib_name : str
+        Name of the library file saved when exporting.
         
     only_gen_lib : boolean
         A boolean indicating whether or not this execution should stop after generating library.
@@ -701,6 +711,12 @@ def align_assignments(df, df_type, multithreaded, number_cores, deltas = None, r
     df_type : string
         Type of the df ("total_glycans" result or "chromatograms").
         
+    multithreaded : boolean
+        Whether the execution is multithreaded or not.
+        
+    number_cores : int
+        Number of cores used if execution is multithreaded.
+        
     deltas : dict
         The identified delta-t per sample, for use in aligning the chromatograms.
         'deltas' obtained by running this function in "total_glycans" mode for df_type.
@@ -954,7 +970,32 @@ def align_assignments(df, df_type, multithreaded, number_cores, deltas = None, r
 def adjust_chromatogram(i,
                         i_i,
                         deltas):
-    '''
+    '''Actual alignment of chromatogram. This function does just the adjustment part of the alignment for a given chromatogram. Used in the concurrent.futures for alignment.
+    
+    Parameters
+    ----------
+    i : str
+        Sample chromatogram.
+        
+    i_i : int
+        Sample index.
+        
+    deltas : dict
+        The identified delta-t per sample, for use in aligning the chromatograms.
+        'deltas' obtained by running this function in "total_glycans" mode for df_type.
+        
+    Uses
+    ----
+    General_Functions.linear_regression : tuple
+        Returns the slope, y-intercept and outliers of linear fit of given data.
+        
+    Returns
+    -------
+    i : str
+        Adjusted sample chromatogram.
+        
+    i_i : int
+        Sample index.
     '''
     if len(deltas[i_i]) > 0:
         chromatogram_length_rt = i['RTs_'+str(i_i)][-1]
@@ -1045,35 +1086,26 @@ def adjust_chromatogram(i,
                         i['RTs_'+str(i_i)][l] = float("%.4f" % round(highest+(interval*(l_l+1)), 4))
     return i_i, i
         
-def output_filtered_data(curve_fit_score,
-                         iso_fit_score,
-                         sn,
-                         max_ppm,
-                         percentage_auc,
-                         reanalysis,
-                         gg_file,
-                         save_path,
-                         analyze_ms2,
-                         unrestricted_fragments,
-                         reporter_ions,
-                         plot_metaboanalyst,
-                         compositions,
-                         align_chromatograms,
-                         nglycan,
-                         rt_tolerance,
-                         rt_tolerance_frag,
-                         output_isotopic_fittings,
-                         output_plot_data,
-                         multithreaded,
-                         number_cores,
-                         temp_time,
-                         from_GUI = False,
-                         metab_groups = []):
-    '''This function filters and converts raw results data into human readable
-    excel files.
-    
+def make_df1_refactor(df1,
+                      df2,
+                      curve_fit_score,
+                      iso_fit_score,
+                      sn,
+                      max_ppm,
+                      percentage_auc,
+                      analyze_ms2,
+                      unrestricted_fragments,
+                      fragments_dataframes = []):
+    '''Reorganizes the raw data into a more comprehensible format and filter by the quality thresholds.
+
     Parameters
     ----------
+    df1 : list
+        List of dictionaries containing the raw results data for every sample.
+        
+    df2 : list
+        A dictionary containing information about analyzed files.
+        
     curve_fit_score : float
         The minimum curve fitting score to consider when outputting results.
         
@@ -1086,107 +1118,26 @@ def output_filtered_data(curve_fit_score,
     max_ppm : int
         The maximum amount of PPM difference to consider when outputting results.
         
-    reanalysis : tuple
-        Contains two indexes: The first one indicates whether this is only a reanalysis execution and the second one indicates whether or not to produce plot data excel files. The second one is there because the plot data is more heavy and doesn't change on reanalysis, so should only be set to True if you lost original plot data.
+    percentage_auc : float
+        Percentage of the highest peak AUC that another peak AUC must have in a same chromatogram in order to be saved.
         
-    gg_file : string
-        String containing the path to the .gg analysis file.
-        
-    save_path : string
-        A string containing the path to the working directory of the script.
+    analyze_ms2 : boolean
+        Whether MS2 was analyzed or not.
     
-    analyze_ms2 : tuple
-        A tuple with two indexes: The first one indicates whether to analyze ms2 data and the  second one indicates whether ms2 data should be forced to fit glycans composition.
+    unrestricted_fragments : boolean
+        Whether or not fragments are restricted to the precursor putative composition.
         
-    reporter_ions : list
-        A list containing the reporter ions you wish to filter your data with.
-        
-    plot_metaboanalyst : tuple
-        A tuple with two indexes: The first one indicates whether or not to output a file to be used in metaboanalyst and the second one indicates the groups for the samples to be separated in.
-        
-    compositions : boolean
-        If set to True, also outputs the compositions analysis.
-        
-    align_chromatograms : boolean
-        Whether or not to align results and chromatograms.
-        
-    nglycan : boolean
-        Determines whether you're analyzing N-Glycans or not.
-    
-    rt_tolerance : float
-        Tolerance of retention time (in minutes) at which an MS2 feature can be attributed to a specific retention time peak and also for peaks in different samples to be regarded as the same peak (and thus be compared with each other).
-    
-    rt_tolerance_frag : float
-        Same as rt_tolerance, but applies to identify whether the precursor retention time matches the fragmentation and ms1 identification.
-        
-    output_isotopic_fittings : boolean
-        Whether or not to output curve-fitting and isotopic-fitting data for data check, if desired.
-        
-    output_plot_data : boolean
-        Whether or not to output COMPLETE chromatogram plotting data (always outputs regular data of found glycans).
-        
-    Uses
-    ----
-    datetime.datetime.now : Time object
-        Returns the current date and time.
-        
-    dill.dump : None
-        Pickle the current state of __main__ or another module to a file.
-    
-    dill.load : Module object
-        Update the selected module (default is __main__) with the state saved at filename.
-        
-    pathlib.Path : Path object
-        A subclass of PurePath, this class represents concrete paths of the system’s path flavour
-        
-    os.unlink : None
-        Remove (delete) the file path. 
-        
-    pandas.DataFrame : Dataframe object
-        Two-dimensional, size-mutable, potentially heterogeneous tabular data.
-        
-    pandas.ExcelWriter : ExcelWriter object
-        Class for writing DataFrame objects into excel sheets.
+    fragments_dataframes : list
+        Dataframe containing fragments information.
         
     Returns
     -------
-    nothing
-        Creates excel files of processed data.
-    '''
-    date = datetime.datetime.now()
-    begin_time = str(date)[2:4]+str(date)[5:7]+str(date)[8:10]+"_"+str(date)[11:13]+str(date)[14:16]+str(date)[17:19]
-    if reanalysis:
-        if from_GUI:
-            print("Saving results files...")
-        else:
-            print("Reanalyzing raw data with new parameters...")
-        temp_path = save_path+begin_time+"_Temp/"
-        pathlib.Path(temp_path).mkdir(exist_ok = True, parents = True)
-        try:
-            General_Functions.open_gg(gg_file, temp_path)
-        except:
-            print("\nAnalysis file not found. If you're reanalyzing\nan existing analysis result file, check if the\npath in 'analysis_file' is correct, otherwise\nchange 'reanalysis' to 'no' and try again.\n")
-            return
-    else:
-        print("Analyzing raw data...")
-        temp_path = save_path+temp_time+"_Temp/"
-        pathlib.Path(temp_path).mkdir(exist_ok = True, parents = True)
-    with open(temp_path+'raw_data_1', 'rb') as f:
-        file = dill.load(f)
-        df1 = file[0]
-        df2 = file[1]
-        if len(file) > 3:
-            analyze_ms2 = True
-            fragments_dataframes = file[2]
-            if reanalysis and ".".join(version.split('.')[:2]) != ".".join(file[3].split('.')[:2]):
-                print("Raw data files version incompatible with\ncurrent version (Current version: "+version+";\nRaw data version: "+file[3]+")")
-                return
-        else:
-            if reanalysis and ".".join(version.split('.')[:2]) != ".".join(file[2].split('.')[:2]):
-                print("Raw data files version incompatible with\ncurrent version (Current version: "+version+";\nRaw data version: "+file[2]+")")
-                return
-        f.close()
+    df1_refactor : list
+        A list of dictionaries containing organized and filtered data.
         
+    fragments_dataframes : list
+        Dataframe containing fragments information.
+    '''
     df1_refactor = []
     for i_i, i in enumerate(df2["Sample_Number"]): #QCs cutoff
         if analyze_ms2:
@@ -1373,171 +1324,204 @@ def output_filtered_data(curve_fit_score,
                     df1_refactor[i_i]["PPM"].append(float(df1[i_i]["PPM"][j_j].split(", ")[k_k]))
                     df1_refactor[i_i]["S/N"].append(float(df1[i_i]["S/N"][j_j].split(", ")[k_k]))
                     df1_refactor[i_i]["Iso_Fitting_Score"].append(float(df1[i_i]["Iso_Fitting_Score"][j_j].split(", ")[k_k]))
-                    df1_refactor[i_i]["Curve_Fitting_Score"].append(float(df1[i_i]["Curve_Fitting_Score"][j_j].split(", ")[k_k]))        
-                    
-    if analyze_ms2:
-        if len(reporter_ions) != 0: #reporter_ions filtering
-            for i_i, i in enumerate(fragments_dataframes):
-                to_remove = []
-                temp_list_fragments = []
-                temp_list_mz = []
-                current_checking = ""
-                for j_j, j in enumerate(fragments_dataframes[i_i]["Glycan"]):
-                    to_check = j+"_"+fragments_dataframes[i_i]["Adduct"][j_j]+"_"+str(fragments_dataframes[i_i]["RT"][j_j])
-                    if to_check != current_checking:
-                        found = False
-                        current_checking = to_check
-                        temp_list_fragments = []
-                        temp_list_mz = []
-                        for k in range(j_j, len(fragments_dataframes[i_i]["Glycan"])):
-                            to_check_2 = fragments_dataframes[i_i]["Glycan"][k]+"_"+fragments_dataframes[i_i]["Adduct"][k]+"_"+str(fragments_dataframes[i_i]["RT"][k])
-                            if to_check == to_check_2:
-                                temp_list_fragments.append(fragments_dataframes[i_i]["Fragment"][k])
-                                temp_list_mz.append(fragments_dataframes[i_i]["Fragment_mz"][k])
-                            else:
-                                break
-                        for k_k, k in enumerate(reporter_ions):
-                            try:
-                                current_reporter = float(k)
-                            except:
-                                current_reporter = k
-                            if type(current_reporter) == float:
-                                for l in temp_list_mz:
-                                    if abs(current_reporter - l) <= 0.1:
-                                        found = True
-                                        break
-                                if found:
-                                    break
-                            if type(current_reporter) == str:
-                                for l in temp_list_fragments:
-                                    if current_reporter == l.split("+")[0].split("-")[0].split("_")[0]:
-                                        found = True
-                                        break
-                                if found:
-                                    break
-                    if not found and current_checking == to_check:
-                        to_remove.append(j_j)
-                if len(to_remove) != 0:
-                    for k_k in sorted(to_remove, reverse = True):
-                        del fragments_dataframes[i_i]["Glycan"][k_k]
-                        del fragments_dataframes[i_i]["Adduct"][k_k]
-                        del fragments_dataframes[i_i]["Fragment"][k_k]
-                        del fragments_dataframes[i_i]["Fragment_mz"][k_k]
-                        del fragments_dataframes[i_i]["Fragment_Intensity"][k_k]
-                        del fragments_dataframes[i_i]["RT"][k_k]
-                        del fragments_dataframes[i_i]["Precursor_mz"][k_k]
-                        del fragments_dataframes[i_i]["% TIC explained"][k_k] #end of reporter ions filtering
-                        
-        to_keep = []
-        for j_j, j in enumerate(df1_refactor):
-            to_keep.append([])
-            for k_k, k in enumerate(df1_refactor[j_j]["RT"]):
-                if k_k == 0:
-                    df1_refactor[j_j]["%_TIC_explained"] = []
-                df1_refactor[j_j]["%_TIC_explained"].append(None)
-                found = False
-                for l_l, l in enumerate(fragments_dataframes[j_j]["Glycan"]):
-                    if l == df1_refactor[j_j]["Glycan"][k_k] and fragments_dataframes[j_j]["Adduct"][l_l] == df1_refactor[j_j]["Adduct"][k_k]:
-                        if abs(fragments_dataframes[j_j]["RT"][l_l] - k) <= rt_tolerance_frag:
-                            found = True
-                            to_keep[j_j].append(l_l)
-                if found:
-                    df1_refactor[j_j]["Detected_Fragments"].append("Yes")
-                else:
-                    df1_refactor[j_j]["Detected_Fragments"].append("No")
-                    
-        if not unrestricted_fragments:  #Filters fragments with RT outside the detected peaks range
-            for i_i, i in enumerate(to_keep):
-                for k_k in range(len(fragments_dataframes[i_i]["Glycan"])-1, -1, -1):
-                    if k_k not in to_keep[i_i]:
-                        del fragments_dataframes[i_i]["Glycan"][k_k]
-                        del fragments_dataframes[i_i]["Adduct"][k_k]
-                        del fragments_dataframes[i_i]["Fragment"][k_k]
-                        del fragments_dataframes[i_i]["Fragment_mz"][k_k]
-                        del fragments_dataframes[i_i]["Fragment_Intensity"][k_k]
-                        del fragments_dataframes[i_i]["RT"][k_k]
-                        del fragments_dataframes[i_i]["Precursor_mz"][k_k]
-                        del fragments_dataframes[i_i]["% TIC explained"][k_k]
-                        
-        for i_i, i in enumerate(fragments_dataframes): #% TIC explained calculation
-            fragments_int_sum = 0
+                    df1_refactor[i_i]["Curve_Fitting_Score"].append(float(df1[i_i]["Curve_Fitting_Score"][j_j].split(", ")[k_k])) 
+    return df1_refactor, fragments_dataframes
+        
+def make_filtered_ms2_refactor(df1_refactor,
+                               fragments_dataframes,
+                               reporter_ions,
+                               unrestricted_fragments,
+                               rt_tolerance_frag):
+    '''Refactors and filters the fragments_dataframes. Filters by the reporter ions, if there are any set; Filters out peaks outside a peak retention time, if unrestricted_fragments is not used; and calculates the %TIC of a the annotated MS2 spectra.
+    
+    Parameters
+    ----------
+    df1_refactor : list
+        A list containing dictionaries for each sample, which contains the organized data for that sample.
+        
+    fragments_dataframes : list
+        Dataframe containing fragments information.
+    
+    reporter_ions : list
+        A list containing the reporter ions you wish to filter your data with.
+
+    unrestricted_fragments : boolean
+        Whether or not fragments are restricted to the precursor putative composition.
+
+    rt_tolerance_frag : float
+        Same as rt_tolerance, but applies to identify whether the precursor retention time matches the fragmentation and ms1 identification.
+        
+    Returns
+    -------
+    df1_refactor : list
+        A list containing dictionaries for each sample, which contains the organized data for that sample.
+        
+    fragments_dataframes : list
+        Dataframe containing fragments information.
+        
+    fragments_refactor_dataframes : list
+        A dataframe containing reorganized MS2 dataframes.
+    '''
+    if len(reporter_ions) != 0: #reporter_ions filtering
+        for i_i, i in enumerate(fragments_dataframes):
+            to_remove = []
+            temp_list_fragments = []
+            temp_list_mz = []
             current_checking = ""
             for j_j, j in enumerate(fragments_dataframes[i_i]["Glycan"]):
                 to_check = j+"_"+fragments_dataframes[i_i]["Adduct"][j_j]+"_"+str(fragments_dataframes[i_i]["RT"][j_j])
                 if to_check != current_checking:
+                    found = False
                     current_checking = to_check
-                    fragments_int_sum = 0
+                    temp_list_fragments = []
+                    temp_list_mz = []
                     for k in range(j_j, len(fragments_dataframes[i_i]["Glycan"])):
                         to_check_2 = fragments_dataframes[i_i]["Glycan"][k]+"_"+fragments_dataframes[i_i]["Adduct"][k]+"_"+str(fragments_dataframes[i_i]["RT"][k])
                         if to_check == to_check_2:
-                            fragments_int_sum += fragments_dataframes[i_i]["Fragment_Intensity"][k]
+                            temp_list_fragments.append(fragments_dataframes[i_i]["Fragment"][k])
+                            temp_list_mz.append(fragments_dataframes[i_i]["Fragment_mz"][k])
                         else:
                             break
-                if current_checking == to_check and fragments_dataframes[i_i]["% TIC explained"] != 0:
-                    fragments_dataframes[i_i]["% TIC explained"][j_j] = float("%.2f" % round((fragments_int_sum/fragments_dataframes[i_i]["% TIC explained"][j_j])*100, 2)) #end of annotated_peaks ratio calculation
+                    for k_k, k in enumerate(reporter_ions):
+                        try:
+                            current_reporter = float(k)
+                        except:
+                            current_reporter = k
+                        if type(current_reporter) == float:
+                            for l in temp_list_mz:
+                                if abs(current_reporter - l) <= 0.1:
+                                    found = True
+                                    break
+                            if found:
+                                break
+                        if type(current_reporter) == str:
+                            for l in temp_list_fragments:
+                                if current_reporter == l.split("+")[0].split("-")[0].split("_")[0]:
+                                    found = True
+                                    break
+                            if found:
+                                break
+                if not found and current_checking == to_check:
+                    to_remove.append(j_j)
+            if len(to_remove) != 0:
+                for k_k in sorted(to_remove, reverse = True):
+                    del fragments_dataframes[i_i]["Glycan"][k_k]
+                    del fragments_dataframes[i_i]["Adduct"][k_k]
+                    del fragments_dataframes[i_i]["Fragment"][k_k]
+                    del fragments_dataframes[i_i]["Fragment_mz"][k_k]
+                    del fragments_dataframes[i_i]["Fragment_Intensity"][k_k]
+                    del fragments_dataframes[i_i]["RT"][k_k]
+                    del fragments_dataframes[i_i]["Precursor_mz"][k_k]
+                    del fragments_dataframes[i_i]["% TIC explained"][k_k] #end of reporter ions filtering
                     
-        for i_i, i in enumerate(df1_refactor): #start of ms2 score calculation (at the moment its just % TIC explained)
-            for j_j, j in enumerate(i['Glycan']):
-                if i['Detected_Fragments'][j_j] == 'Yes':
-                    glycan = j
-                    adduct = i['Adduct'][j_j]
-                    rt = i['RT'][j_j]
-                    list_tics_explained = []
-                    for k_k, k in enumerate(fragments_dataframes):
-                        for l_l, l in enumerate(k['Glycan']):
-                            if glycan == l and adduct == k['Adduct'][l_l] and abs(rt-k['RT'][l_l]) <= rt_tolerance_frag:
-                                list_tics_explained.append(k['% TIC explained'][l_l])
-                    if len(list_tics_explained) > 0:
-                        i['%_TIC_explained'][j_j] = max(list_tics_explained)
-                else:
-                    i['%_TIC_explained'][j_j] = 0.0
-                    
-        fragments_refactor_dataframes = [] #here it re-structures the fragments data to an updated format
-        for i_i, i in enumerate(fragments_dataframes): #moving through samples
-            fragments_refactor_dataframes.append({})
-            current_scan = ""
-            glycan_number = -1
-            for j_j, j in enumerate(i['Glycan']):
-                scan_name = j+"_"+i['Adduct'][j_j]+"_"+str(i['RT'][j_j])
-                if scan_name != current_scan:
-                    glycan_number+=1
-                    current_scan = scan_name
-                    fragments_refactor_dataframes[i_i]['Glycan_'+str(glycan_number)+':'] = [j, 'RT_'+str(glycan_number)+':', i['RT'][j_j], 'Fragment:']
-                    fragments_refactor_dataframes[i_i]['Adduct_'+str(glycan_number)+':'] = [i['Adduct'][j_j], '% TIC assigned_'+str(glycan_number)+':', i['% TIC explained'][j_j], 'm/z:']
-                    fragments_refactor_dataframes[i_i]['m/z_'+str(glycan_number)+':'] = [i['Precursor_mz'][j_j], None, None, 'Intensity:']
-                    fragments_refactor_dataframes[i_i]['Glycan_'+str(glycan_number)+':'].append(i['Fragment'][j_j])
-                    fragments_refactor_dataframes[i_i]['Adduct_'+str(glycan_number)+':'].append(i['Fragment_mz'][j_j])
-                    fragments_refactor_dataframes[i_i]['m/z_'+str(glycan_number)+':'].append(i['Fragment_Intensity'][j_j])
-                else:
-                    fragments_refactor_dataframes[i_i]['Glycan_'+str(glycan_number)+':'].append(i['Fragment'][j_j])
-                    fragments_refactor_dataframes[i_i]['Adduct_'+str(glycan_number)+':'].append(i['Fragment_mz'][j_j])
-                    fragments_refactor_dataframes[i_i]['m/z_'+str(glycan_number)+':'].append(i['Fragment_Intensity'][j_j])
-        for i in fragments_refactor_dataframes: #makes all lists in the dataframe equal size so it can be ported to excel
-            for j in i:
-                while len(i[j]) < 1000:
-                    i[j].append(None)
-                    
-    ambiguity_count = [] #ambiguity indicator
-    for i_i, i in enumerate(df1_refactor):
-        ambiguity_count.append(0)
-        i['Ambiguity'] = []
-        for j in i['Glycan']:
-            i['Ambiguity'].append([])
-        for j_j, j in enumerate(i['Glycan']):
-            glycan_j = j+'_'+i['Adduct'][j_j]
-            for k_k, k in enumerate(i['Glycan'][j_j+1:]):
-                k_k = j_j+k_k+1
-                glycan_k = k+'_'+i['Adduct'][k_k]
-                if j != k and i['mz'][j_j] == i['mz'][k_k]:
-                    ambiguity_count[i_i] += 1
-                    i['Ambiguity'][j_j].append(i['Glycan'][k_k]+'_'+i['Adduct'][k_k])
-                    i['Ambiguity'][k_k].append(i['Glycan'][j_j]+'_'+i['Adduct'][j_j])
-        for j_j, j in enumerate(i['Ambiguity']):
-            if len(j) > 0:
-                i['Ambiguity'][j_j] = ', '.join(j)
+    to_keep = [] #filters by retention time, if unrestricted fragments is not used
+    for j_j, j in enumerate(df1_refactor):
+        to_keep.append([])
+        for k_k, k in enumerate(df1_refactor[j_j]["RT"]):
+            if k_k == 0:
+                df1_refactor[j_j]["%_TIC_explained"] = []
+            df1_refactor[j_j]["%_TIC_explained"].append(None)
+            found = False
+            for l_l, l in enumerate(fragments_dataframes[j_j]["Glycan"]):
+                if l == df1_refactor[j_j]["Glycan"][k_k] and fragments_dataframes[j_j]["Adduct"][l_l] == df1_refactor[j_j]["Adduct"][k_k]:
+                    if abs(fragments_dataframes[j_j]["RT"][l_l] - k) <= rt_tolerance_frag:
+                        found = True
+                        to_keep[j_j].append(l_l)
+            if found:
+                df1_refactor[j_j]["Detected_Fragments"].append("Yes")
             else:
-                i['Ambiguity'][j_j] = 'No'
-            
+                df1_refactor[j_j]["Detected_Fragments"].append("No")
+                
+    if not unrestricted_fragments:  #Filters fragments with RT outside the detected peaks range
+        for i_i, i in enumerate(to_keep):
+            for k_k in range(len(fragments_dataframes[i_i]["Glycan"])-1, -1, -1):
+                if k_k not in to_keep[i_i]:
+                    del fragments_dataframes[i_i]["Glycan"][k_k]
+                    del fragments_dataframes[i_i]["Adduct"][k_k]
+                    del fragments_dataframes[i_i]["Fragment"][k_k]
+                    del fragments_dataframes[i_i]["Fragment_mz"][k_k]
+                    del fragments_dataframes[i_i]["Fragment_Intensity"][k_k]
+                    del fragments_dataframes[i_i]["RT"][k_k]
+                    del fragments_dataframes[i_i]["Precursor_mz"][k_k]
+                    del fragments_dataframes[i_i]["% TIC explained"][k_k]
+                    
+    for i_i, i in enumerate(fragments_dataframes): #% TIC explained calculation
+        fragments_int_sum = 0
+        current_checking = ""
+        for j_j, j in enumerate(fragments_dataframes[i_i]["Glycan"]):
+            to_check = j+"_"+fragments_dataframes[i_i]["Adduct"][j_j]+"_"+str(fragments_dataframes[i_i]["RT"][j_j])
+            if to_check != current_checking:
+                current_checking = to_check
+                fragments_int_sum = 0
+                for k in range(j_j, len(fragments_dataframes[i_i]["Glycan"])):
+                    to_check_2 = fragments_dataframes[i_i]["Glycan"][k]+"_"+fragments_dataframes[i_i]["Adduct"][k]+"_"+str(fragments_dataframes[i_i]["RT"][k])
+                    if to_check == to_check_2:
+                        fragments_int_sum += fragments_dataframes[i_i]["Fragment_Intensity"][k]
+                    else:
+                        break
+            if current_checking == to_check and fragments_dataframes[i_i]["% TIC explained"] != 0:
+                fragments_dataframes[i_i]["% TIC explained"][j_j] = float("%.2f" % round((fragments_int_sum/fragments_dataframes[i_i]["% TIC explained"][j_j])*100, 2)) #end of annotated_peaks ratio calculation
+                
+    for i_i, i in enumerate(df1_refactor): #start of ms2 score calculation (at the moment its just % TIC explained)
+        for j_j, j in enumerate(i['Glycan']):
+            if i['Detected_Fragments'][j_j] == 'Yes':
+                glycan = j
+                adduct = i['Adduct'][j_j]
+                rt = i['RT'][j_j]
+                list_tics_explained = []
+                for k_k, k in enumerate(fragments_dataframes):
+                    for l_l, l in enumerate(k['Glycan']):
+                        if glycan == l and adduct == k['Adduct'][l_l] and abs(rt-k['RT'][l_l]) <= rt_tolerance_frag:
+                            list_tics_explained.append(k['% TIC explained'][l_l])
+                if len(list_tics_explained) > 0:
+                    i['%_TIC_explained'][j_j] = max(list_tics_explained)
+            else:
+                i['%_TIC_explained'][j_j] = 0.0
+                
+    fragments_refactor_dataframes = [] #here it re-structures the fragments data to an updated format
+    for i_i, i in enumerate(fragments_dataframes): #moving through samples
+        fragments_refactor_dataframes.append({})
+        current_scan = ""
+        glycan_number = -1
+        for j_j, j in enumerate(i['Glycan']):
+            scan_name = j+"_"+i['Adduct'][j_j]+"_"+str(i['RT'][j_j])
+            if scan_name != current_scan:
+                glycan_number+=1
+                current_scan = scan_name
+                fragments_refactor_dataframes[i_i]['Glycan_'+str(glycan_number)+':'] = [j, 'RT_'+str(glycan_number)+':', i['RT'][j_j], 'Fragment:']
+                fragments_refactor_dataframes[i_i]['Adduct_'+str(glycan_number)+':'] = [i['Adduct'][j_j], '% TIC assigned_'+str(glycan_number)+':', i['% TIC explained'][j_j], 'm/z:']
+                fragments_refactor_dataframes[i_i]['m/z_'+str(glycan_number)+':'] = [i['Precursor_mz'][j_j], None, None, 'Intensity:']
+                fragments_refactor_dataframes[i_i]['Glycan_'+str(glycan_number)+':'].append(i['Fragment'][j_j])
+                fragments_refactor_dataframes[i_i]['Adduct_'+str(glycan_number)+':'].append(i['Fragment_mz'][j_j])
+                fragments_refactor_dataframes[i_i]['m/z_'+str(glycan_number)+':'].append(i['Fragment_Intensity'][j_j])
+            else:
+                fragments_refactor_dataframes[i_i]['Glycan_'+str(glycan_number)+':'].append(i['Fragment'][j_j])
+                fragments_refactor_dataframes[i_i]['Adduct_'+str(glycan_number)+':'].append(i['Fragment_mz'][j_j])
+                fragments_refactor_dataframes[i_i]['m/z_'+str(glycan_number)+':'].append(i['Fragment_Intensity'][j_j])
+    for i in fragments_refactor_dataframes: #makes all lists in the dataframe equal size so it can be ported to excel
+        for j in i:
+            while len(i[j]) < 1000:
+                i[j].append(None)
+    return df1_refactor, fragments_dataframes, fragments_refactor_dataframes
+    
+def make_total_dataframes(df1_refactor,
+                          rt_tolerance):
+    '''Makes and reorganizes the total_dataframes from df1_refactor data.
+    
+    Parameters
+    ----------
+    df1_refactor : list
+        A list of dictionaries containing organized and filtered data.
+        
+    rt_tolerance : float
+        Retention time tolerance used to consider two different peaks RT as distinct peaks.
+        
+    Returns
+    -------
+    total_dataframes : list
+        A list of dictionaries containing the total AUC dataframes for each sample.
+    
+    '''
     total_dataframes = [] #total glycans AUC dataframe
     for i_i, i in enumerate(df1_refactor):
         ambiguities_solved = []
@@ -1633,6 +1617,464 @@ def output_filtered_data(curve_fit_score,
             arranged_total_dataframes[i_i]['RT'] += list(current_RTs)
             arranged_total_dataframes[i_i]['AUC'] += list(current_AUCs)
     total_dataframes = arranged_total_dataframes
+    return total_dataframes
+        
+def determine_nglycan_class(total_dataframes,
+                            compositions_dataframes):
+    '''Determines the class of N-Glycans based on the number of H and N in the glycans composition.
+    
+    Parameters
+    ----------
+    total_dataframes : list
+        A list of dictionaries containing the total AUC dataframes for each sample.
+    
+    compositions_dataframes : list
+        A list containing dictionaries for each sample with combined peak AUC for each composition identified.
+        
+    Returns
+    -------
+    glycan_class : dictionary
+        A dictionary containing the class of each glycan.
+        
+    proportion_classes : dictionaries
+        A dictionary containing the proportion of each class per sample.
+    '''
+    glycan_class = {}
+    for i_i, i in enumerate(total_dataframes):
+        for j_j, j in enumerate(i['Glycan']):
+            if j != 'Internal Standard' and j not in glycan_class.keys():
+                j_list = j.split("/")
+                temp_class = ''
+                for k in j_list:
+                    comp = General_Functions.form_to_comp(k)
+                    if len(temp_class) > 0:
+                        temp_class += '/'
+                    if 'N' in comp.keys() and 'H' in comp.keys() and comp['N'] == 2 and comp['H'] <= 3:
+                        temp_class += 'Paucimannose'
+                        continue
+                    if 'N' in comp.keys() and 'H' in comp.keys() and comp['H'] > comp['N']+1 and comp['N'] > 2:
+                        temp_class += 'Hybrid'
+                        continue
+                    if 'N' in comp.keys() and 'H' in comp.keys() and comp['N'] == 2 and comp['H'] > 3:
+                        temp_class += 'High-Mannose'
+                        continue
+                    else:
+                        temp_class += 'Complex'
+                glycan_class[j] = temp_class
+            if j == 'Internal Standard':
+                glycan_class[j] = j
+    for i_i, i in enumerate(total_dataframes):
+        total_dataframes[i_i]['Class'] = []
+        for j_j, j in enumerate(i['Glycan']):
+            i['Class'].append(glycan_class[j])
+    for i_i, i in enumerate(compositions_dataframes):
+        compositions_dataframes[i_i]['Class'] = []
+        for j_j, j in enumerate(i['Glycan']):
+            i['Class'].append(glycan_class[j])
+    proportion_classes = {'Paucimannose' : [], 'Hybrid' : [], 'High-Mannose' : [], 'Complex' : []}        
+    for i_i, i in enumerate(compositions_dataframes):
+        total_sample = sum(i['AUC'])
+        if total_sample == 0:
+            total_sample = inf
+        total_pauci = 0
+        total_hybrid = 0
+        total_oligo = 0
+        total_complex = 0
+        for j_j, j in enumerate(i['Class']):
+            if 'Paucimannose' in j:
+                total_pauci+= i['AUC'][j_j]
+            if 'Hybrid' in j:
+                total_hybrid+= i['AUC'][j_j]
+            if 'High-Mannose' in j:
+                total_oligo+= i['AUC'][j_j]
+            if 'Complex' in j:
+                total_complex+= i['AUC'][j_j]
+        proportion_classes['Paucimannose'].append(float("%.2f" % round((total_pauci/total_sample)*100, 2)))
+        proportion_classes['Hybrid'].append(float("%.2f" % round((total_hybrid/total_sample)*100, 2)))
+        proportion_classes['High-Mannose'].append(float("%.2f" % round((total_oligo/total_sample)*100, 2)))
+        proportion_classes['Complex'].append(float("%.2f" % round((total_complex/total_sample)*100, 2)))
+        
+    return glycan_class, proportion_classes
+    
+def create_metaboanalyst_files(plot_metaboanalyst,
+                               df2,
+                               total_dataframes,
+                               all_glycans_list,
+                               compositions,
+                               compositions_dataframes,
+                               save_path,
+                               begin_time,
+                               rt_tolerance,
+                               from_GUI = False,
+                               metab_groups = []):
+    '''Creates the metaboanalyst-compatible .csv files.
+    
+    Parameters
+    ----------
+    plot_metaboanalyst : list
+        A list containing a boolean for whether or not to plot metaboanalyst data and a list of the groups.
+    
+    df2 : list
+        A dictionary containing information about analyzed files.
+        
+    total_dataframes : list
+        A list of dictionaries containing the total AUC dataframes for each sample.
+        
+    all_glycans_list : list
+        A list containing all glycans found in all samples.
+    
+    compositions : boolean
+        If set to True, also outputs the compositions analysis.
+    
+    compositions_dataframes : list
+        A list containing dictionaries for each sample with combined peak AUC for each composition identified.
+        
+    save_path : string
+        A string containing the path to the working directory of the script.
+        
+    begin_time : string
+        Time at which the analysis began.
+    
+    rt_tolerance : float
+        Tolerance of retention time (in minutes) at which an MS2 feature can be attributed to a specific retention time peak and also for peaks in different samples to be regarded as the same peak (and thus be compared with each other).
+    
+    from_GUI : boolean
+        Whether or not the execution of this function came from GUI
+                     
+    metab_groups : list
+        List of metaboanalyst groups to assign the samples to.
+        
+    Returns
+    -------
+    nothing
+        Just creates the .csv files.
+    '''
+    with open(save_path+begin_time+"_metaboanalyst_data.csv", "w") as f:
+        samples_line = ["Sample"]
+        for i_i, i in enumerate(df2["File_Name"]):
+            samples_line.append(i)
+        groups_line = ["Group"]
+        if from_GUI:
+            for i in df2['File_Name']:
+                found = False
+                if i in metab_groups.keys():
+                    found = True
+                    groups_line.append(metab_groups[i])
+                if not found:
+                    groups_line.append("Ungrouped")
+        else:
+            if len(plot_metaboanalyst[1]) > 0:
+                for i in df2["File_Name"]:
+                    found = False
+                    for j in plot_metaboanalyst[1]:
+                        if j in i:
+                            found = True
+                            groups_line.append(j)
+                            break
+                    if not found:
+                        groups_line.append("Ungrouped")
+            else:
+                for i in df2["File_Name"]:
+                    groups_line.append("Ungrouped")
+        found_int_std = False
+        for i in total_dataframes:
+            if "Internal Standard" in i["Glycan"]:
+                found_int_std = True
+                break
+        if found_int_std:
+            with open(save_path+begin_time+"_metaboanalyst_data_normalized.csv", "a") as g:
+                g.write(",".join(samples_line)+"\n")
+                g.write(",".join(groups_line)+"\n")
+                g.close()
+            is_areas = []
+            for i in total_dataframes:
+                if "Internal Standard" in i["Glycan"]:
+                    temp_areas = []
+                    for j_j, j in enumerate(i["Glycan"]):
+                        if j == "Internal Standard":
+                            temp_areas.append(i["AUC"][j_j])
+                    is_areas.append(max(temp_areas))
+                else:
+                    is_areas.append(0.0)
+        f.write(",".join(samples_line)+"\n")
+        f.write(",".join(groups_line)+"\n")
+        for i in all_glycans_list:
+            glycan_line = []
+            glycan_line_IS = []
+            i_splitted = i.split("_")
+            glycan_line_IS.append(i)
+            glycan_line.append(i)
+            for j_j, j in enumerate(total_dataframes): #moving through samples
+                found = False
+                temp_AUC = 0
+                for k_k, k in enumerate(j["Glycan"]):
+                    if k == "Internal Standard":
+                        continue
+                    if k == i_splitted[0] and abs(j["RT"][k_k] - float(i_splitted[-1])) <= rt_tolerance:
+                        found = True
+                        if "Internal Standard" in j["Glycan"]:
+                            if is_areas[j_j] > 0.0:
+                                temp_AUC_IS = j["AUC"][k_k]/is_areas[j_j]
+                            else:
+                                temp_AUC_IS = 0.0
+                            temp_AUC+= j["AUC"][k_k]
+                        else:
+                            temp_AUC += j["AUC"][k_k]
+                if found:
+                    if "Internal Standard" in j["Glycan"]:
+                        glycan_line_IS.append(str(temp_AUC_IS))
+                    else:
+                        glycan_line_IS.append("0.0")
+                    glycan_line.append(str(temp_AUC))
+                    continue
+                if not found:
+                    glycan_line_IS.append("0.0")
+                    glycan_line.append("0.0")
+                    continue
+            if found_int_std:
+                with open(save_path+begin_time+"_metaboanalyst_data_normalized.csv", "a") as g:
+                    g.write(",".join(glycan_line_IS)+"\n")
+                    g.close()
+            f.write(",".join(glycan_line)+"\n")
+        f.close()
+    if compositions:
+        total_glycans_compositions = []
+        with open(save_path+begin_time+"_metaboanalyst_data_compositions.csv", "w") as f:
+            found_int_std = False
+            for i in compositions_dataframes:
+                if "Internal Standard" in i["Glycan"]:
+                    found_int_std = True
+                    break
+            if found_int_std:
+                with open(save_path+begin_time+"_metaboanalyst_data_compositions_normalized.csv", "w") as g:
+                    g.write(",".join(samples_line)+"\n")
+                    g.write(",".join(groups_line)+"\n")
+                    g.close()
+            f.write(",".join(samples_line)+"\n")
+            f.write(",".join(groups_line)+"\n")
+            for i_i, i in enumerate(compositions_dataframes):
+                for j_j, j in enumerate(i['Glycan']):
+                    if j not in total_glycans_compositions and j != 'Internal Standard':
+                        total_glycans_compositions.append(j)
+            for i_i, i in enumerate(sorted(total_glycans_compositions)):
+                glycan_line = [i]
+                glycan_line_IS = [i]
+                for j_j, j in enumerate(compositions_dataframes):
+                    if i in j['Glycan']:
+                        glycan_line.append(str(j['AUC'][j['Glycan'].index(i)]))
+                        if 'Internal Standard' in j['Glycan']:
+                            glycan_line_IS.append(str(j['AUC'][j['Glycan'].index(i)]/j['AUC'][j['Glycan'].index('Internal Standard')]))
+                        else:
+                            glycan_line_IS.append("0.0")
+                    else:
+                        glycan_line.append('0.0')
+                        glycan_line_IS.append('0.0')
+                f.write(",".join(glycan_line)+"\n")
+                if found_int_std:
+                    with open(save_path+begin_time+"_metaboanalyst_data_compositions_normalized.csv", "a") as g:
+                        g.write(",".join(glycan_line_IS)+"\n")
+                        g.close()
+            f.close()
+        
+def output_filtered_data(curve_fit_score,
+                         iso_fit_score,
+                         sn,
+                         max_ppm,
+                         percentage_auc,
+                         reanalysis,
+                         gg_file,
+                         save_path,
+                         analyze_ms2,
+                         unrestricted_fragments,
+                         reporter_ions,
+                         plot_metaboanalyst,
+                         compositions,
+                         align_chromatograms,
+                         nglycan,
+                         rt_tolerance,
+                         rt_tolerance_frag,
+                         output_isotopic_fittings,
+                         output_plot_data,
+                         multithreaded,
+                         number_cores,
+                         temp_time,
+                         from_GUI = False,
+                         metab_groups = []):
+    '''This function filters and converts raw results data into human readable
+    excel files.
+    
+    Parameters
+    ----------
+    curve_fit_score : float
+        The minimum curve fitting score to consider when outputting results.
+        
+    iso_fit_score : float
+        The minimum isotopic fitting score to consider when outputting results.
+        
+    sn : int
+        The minimum signal-to-noise ration to consider when outputting results.
+        
+    max_ppm : int
+        The maximum amount of PPM difference to consider when outputting results.
+        
+    percentage_auc : float
+        Percentage of the highest peak AUC that another peak AUC must have in a same chromatogram in order to be saved.
+        
+    reanalysis : tuple
+        Contains two indexes: The first one indicates whether this is only a reanalysis execution and the second one indicates whether or not to produce plot data excel files. The second one is there because the plot data is more heavy and doesn't change on reanalysis, so should only be set to True if you lost original plot data.
+        
+    gg_file : string
+        String containing the path to the .gg analysis file.
+        
+    save_path : string
+        A string containing the path to the working directory of the script.
+    
+    analyze_ms2 : tuple
+        A tuple with two indexes: The first one indicates whether to analyze ms2 data and the  second one indicates whether ms2 data should be forced to fit glycans composition.
+        
+    unrestricted_fragments : boolean
+        Whether or not fragments are restricted to the precursor putative composition.
+        
+    reporter_ions : list
+        A list containing the reporter ions you wish to filter your data with.
+        
+    plot_metaboanalyst : tuple
+        A tuple with two indexes: The first one indicates whether or not to output a file to be used in metaboanalyst and the second one indicates the groups for the samples to be separated in.
+        
+    compositions : boolean
+        If set to True, also outputs the compositions analysis.
+        
+    align_chromatograms : boolean
+        Whether or not to align results and chromatograms.
+        
+    nglycan : boolean
+        Determines whether you're analyzing N-Glycans or not.
+    
+    rt_tolerance : float
+        Tolerance of retention time (in minutes) at which an MS2 feature can be attributed to a specific retention time peak and also for peaks in different samples to be regarded as the same peak (and thus be compared with each other).
+    
+    rt_tolerance_frag : float
+        Same as rt_tolerance, but applies to identify whether the precursor retention time matches the fragmentation and ms1 identification.
+        
+    output_isotopic_fittings : boolean
+        Whether or not to output curve-fitting and isotopic-fitting data for data check, if desired.
+        
+    output_plot_data : boolean
+        Whether or not to output COMPLETE chromatogram plotting data (always outputs regular data of found glycans).
+        
+    multithreaded : boolean
+        Whether the execution is multithreaded or not.
+        
+    number_cores : int
+        Number of cores used if execution is multithreaded.
+        
+    temp_time : str
+        Time at which execution of GG started.
+        
+    from_GUI : boolean
+        Whether or not the execution of this function came from GUI
+                         
+    metab_groups : list
+        List of metaboanalyst groups to assign the samples to.
+        
+    Uses
+    ----
+    datetime.datetime.now : Time object
+        Returns the current date and time.
+        
+    dill.dump : None
+        Pickle the current state of __main__ or another module to a file.
+    
+    dill.load : Module object
+        Update the selected module (default is __main__) with the state saved at filename.
+        
+    pathlib.Path : Path object
+        A subclass of PurePath, this class represents concrete paths of the system’s path flavour
+        
+    os.unlink : None
+        Remove (delete) the file path. 
+        
+    pandas.DataFrame : Dataframe object
+        Two-dimensional, size-mutable, potentially heterogeneous tabular data.
+        
+    pandas.ExcelWriter : ExcelWriter object
+        Class for writing DataFrame objects into excel sheets.
+        
+    Returns
+    -------
+    nothing
+        Creates excel files of processed data.
+    '''
+    
+    #preparation for arranging the data
+    date = datetime.datetime.now() #gets date information
+    begin_time = str(date)[2:4]+str(date)[5:7]+str(date)[8:10]+"_"+str(date)[11:13]+str(date)[14:16]+str(date)[17:19] #arranges the date information for the filename
+    if reanalysis: #if it is a reanalysis, attempts to open a gg file
+        if from_GUI:
+            print("Saving results files...")
+        else:
+            print("Reanalyzing raw data with new parameters...")
+        temp_path = save_path+begin_time+"_Temp/"
+        pathlib.Path(temp_path).mkdir(exist_ok = True, parents = True)
+        try:
+            General_Functions.open_gg(gg_file, temp_path)
+        except:
+            print("\nAnalysis file not found. If you're reanalyzing\nan existing analysis result file, check if the\npath in 'analysis_file' is correct, otherwise\nchange 'reanalysis' to 'no' and try again.\n")
+            return
+    else: #if its not, it opens the already loaded raw data files
+        print("Analyzing raw data...")
+        temp_path = save_path+temp_time+"_Temp/"
+        pathlib.Path(temp_path).mkdir(exist_ok = True, parents = True)
+    with open(temp_path+'raw_data_1', 'rb') as f:
+        file = dill.load(f)
+        df1 = file[0]
+        df2 = file[1]
+        if len(file) > 3: #checks whether MS2 data is present
+            analyze_ms2 = True
+            fragments_dataframes = file[2]
+            if reanalysis and ".".join(version.split('.')[:2]) != ".".join(file[3].split('.')[:2]): #checks if version is compatible by checking the second version number
+                print("Raw data files version incompatible with\ncurrent version (Current version: "+version+";\nRaw data version: "+file[3]+")")
+                return
+        else:
+            if reanalysis and ".".join(version.split('.')[:2]) != ".".join(file[2].split('.')[:2]):
+                print("Raw data files version incompatible with\ncurrent version (Current version: "+version+";\nRaw data version: "+file[2]+")")
+                return
+        f.close()
+    
+    #reorganizes and filters the raw data based on the quality thresholds
+    if analyze_ms2:
+        df1_refactor, fragments_dataframes = make_df1_refactor(df1, df2, curve_fit_score, iso_fit_score, sn, max_ppm, percentage_auc, analyze_ms2, unrestricted_fragments, fragments_dataframes)
+    else:
+        df1_refactor, fragments_dataframes = make_df1_refactor(df1, df2, curve_fit_score, iso_fit_score, sn, max_ppm, percentage_auc, analyze_ms2, unrestricted_fragments)
+    
+    #filters ms2 data by reporter ions, calculates %TIC of MS2 spectra and reorganizes MS2 data
+    if analyze_ms2:
+        df1_refactor, fragments_dataframes, fragments_refactor_dataframes = make_filtered_ms2_refactor(df1_refactor, fragments_dataframes, reporter_ions, unrestricted_fragments, rt_tolerance_frag)
+    
+    #checks the ambiguities
+    ambiguity_count = [] #ambiguity indicator
+    for i_i, i in enumerate(df1_refactor):
+        ambiguity_count.append(0)
+        i['Ambiguity'] = []
+        for j in i['Glycan']:
+            i['Ambiguity'].append([])
+        for j_j, j in enumerate(i['Glycan']):
+            glycan_j = j+'_'+i['Adduct'][j_j]
+            for k_k, k in enumerate(i['Glycan'][j_j+1:]):
+                k_k = j_j+k_k+1
+                glycan_k = k+'_'+i['Adduct'][k_k]
+                if j != k and i['mz'][j_j] == i['mz'][k_k]:
+                    ambiguity_count[i_i] += 1
+                    i['Ambiguity'][j_j].append(i['Glycan'][k_k]+'_'+i['Adduct'][k_k])
+                    i['Ambiguity'][k_k].append(i['Glycan'][j_j]+'_'+i['Adduct'][j_j])
+        for j_j, j in enumerate(i['Ambiguity']):
+            if len(j) > 0:
+                i['Ambiguity'][j_j] = ', '.join(j)
+            else:
+                i['Ambiguity'][j_j] = 'No'
+    
+    #makes dataframes containing the combined adducts AUC for each peak
+    total_dataframes = make_total_dataframes(df1_refactor, rt_tolerance)
     
     compositions_dataframes = [] #compositions_dataframes
     for i_i, i in enumerate(total_dataframes):
@@ -1648,61 +2090,7 @@ def output_filtered_data(curve_fit_score,
             compositions_dataframes[i_i]['AUC'].append(glycans_lib[j])
     
     if nglycan: #if N-Glycans, determines its class
-        glycan_class = {}
-        for i_i, i in enumerate(total_dataframes):
-            for j_j, j in enumerate(i['Glycan']):
-                if j != 'Internal Standard' and j not in glycan_class.keys():
-                    j_list = j.split("/")
-                    temp_class = ''
-                    for k in j_list:
-                        comp = General_Functions.form_to_comp(k)
-                        if len(temp_class) > 0:
-                            temp_class += '/'
-                        if 'N' in comp.keys() and 'H' in comp.keys() and comp['N'] == 2 and comp['H'] <= 3:
-                            temp_class += 'Paucimannose'
-                            continue
-                        if 'N' in comp.keys() and 'H' in comp.keys() and comp['H'] > comp['N']+1 and comp['N'] > 2:
-                            temp_class += 'Hybrid'
-                            continue
-                        if 'N' in comp.keys() and 'H' in comp.keys() and comp['N'] == 2 and comp['H'] > 3:
-                            temp_class += 'High-Mannose'
-                            continue
-                        else:
-                            temp_class += 'Complex'
-                    glycan_class[j] = temp_class
-                if j == 'Internal Standard':
-                    glycan_class[j] = j
-        for i_i, i in enumerate(total_dataframes):
-            total_dataframes[i_i]['Class'] = []
-            for j_j, j in enumerate(i['Glycan']):
-                i['Class'].append(glycan_class[j])
-        for i_i, i in enumerate(compositions_dataframes):
-            compositions_dataframes[i_i]['Class'] = []
-            for j_j, j in enumerate(i['Glycan']):
-                i['Class'].append(glycan_class[j])
-        proportion_classes = {'Paucimannose' : [], 'Hybrid' : [], 'High-Mannose' : [], 'Complex' : []}        
-        for i_i, i in enumerate(compositions_dataframes):
-            total_sample = sum(i['AUC'])
-            if total_sample == 0:
-                total_sample = inf
-            total_pauci = 0
-            total_hybrid = 0
-            total_oligo = 0
-            total_complex = 0
-            for j_j, j in enumerate(i['Class']):
-                if 'Paucimannose' in j:
-                    total_pauci+= i['AUC'][j_j]
-                if 'Hybrid' in j:
-                    total_hybrid+= i['AUC'][j_j]
-                if 'High-Mannose' in j:
-                    total_oligo+= i['AUC'][j_j]
-                if 'Complex' in j:
-                    total_complex+= i['AUC'][j_j]
-            proportion_classes['Paucimannose'].append(float("%.2f" % round((total_pauci/total_sample)*100, 2)))
-            proportion_classes['Hybrid'].append(float("%.2f" % round((total_hybrid/total_sample)*100, 2)))
-            proportion_classes['High-Mannose'].append(float("%.2f" % round((total_oligo/total_sample)*100, 2)))
-            proportion_classes['Complex'].append(float("%.2f" % round((total_complex/total_sample)*100, 2)))
-            
+        glycan_class, proportion_classes = determine_nglycan_class(total_dataframes, compositions_dataframes)
     
     #hook for alignment tool. it'll use the total_dataframes (total_glycans) 
     if align_chromatograms:
@@ -1783,133 +2171,9 @@ def output_filtered_data(curve_fit_score,
                 
     if plot_metaboanalyst[0]: #start of metaboanalyst plot
         print("Creating file for metaboanalyst plotting...", end="", flush=True)
-        with open(save_path+begin_time+"_metaboanalyst_data.csv", "w") as f:
-            samples_line = ["Sample"]
-            for i_i, i in enumerate(df2["File_Name"]):
-                samples_line.append(i)
-            groups_line = ["Group"]
-            if from_GUI:
-                for i in df2['File_Name']:
-                    found = False
-                    if i in metab_groups.keys():
-                        found = True
-                        groups_line.append(metab_groups[i])
-                    if not found:
-                        groups_line.append("Ungrouped")
-            else:
-                if len(plot_metaboanalyst[1]) > 0:
-                    for i in df2["File_Name"]:
-                        found = False
-                        for j in plot_metaboanalyst[1]:
-                            if j in i:
-                                found = True
-                                groups_line.append(j)
-                                break
-                        if not found:
-                            groups_line.append("Ungrouped")
-                else:
-                    for i in df2["File_Name"]:
-                        groups_line.append("Ungrouped")
-            found_int_std = False
-            for i in total_dataframes:
-                if "Internal Standard" in i["Glycan"]:
-                    found_int_std = True
-                    break
-            if found_int_std:
-                with open(save_path+begin_time+"_metaboanalyst_data_normalized.csv", "a") as g:
-                    g.write(",".join(samples_line)+"\n")
-                    g.write(",".join(groups_line)+"\n")
-                    g.close()
-                is_areas = []
-                for i in total_dataframes:
-                    if "Internal Standard" in i["Glycan"]:
-                        temp_areas = []
-                        for j_j, j in enumerate(i["Glycan"]):
-                            if j == "Internal Standard":
-                                temp_areas.append(i["AUC"][j_j])
-                        is_areas.append(max(temp_areas))
-                    else:
-                        is_areas.append(0.0)
-            f.write(",".join(samples_line)+"\n")
-            f.write(",".join(groups_line)+"\n")
-            for i in all_glycans_list:
-                glycan_line = []
-                glycan_line_IS = []
-                i_splitted = i.split("_")
-                glycan_line_IS.append(i)
-                glycan_line.append(i)
-                for j_j, j in enumerate(total_dataframes): #moving through samples
-                    found = False
-                    temp_AUC = 0
-                    for k_k, k in enumerate(j["Glycan"]):
-                        if k == "Internal Standard":
-                            continue
-                        if k == i_splitted[0] and abs(j["RT"][k_k] - float(i_splitted[-1])) <= rt_tolerance:
-                            found = True
-                            if "Internal Standard" in j["Glycan"]:
-                                if is_areas[j_j] > 0.0:
-                                    temp_AUC_IS = j["AUC"][k_k]/is_areas[j_j]
-                                else:
-                                    temp_AUC_IS = 0.0
-                                temp_AUC+= j["AUC"][k_k]
-                            else:
-                                temp_AUC += j["AUC"][k_k]
-                    if found:
-                        if "Internal Standard" in j["Glycan"]:
-                            glycan_line_IS.append(str(temp_AUC_IS))
-                        else:
-                            glycan_line_IS.append("0.0")
-                        glycan_line.append(str(temp_AUC))
-                        continue
-                    if not found:
-                        glycan_line_IS.append("0.0")
-                        glycan_line.append("0.0")
-                        continue
-                if found_int_std:
-                    with open(save_path+begin_time+"_metaboanalyst_data_normalized.csv", "a") as g:
-                        g.write(",".join(glycan_line_IS)+"\n")
-                        g.close()
-                f.write(",".join(glycan_line)+"\n")
-            f.close()
-        if compositions:
-            total_glycans_compositions = []
-            with open(save_path+begin_time+"_metaboanalyst_data_compositions.csv", "w") as f:
-                found_int_std = False
-                for i in compositions_dataframes:
-                    if "Internal Standard" in i["Glycan"]:
-                        found_int_std = True
-                        break
-                if found_int_std:
-                    with open(save_path+begin_time+"_metaboanalyst_data_compositions_normalized.csv", "w") as g:
-                        g.write(",".join(samples_line)+"\n")
-                        g.write(",".join(groups_line)+"\n")
-                        g.close()
-                f.write(",".join(samples_line)+"\n")
-                f.write(",".join(groups_line)+"\n")
-                for i_i, i in enumerate(compositions_dataframes):
-                    for j_j, j in enumerate(i['Glycan']):
-                        if j not in total_glycans_compositions and j != 'Internal Standard':
-                            total_glycans_compositions.append(j)
-                for i_i, i in enumerate(sorted(total_glycans_compositions)):
-                    glycan_line = [i]
-                    glycan_line_IS = [i]
-                    for j_j, j in enumerate(compositions_dataframes):
-                        if i in j['Glycan']:
-                            glycan_line.append(str(j['AUC'][j['Glycan'].index(i)]))
-                            if 'Internal Standard' in j['Glycan']:
-                                glycan_line_IS.append(str(j['AUC'][j['Glycan'].index(i)]/j['AUC'][j['Glycan'].index('Internal Standard')]))
-                            else:
-                                glycan_line_IS.append("0.0")
-                        else:
-                            glycan_line.append('0.0')
-                            glycan_line_IS.append('0.0')
-                    f.write(",".join(glycan_line)+"\n")
-                    if found_int_std:
-                        with open(save_path+begin_time+"_metaboanalyst_data_compositions_normalized.csv", "a") as g:
-                            g.write(",".join(glycan_line_IS)+"\n")
-                            g.close()
-                f.close()
-                
+        
+        create_metaboanalyst_files(plot_metaboanalyst, df2, total_dataframes, all_glycans_list, compositions, compositions_dataframes, save_path, begin_time, rt_tolerance, from_GUI, metab_groups)
+        
         print("Done!") #end of metaboanalyst plot
     
     total_glycans_compositions = []  #start to build meta_dataframe
@@ -2186,7 +2450,29 @@ def output_filtered_data(curve_fit_score,
 def arrange_iso_outputs(i_i,
                         i,
                         isotopic_fits_dataframes):
-    '''
+    '''Function to organize the isotopic fits output of a single sample. To be used in multithreading for faster execution.
+    
+    Parameters
+    ----------
+    i : str
+        Sample data.
+    
+    i_i : int
+        Sample index.
+        
+    isotopic_fits_dataframes : list
+        A list containing dictionaries with information of all the isotopic fits calculated for all the samples.
+        
+    Returns
+    -------
+    temp_fits_dataframes : dict
+        Dictionary containing all the isotopic fittings organized.
+        
+    biggest_len : int
+        The biggest len of a given column in the temp_fits_dataframes.
+        
+    i_i : int
+        Sample index.
     '''
     try:
         biggest_len = 0
@@ -2219,7 +2505,40 @@ def write_iso_to_excel(save_path,
                        i,
                        isotopic_fits_dataframes_arranged,
                        biggest_len):
-    '''
+    '''Writes the organized isotopic fittings to an excel file.
+    
+    Parameters
+    ----------
+    save_path : string
+        A string containing the path to the working directory of the script.
+    
+    begin_time : string
+        Time at which the file output started, to save to file name.
+        
+    i_i : int
+        Sample index.
+        
+    i : list
+        Sample data.
+        
+    isotopic_fits_dataframes_arranged : dict
+        The dictionary containing the organized isotopic fittings data.
+        
+    biggest_len : int
+        The biggest length of all the columns in the isotopic_fits_dataframes_arranged.
+        
+    Uses
+    ----
+    pandas.DataFrame : Dataframe object
+        Two-dimensional, size-mutable, potentially heterogeneous tabular data.
+        
+    pandas.ExcelWriter : ExcelWriter object
+        Class for writing DataFrame objects into excel sheets.
+    
+    Returns
+    -------
+    nothing
+        Creates excel files with the data.
     '''
     try:
         with ExcelWriter(save_path+begin_time+'_Isotopic_Fits_Sample_'+str(i_i)+'.xlsx') as writer:
@@ -2257,6 +2576,12 @@ def arrange_raw_data(analyzed_data,
     
     save_path : string
         A string containing the path to the working directory of the script.
+        
+    parameters : list
+        A list of parameters for saving as metadata into the .gg file.
+        
+    from_GUI : boolean
+        Whether or not this function is being executed by the GUI.
         
     Uses
     ----

@@ -154,6 +154,9 @@ def eic_from_glycan(files,
     ----------
     files : list
         A list of generators obtained from the function pyteomics.mzxml.MzXML().
+        
+    glycan : str
+        The name of the target glycan.
 
     glycan_info : dict
         A dictionary containing multiple glycan info, including the needed 'Adducts_mz'
@@ -197,6 +200,9 @@ def eic_from_glycan(files,
     
     ms1_id : list
         List of the MS1 spectra that will be analyzed, synchronized to the threads_array.
+        
+    rewind : int
+        The maximum number of spectras it can go back to for retroactively checking after finding a peak.
 
     Uses
     ----
@@ -236,6 +242,9 @@ def eic_from_glycan(files,
         A dictionary with keys for each adduct combo of a given glycan, which value is a
         dict with keys for each file id, at which each value corresponds to a given 
         calculated isotopic fitting score for the retention time at the same index.
+        
+    verbose_info : list
+        Legacy list used to save verbose info to. Unused and in need of CLEANUP.
         
     raw_data : dict
         A dictionary with keys for each adduct combo of a given glycan, which value is a
@@ -425,6 +434,15 @@ def analyze_mz_array(sliced_mz,
         
     adduct_charge : int
         The charge of the adduct.
+        
+    filtered : boolean
+        Whether the output will be filtered or not. Non-filtered output allows for MUCH FASTER tracing. Might get used in the future.
+        
+    retest : boolean
+        Whether this is a retest check or not. For use with rewind on eic_from_glycan.
+        
+    retest_no : int
+        Buffer ID of the retest.
     
     Uses
     ----
@@ -744,6 +762,9 @@ def iso_fit_score_calc(iso_fits,
     ----
     numpy.average : float
         Calculates the weighted average of an array based on another array of weights.
+    
+    weights_list : list
+        A list containing the weights used to calculate the scores. Comes from the curve fitting.
         
     Returns
     -------
@@ -772,6 +793,9 @@ def average_ppm_calc(ppm_array,
         
     peak : dict
         A dictionary containing all sorts of identified peaks information.
+    
+    weights_list : list
+        A list containing the weights used to calculate the scores. Comes from the curve fitting.
 
     Uses
     ----
@@ -815,11 +839,15 @@ def peaks_from_eic(rt_int,
     ----------
     rt_int : list
         A list containing two lists: the first one has all the retention times, the
-        second one has all the intensities.
+        second one has all the FILTERD BUT UNSMOOTHED intensities.
         
     rt_int_smoothed : list
         A list containing two lists: the first one has all the retention times, the
         second one has all the SMOOTHED intensities.
+        
+    raw_rt_int : list
+        A list containing two lists: the first one has all the retention times, the
+        second one has all the UNFILTERED intensities. Used to calculate signal-to-noise ratio.
         
     rt_interval : tuple
         A tuple where the first index contains the beggining time of the retention time

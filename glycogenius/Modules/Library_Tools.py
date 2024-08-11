@@ -98,6 +98,10 @@ def generate_glycans_library(min_max_mono,
         Minimum and maximum amount of N-Acetyl hexosamines for the hypotethical glycans
         in the library. ie. (5, 20).
 
+    min_max_xyl : tuple
+        Minimum and maximum amount of Xyloses for the hypotethical glycans
+        in the library. ie. (5, 20).
+
     min_max_sialics : tuple
         Minimum and maximum amount of sialic acids for the hypotethical glycans in the
         library. ie. (5, 20).
@@ -350,19 +354,16 @@ def full_glycans_library(library,
             iso_corrected = []
             for j_j, j in enumerate(i_iso_dist[0]):
                 if j_j == 1:
-                    iso_corrected.append(abs(j*1.03))
+                    iso_corrected.append(abs(j*1.02))
                     continue
                 if j_j == 2:
-                    iso_corrected.append(abs(j*(1.5-(0.00055*sum(i_atoms_tag.values())))))
+                    iso_corrected.append(abs(j*(10.8*(i_neutral_mass**-0.267))))
                     continue
                 if j_j == 3:
-                    iso_corrected.append(abs(j*(2.43-(0.00172*sum(i_atoms_tag.values())))))
+                    iso_corrected.append(abs(j*(122.62*(i_neutral_mass**-0.528))))
                     continue
                 if j_j == 4:
-                    iso_corrected.append(abs(j*(5.5-(0.0062*sum(i_atoms_tag.values())))))
-                    continue
-                if j_j == 5:
-                    iso_corrected.append(abs(j*(3.16-(0.00585*sum(i_atoms_tag.values())))))
+                    iso_corrected.append(abs(j*(2192.6*(i_neutral_mass**-0.833))))
                     continue
                 else:
                     iso_corrected.append(j)
@@ -446,6 +447,10 @@ def fragments_library(min_max_mono,
 
     min_max_hexnac : tuple
         Minimum and maximum amount of N-Acetyl hexosamines for the hypotethical glycans
+        in the library. ie. (5, 20).
+
+    min_max_xyl : tuple
+        Minimum and maximum amount of Xyloses for the hypotethical glycans
         in the library. ie. (5, 20).
 
     min_max_sialics : tuple

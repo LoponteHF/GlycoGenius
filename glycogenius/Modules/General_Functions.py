@@ -63,7 +63,40 @@ times during a run.
 ##pyteomics).
 
 def binary_search_with_tolerance(arr, target, low, high, tolerance, int_arr = []):
-    '''
+    '''A function to quickly find a target in an array by splitting the array recurssively in two and looking for the mid point, finding out if value is bigger or smaller than  target, then splitting again. It also checks if found target in target array is within a tolerance, and picks the most intense one within the tolerance if intensity array is available, else picks the closest one to target.
+    
+    Parameters
+    ----------
+    arr : list/np.array
+        Target array to search for target.
+        
+    target : float
+        Float to find in target array.
+        
+    low : int
+        Index of the first element in target array.
+        
+    high : int
+        Index of the last element in target array.
+        
+    tolerance : float
+        Tolerance to check for target in target array.
+        
+    int_arr : list/np.array
+        List of intensities, synchronized with arr, to help choose the best target within tolerance.
+        
+    Uses
+    ----
+    numpy.argmax : int
+        Outputs the index of the highest value in a given array.
+        
+    numpy.argmin : int
+        Outputs the index of the value with smallest difference to a given target, in an array.
+        
+    Returns
+    -------
+    selected_id : index
+        The index of the selected target.
     '''
     # Base case: if the range is invalid, the target is not in the array
     if low > high:
@@ -141,7 +174,7 @@ def linear_regression(x, y, th = 2.5):
         y-intercept of the fitted linear equation curve.
         
     outlier_indices : list
-        A list of the residuals outside the given threshold of the linear equation.
+        An index list of the residuals outside the given threshold of the linear equation.
     '''
     if len(x) != len(y): # Ensure x and y have the same length
         raise ValueError("Input arrays x and y must have the same length.")
@@ -160,7 +193,34 @@ def linear_regression(x, y, th = 2.5):
     return m, b, outlier_indices
     
 def cleanup_by_average(x, y, th = 2.5):
-    '''
+    '''Used to find the outliers of a given fit average.
+    
+    Parameters
+    ----------
+    x : list
+        A list containing the x elements of the datapoints.
+        
+    y : list
+        A list containing the y elements of the datapoints.
+        
+    th : float
+        The threshold for calculating outliers.
+    
+    Uses
+    ----
+    numpy.array : ndarray
+        Transforms a list into a numpy array.
+        
+    Returns
+    -------
+    mean : float
+        The mean of the fit.
+        
+    residuals : float
+        Values of residuals.
+        
+    outlier_indices : list
+        An index list of the residuals outside the given threshold.
     '''
     if len(x) != len(y): # Ensure x and y have the same length
         raise ValueError("Input arrays x and y must have the same length.")
