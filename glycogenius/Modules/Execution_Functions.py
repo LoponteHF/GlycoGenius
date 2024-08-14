@@ -2036,6 +2036,7 @@ def output_filtered_data(curve_fit_score,
                 print("Raw data files version incompatible with\ncurrent version (Current version: "+version+";\nRaw data version: "+file[3]+")")
                 return
         else:
+            fragments_dataframes = []
             if reanalysis and ".".join(version.split('.')[:2]) != ".".join(file[2].split('.')[:2]):
                 print("Raw data files version incompatible with\ncurrent version (Current version: "+version+";\nRaw data version: "+file[2]+")")
                 return
@@ -2794,7 +2795,8 @@ def pre_processing(data,
                    ms1_index,
                    ret_time_interval,
                    custom_noise,
-                   data_id):
+                   data_id,
+                   from_GUI = False):
     '''Calculates the noise level of samples and creates dummy empty arrays for use down the pipeline.
     
     Parameters
@@ -2863,11 +2865,13 @@ def pre_processing(data,
                 if i == 1.0:
                     temp_avg_noise[i_i] = avg
         else:
-            print("WARNING: Data seems denoised. Don't trust S/N\nmeasurements.")
+            if not from_GUI:
+                print("WARNING: Data seems denoised. Don't trust S/N\nmeasurements.")
         
         return zeroes_arrays, inf_arrays, threads_arrays, ms1_id, rt_array_report, temp_noise, temp_avg_noise, data_id
     except KeyboardInterrupt:
-        print("\n\n----------Execution cancelled by user.----------\n", flush=True)
+        if not from_GUI:
+            print("\n\n----------Execution cancelled by user.----------\n", flush=True)
         raise SystemExit(1)
     
 def analyze_files(library,
@@ -2999,7 +3003,8 @@ def analyze_files(library,
                                      ms1_index,
                                      ret_time_interval,
                                      custom_noise,
-                                     i_i)
+                                     i_i,
+                                     from_GUI)
             results.append(result)
             
     for i in results:
@@ -3055,7 +3060,8 @@ def analyze_files(library,
                                      rt_array_report,
                                      ms1_id,
                                      i,
-                                     i_i)
+                                     i_i,
+                                     from_GUI)
             results.append(result)
             if from_GUI:
                 temp_results.append(result)
@@ -3094,7 +3100,8 @@ def analyze_glycan(library,
                   rt_arrays,
                   ms1_id,
                   i,
-                  i_i):
+                  i_i,
+                  from_GUI = False):
     '''Analyzes one single glycan. Core function of analyze_files.
     
     Parameters
@@ -3200,7 +3207,8 @@ def analyze_glycan(library,
         The glycan analyzed.
     '''
     try:
-        print('Analyzing glycan '+str(i)+': '+str(i_i+1)+'/'+str(lib_size))
+        if not from_GUI:
+            print('Analyzing glycan '+str(i)+': '+str(i_i+1)+'/'+str(lib_size))
         
         glycan_data = library[i]
         glycan_data['Adducts_mz_data'] = {}
@@ -3270,7 +3278,8 @@ def analyze_glycan(library,
                         glycan_data['Adducts_mz_data'][j][k][1].append(l)
         return glycan_data, i
     except KeyboardInterrupt:
-        print("\n\n----------Execution cancelled by user.----------\n", flush=True)
+        if not from_GUI:
+            print("\n\n----------Execution cancelled by user.----------\n", flush=True)
         raise SystemExit(1)
     
 def analyze_ms2(ms2_index, 
@@ -3489,7 +3498,8 @@ def analyze_ms2(ms2_index,
                                      unrestricted_fragments,
                                      rt_tolerance,
                                      i_i,
-                                     i)
+                                     i,
+                                     from_GUI)
             results.append(result)
             if from_GUI:
                 temp_results.append(result)
@@ -3520,7 +3530,8 @@ def analyze_glycan_ms2(ms2_index,
                        unrestricted_fragments,
                        rt_tolerance,
                        i_i,
-                       i):
+                       i,
+                       from_GUI = False):
     '''Core function of analyze_ms2. Analyze a single glycan.
     
     Parameters
@@ -3572,7 +3583,8 @@ def analyze_glycan_ms2(ms2_index,
         A series of information on the MS2 data analyzed.
     '''
     try:
-        print('Analyzing glycan '+str(i)+': '+str(i_i+1)+'/'+str(len(analyzed_data[0])))
+        if not from_GUI:
+            print('Analyzing glycan '+str(i)+': '+str(i_i+1)+'/'+str(len(analyzed_data[0])))
         fragments_mz_list = list(indexed_fragments.keys())
         superscripts = {'0': '⁰', '1': '¹', '2': '²', '3': '³', '4': '⁴', '5': '⁵', '6': '⁶', '7': '⁷', '8': '⁸', '9': '⁹', '+': '⁺', '-': '⁻', '=': '⁼', '(': '⁽', ')': '⁾', 'n': 'ⁿ', 'i': 'ⁱ'}
         fragments_data = {}
@@ -3665,8 +3677,11 @@ def analyze_glycan_ms2(ms2_index,
                                 adduct_charge_frag = General_Functions.form_to_charge(possible_fragments[n][1])
                                 adduct_str = ""
                                 for o in adduct_comp:
-                                    adduct_str += f"{'+' if adduct_comp[o] > 0 else ''}{adduct_comp[o]}{o}"
-                                fragment_name_list.append(f"{possible_fragments[n][0]['Formula']}[M{adduct_str}]{superscripts['+'] if adduct_charge_frag > 0 else superscripts['-']}{superscripts[str(abs(adduct_charge_frag))]}")
+                                    polarity = '+' if adduct_comp[o] > 0 else ''
+                                    adduct_str += f"{polarity}{adduct_comp[o]}{o}"
+                                formula_fragment = possible_fragments[n][0]['Formula']
+                                superscript_polarity = superscripts['+'] if adduct_charge_frag > 0 else superscripts['-']
+                                fragment_name_list.append(f"{formula_fragment}[M{adduct_str}]{superscript_polarity}{superscripts[str(abs(adduct_charge_frag))]}")
                             fragment_name = "/".join(fragment_name_list)
                             # print(f"Final fragment: {fragment_name}")
                             fragments_data[j][k_k].append([i, j, fragment_name, possible_fragments[0][0]['Adducts_mz'][possible_fragments[0][1]]['mz'], k[l]['intensity array'][m_m], k[l]['retentionTime'], k[l]['precursorMz'][0]['precursorMz'], total])  
@@ -3677,5 +3692,6 @@ def analyze_glycan_ms2(ms2_index,
                                 m[7] = total
         return fragments_data, i
     except KeyboardInterrupt:
-        print("\n\n----------Execution cancelled by user.----------\n", flush=True)
+        if not from_GUI:
+            print("\n\n----------Execution cancelled by user.----------\n", flush=True)
         raise SystemExit(1)
