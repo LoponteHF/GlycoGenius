@@ -40,13 +40,15 @@ def main(args=[]):
 
         else:
             library = Execution_Functions.imp_exp_gen_library(*args[1])
-            print('Library length: '+str(len(library)))
             Execution_Functions.print_sep()
-            print("Starting pre-processing...")
-            print("Preparing files for analysis...", end = "", flush = True)
+            pre_processing_begin_time = datetime.datetime.now()
+            time_formatted = str(pre_processing_begin_time).split(" ")[-1].split(".")[0]+" - "
+            print(time_formatted+"Starting pre-processing...")
+            print(time_formatted+"Loading files...", end = "", flush = True)
             data = Execution_Functions.list_of_data(*args[2])
             print("Done!")
-            print("Indexing spectra...", end = "", flush = True)
+            time_formatted = str(datetime.datetime.now()).split(" ")[-1].split(".")[0]+" - "
+            print(time_formatted+"Indexing spectra...", end = "", flush = True)
             args[3][0] = data
             ms1_index = Execution_Functions.index_spectra_from_file(*args[3])
             if args[10]:
@@ -59,6 +61,7 @@ def main(args=[]):
             args[5][1] = lib_size
             args[5][2] = data
             args[5][3] = ms1_index
+            args[5][13] = pre_processing_begin_time
             analyzed_data = Execution_Functions.analyze_files(*args[5])
             if args[10]:
                 Execution_Functions.print_sep()
@@ -73,8 +76,9 @@ def main(args=[]):
             args[0][21] = temp_time
             if len(args) == 11:
                 Execution_Functions.output_filtered_data(*args[0])
-                   
-        print('Execution complete. Time elapsed: '+str(datetime.datetime.now() - begin_time))
+                
+        time_formatted = str(datetime.datetime.now()).split(" ")[-1].split(".")[0]+" - "   
+        print(time_formatted+'Finished! Time elapsed: '+str(datetime.datetime.now() - begin_time).split(".")[0])
         if os.isatty(0):
             input('\nPress Enter to exit.')
         else:

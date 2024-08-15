@@ -470,7 +470,8 @@ def imp_exp_gen_library(custom_glycans_list,
     date = datetime.datetime.now()
     begin_time = str(date)[2:4]+str(date)[5:7]+str(date)[8:10]+"_"+str(date)[11:13]+str(date)[14:16]+str(date)[17:19]
     if imp_exp_library[0]:
-        print('Importing existing library...', end = '', flush = True)
+        time_formatted = str(datetime.datetime.now()).split(" ")[-1].split(".")[0]+" - "
+        print(time_formatted+'Importing existing library...', end = '', flush = True)
         try:
             pathlib.Path(save_path+begin_time+"_Temp").mkdir(exist_ok = True, parents = True)
             shutil.copy(library_path, os.path.join(save_path+begin_time+"_Temp", 'glycans_library.py'))
@@ -518,7 +519,8 @@ def imp_exp_gen_library(custom_glycans_list,
                     os._exit(1)
     elif custom_glycans_list[0] and not imp_exp_library[0]:
         custom_glycans_comp = []
-        print('Building custom glycans library...', end = "", flush = True)
+        time_formatted = str(datetime.datetime.now()).split(" ")[-1].split(".")[0]+" - "
+        print(time_formatted+'Building glycans library...', end = "", flush = True)
         for i in custom_glycans_list[1]:
             glycan_comp = General_Functions.form_to_comp(i)
             for i in glycan_comp:
@@ -571,7 +573,8 @@ def imp_exp_gen_library(custom_glycans_list,
                                             reduced)
         print('Done!')
     else:
-        print('Building glycans library...', end = "", flush = True)
+        time_formatted = str(datetime.datetime.now()).split(" ")[-1].split(".")[0]+" - "
+        print(time_formatted+'Building glycans library...', end = "", flush = True)
         monos_library = Library_Tools.generate_glycans_library(min_max_monos,
                                                  min_max_hex,
                                                  min_max_hexnac,
@@ -594,7 +597,8 @@ def imp_exp_gen_library(custom_glycans_list,
                                             reduced)
         print('Done!')
     if imp_exp_library[1] or only_gen_lib:
-        print('Exporting glycans library...', end = '', flush = True)
+        time_formatted = str(datetime.datetime.now()).split(" ")[-1].split(".")[0]+" - "
+        print(time_formatted+'Exporting glycans library...', end = '', flush = True)
         if exp_lib_name != '':
             if len(exp_lib_name.split('.')) > 1:
                 exp_lib_name = exp_lib_name.split('.')[0]
@@ -681,8 +685,9 @@ def imp_exp_gen_library(custom_glycans_list,
             f.close()
         print("Done!")
     if only_gen_lib:
-        print('Library length: '+str(len(full_library)))
-        print("Check it in "+exp_lib_name+".")
+        time_formatted = str(datetime.datetime.now()).split(" ")[-1].split(".")[0]+" - "
+        print(time_formatted+'Library length: '+str(len(full_library)))
+        print("File name is "+exp_lib_name+".ggl.")
         print("If you wish to analyze files,")
         print("set 'only_gen_lib' to False and input")
         print("remaining parameters.")
@@ -696,6 +701,8 @@ def imp_exp_gen_library(custom_glycans_list,
                     time.sleep(3600)
             except KeyboardInterrupt:
                 os._exit(1)
+    time_formatted = str(datetime.datetime.now()).split(" ")[-1].split(".")[0]+" - "
+    print(time_formatted+'Library length: '+str(len(full_library)))
     return full_library
     
 def align_assignments(df, df_type, multithreaded, number_cores, deltas = None, rt_tol = None):
@@ -2010,10 +2017,11 @@ def output_filtered_data(curve_fit_score,
     date = datetime.datetime.now() #gets date information
     begin_time = str(date)[2:4]+str(date)[5:7]+str(date)[8:10]+"_"+str(date)[11:13]+str(date)[14:16]+str(date)[17:19] #arranges the date information for the filename
     if reanalysis: #if it is a reanalysis, attempts to open a gg file
+        time_formatted = str(datetime.datetime.now()).split(" ")[-1].split(".")[0]+" - "
         if from_GUI:
-            print("Saving results files...")
+            print(time_formatted+"Saving results files...")
         else:
-            print("Reanalyzing raw data with new parameters...")
+            print(time_formatted+"Reanalyzing raw data...")
         temp_path = save_path+begin_time+"_Temp/"
         pathlib.Path(temp_path).mkdir(exist_ok = True, parents = True)
         try:
@@ -2022,7 +2030,8 @@ def output_filtered_data(curve_fit_score,
             print("\nAnalysis file not found. If you're reanalyzing\nan existing analysis result file, check if the\npath in 'analysis_file' is correct, otherwise\nchange 'reanalysis' to 'no' and try again.\n")
             return
     else: #if its not, it opens the already loaded raw data files
-        print("Analyzing raw data...")
+        time_formatted = str(datetime.datetime.now()).split(" ")[-1].split(".")[0]+" - "
+        print(time_formatted+"Analyzing raw data...")
         temp_path = save_path+temp_time+"_Temp/"
         pathlib.Path(temp_path).mkdir(exist_ok = True, parents = True)
     with open(temp_path+'raw_data_1', 'rb') as f:
@@ -2171,7 +2180,8 @@ def output_filtered_data(curve_fit_score,
                 all_glycans_list.append(i["Glycan"][j_j]+"_"+"%.2f" % j)
                 
     if plot_metaboanalyst[0]: #start of metaboanalyst plot
-        print("Creating file for metaboanalyst plotting...", end="", flush=True)
+        time_formatted = str(datetime.datetime.now()).split(" ")[-1].split(".")[0]+" - "
+        print(time_formatted+"Creating file for metaboanalyst plotting...", end="", flush=True)
         
         create_metaboanalyst_files(plot_metaboanalyst, df2, total_dataframes, all_glycans_list, compositions, compositions_dataframes, save_path, begin_time, rt_tolerance, from_GUI, metab_groups)
         
@@ -2243,7 +2253,8 @@ def output_filtered_data(curve_fit_score,
     with ExcelWriter(save_path+begin_time+'_Results_'+ppm_title_label+'_'+str(iso_fit_score)+'_'+str(curve_fit_score)+'_'+str(sn)+'.xlsx') as writer:
         dfs = [df2, meta_df]
         sheets_names = ['Index references', 'Detected Glycans']
-        print("Creating results file...", end="", flush=True)
+        time_formatted = str(datetime.datetime.now()).split(" ")[-1].split(".")[0]+" - "
+        print(time_formatted+"Creating results file...", end="", flush=True)
         df2.to_excel(writer, sheet_name="Index references", index = False)
         meta_df.to_excel(writer, sheet_name="Detected Glycans", index = False)
         for i_i, i in enumerate(df1_refactor):
@@ -2297,7 +2308,8 @@ def output_filtered_data(curve_fit_score,
             
     if align_chromatograms:
         if len(df2['Sample_Number']) > 1 and good_alignment: #aligns the chromatograms, may take some time (around 1 minute per sample, depending on run length)
-            print("Aligning chromatograms...", end='', flush=True)
+            time_formatted = str(datetime.datetime.now()).split(" ")[-1].split(".")[0]+" - "
+            print(time_formatted+"Aligning chromatograms...", end='', flush=True)
             smoothed_eic_dataframes = align_assignments(smoothed_eic_dataframes, 'chromatograms', multithreaded, number_cores, aligned_total_glycans[1])
             print("Done!")
         
@@ -2331,7 +2343,8 @@ def output_filtered_data(curve_fit_score,
                     found_eic_processed_dataframes_simplified[i_i][working_glycan][k_k] += k
     del found_eic_processed_dataframes_copy
     
-    print("Creating data plotting files...", end='', flush=True)
+    time_formatted = str(datetime.datetime.now()).split(" ")[-1].split(".")[0]+" - "
+    print(time_formatted+"Creating data plotting files...", end='', flush=True)
     with ExcelWriter(save_path+begin_time+'_Found_Glycans_EICs.xlsx') as writer:
         df2.to_excel(writer, sheet_name="Index references", index = False)
         General_Functions.autofit_columns_excel(df2, writer.sheets["Index references"])
@@ -2600,7 +2613,8 @@ def arrange_raw_data(analyzed_data,
     date = datetime.datetime.now()
     begin_time = str(date)[2:4]+str(date)[5:7]+str(date)[8:10]+"_"+str(date)[11:13]+str(date)[14:16]+str(date)[17:19]
     temp_path = save_path+begin_time+"_Temp/"
-    print('Arranging raw data...', end='', flush = True)
+    time_formatted = str(datetime.datetime.now()).split(" ")[-1].split(".")[0]+" - "
+    print(time_formatted+'Arranging raw data...', end='', flush = True)
     df1 = []
     df2 = {"Sample_Number" : [], "File_Name" : [], "Average_Noise_Level" : []}
     raw_eic_dataframes = []
@@ -2767,10 +2781,11 @@ def arrange_raw_data(analyzed_data,
         dill.dump(parameters, f)
         f.close()
     General_Functions.make_gg(temp_path, save_path, begin_time+"_Analysis")
-    if from_GUI:
-        print("File name is "+begin_time+"_Analysis.gg")
-        shutil.rmtree(temp_path)
     print("Done!")
+    if from_GUI:
+        time_formatted = str(datetime.datetime.now()).split(" ")[-1].split(".")[0]+" - "
+        print(time_formatted+"File name is "+begin_time+"_Analysis.gg")
+        shutil.rmtree(temp_path)
     return begin_time
 
 def print_sep(): ##Complete
@@ -2887,6 +2902,7 @@ def analyze_files(library,
                   close_peaks,
                   multithreaded,
                   number_cores,
+                  begin_time,
                   from_GUI = False): ##Complete
     '''Integrates all the file-accessing associated functions in this script to go
     through the files data, draw and process eic of hypothetical glycans, does 
@@ -2961,7 +2977,6 @@ def analyze_files(library,
     noise : dict
         A dictionary containing the noise level for each sample.
     '''
-    begin_time = datetime.datetime.now()
     analyzed_data = {}
     mean_sel_peaks = 0.0
     noise = {}
@@ -2973,7 +2988,8 @@ def analyze_files(library,
     ms1_id = []
     
     if not custom_noise[0]:
-        print('Analyzing noise level of samples...', end='', flush = True)
+        time_formatted = str(datetime.datetime.now()).split(" ")[-1].split(".")[0]+" - "
+        print(time_formatted+'Calculating noise levels...', end='', flush = True)
     
     results = []
     if multithreaded:
@@ -3029,9 +3045,10 @@ def analyze_files(library,
                     ambiguities[i].append(k)
         
     print('Done!')
-    print("Pre-processing done in "+str(datetime.datetime.now() - begin_time)+"!")
+    time_formatted = str(datetime.datetime.now()).split(" ")[-1].split(".")[0]+" - "
+    print(time_formatted+"Pre-processing done in "+str(datetime.datetime.now() - begin_time).split(".")[0]+"!")
     print_sep()
-    print("Analyzing glycans in samples' MS1 spectra...")
+    print(time_formatted+"Starting MS1 tracing...")
     begin_time = datetime.datetime.now()
     
     results = []
@@ -3039,7 +3056,8 @@ def analyze_files(library,
     with concurrent.futures.ProcessPoolExecutor(max_workers = cpu_count if cpu_count < 60 else 60) as executor:
         for i_i, i in enumerate(library):
             if i in ambiguities.keys(): #skips ambiguities
-                print('Analyzing glycan '+str(i)+': '+str(i_i+1)+'/'+str(lib_size))
+                time_formatted = str(datetime.datetime.now()).split(" ")[-1].split(".")[0]+" - "
+                print(time_formatted+'Tracing glycan '+str(i)+': '+str(i_i+1)+'/'+str(lib_size))
                 continue
             result = executor.submit(analyze_glycan, 
                                      library,
@@ -3071,15 +3089,17 @@ def analyze_files(library,
                         del temp_results[k_k]
                         if len(temp_results) < cpu_count:
                             break
-                print('Analyzing glycan '+str(i)+': '+str(i_i+1)+'/'+str(lib_size))
+                time_formatted = str(datetime.datetime.now()).split(" ")[-1].split(".")[0]+" - "
+                print(time_formatted+'Tracing glycan '+str(i)+': '+str(i_i+1)+'/'+str(lib_size))
     for i in results:
         result_data = i.result()
         analyzed_data[result_data[1]] = result_data[0]
         
     for i in ambiguities: #sorts ambiguities
         analyzed_data[i] = analyzed_data[ambiguities[i][0]]
-            
-    print('Sample MS1 analysis done in '+str(datetime.datetime.now() - begin_time)+'!')
+        
+    time_formatted = str(datetime.datetime.now()).split(" ")[-1].split(".")[0]+" - "
+    print(time_formatted+'MS1 tracing done in '+str(datetime.datetime.now() - begin_time).split(".")[0]+'!')
     return analyzed_data, rt_array_report, noise_avg
     
 def analyze_glycan(library,
@@ -3208,7 +3228,8 @@ def analyze_glycan(library,
     '''
     try:
         if not from_GUI:
-            print('Analyzing glycan '+str(i)+': '+str(i_i+1)+'/'+str(lib_size))
+            time_formatted = str(datetime.datetime.now()).split(" ")[-1].split(".")[0]+" - "
+            print(time_formatted+'Tracing glycan '+str(i)+': '+str(i_i+1)+'/'+str(lib_size))
         
         glycan_data = library[i]
         glycan_data['Adducts_mz_data'] = {}
@@ -3434,7 +3455,8 @@ def analyze_ms2(ms2_index,
                 for k_k, k in enumerate(data):
                     dummy_fragment_data[i][j][k_k] = []
         return analyzed_data[0], analyzed_data[1], analyzed_data[2], dummy_fragment_data
-    print('Analyzing MS2 data...')
+    time_formatted = str(datetime.datetime.now()).split(" ")[-1].split(".")[0]+" - "
+    print(time_formatted+'Analyzing MS2 data...')
     fragments = Library_Tools.fragments_library(min_max_monos,
                                   min_max_hex,
                                   min_max_hexnac,
@@ -3460,10 +3482,11 @@ def analyze_ms2(ms2_index,
             indexed_fragments[value] = [i_i, j]
     indexed_fragments = dict(sorted(indexed_fragments.items()))
                                   
-    print(f"Fragments library length: {len(fragments)}")
+    time_formatted = str(datetime.datetime.now()).split(" ")[-1].split(".")[0]+" - "
+    print(f"{time_formatted}Fragments library length: {len(fragments)}")
                 
     fragments_data = {}
-    print('Scanning MS2 spectra...')
+    print(time_formatted+'Scanning MS2 spectra...')
     scan_begin_time = datetime.datetime.now()
     
     results = []
@@ -3509,13 +3532,15 @@ def analyze_ms2(ms2_index,
                         del temp_results[k_k]
                         if len(temp_results) < cpu_count:
                             break
-                print('Analyzing glycan '+str(i)+': '+str(i_i+1)+'/'+str(len(analyzed_data[0])))
+                time_formatted = str(datetime.datetime.now()).split(" ")[-1].split(".")[0]+" - "
+                print(time_formatted+'Analyzing glycan '+str(i)+': '+str(i_i+1)+'/'+str(len(analyzed_data[0])))
             
     for i in results:
         result_data = i.result()
         fragments_data[result_data[1]] = result_data[0]
         
-    print('Sample MS2 analysis done in '+str(datetime.datetime.now() - begin_time)+'!')
+    time_formatted = str(datetime.datetime.now()).split(" ")[-1].split(".")[0]+" - "
+    print(time_formatted+'MS2 analysis done in '+str(datetime.datetime.now() - begin_time).split(".")[0]+'!')
     return analyzed_data[0], analyzed_data[1], analyzed_data[2], fragments_data
                                  
 def analyze_glycan_ms2(ms2_index,
@@ -3584,7 +3609,8 @@ def analyze_glycan_ms2(ms2_index,
     '''
     try:
         if not from_GUI:
-            print('Analyzing glycan '+str(i)+': '+str(i_i+1)+'/'+str(len(analyzed_data[0])))
+            time_formatted = str(datetime.datetime.now()).split(" ")[-1].split(".")[0]+" - "
+            print(time_formatted+'Analyzing glycan '+str(i)+': '+str(i_i+1)+'/'+str(len(analyzed_data[0])))
         fragments_mz_list = list(indexed_fragments.keys())
         superscripts = {'0': '⁰', '1': '¹', '2': '²', '3': '³', '4': '⁴', '5': '⁵', '6': '⁶', '7': '⁷', '8': '⁸', '9': '⁹', '+': '⁺', '-': '⁻', '=': '⁼', '(': '⁽', ')': '⁾', 'n': 'ⁿ', 'i': 'ⁱ'}
         fragments_data = {}
