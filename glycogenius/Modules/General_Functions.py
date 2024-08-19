@@ -37,16 +37,18 @@ import os
 ##Hard-coded permanent information
 
 monosaccharides = {
-    "H": ("Hexose", "C6O6H12", {"C": 6, "O": 5, "N": 0, "H": 10}),
-    "N": ("N-Acetyl Hexosamine", "C8O6NH15", {"C": 8, "O": 5, "N": 1, "H": 13}),
-    "X": ("Xylose", "C5O5H10", {"C": 5, "O": 4, "N": 0, "H": 8}),
-    "S": ("Acetyl Neuraminic Acid", "C11O9NH19", {"C": 11, "O": 8, "N": 1, "H": 17}),
-    "Am": ("Lactonized Acetyl Neuraminic Acid alpha2,3 bound", "C11O8N2H20", {"C": 11, "O": 7, "N": 2, "H": 18}),
-    "E": ("Ethyl-Esterified Acetyl Neuraminic Acid alpha2,6 bound", "C13O9NH23", {"C": 13, "O": 8, "N": 1, "H": 21}),
-    "F": ("Fucose", "C6O5H12", {"C": 6, "O": 4, "N": 0, "H": 10}),
-    "G": ("Glycolyl Neuraminic Acid", "C11O10NH19", {"C": 11, "O": 9, "N": 1, "H": 17}),
-    "AmG": ("Lactonized Glycolyl Neuraminic Acid alpha2,3 bound", "C11O8N2H20", {"C": 11, "O": 8, "N": 2, "H": 18}),
-    "EG": ("Ethyl-Esterified Glycolyl Neuraminic Acid alpha2,6 bound", "C13O9NH23", {"C": 13, "O": 9, "N": 1, "H": 21})
+    "H": ("Hexose", "C6O6H12", {"C": 6, "O": 5, "N": 0, "H": 10}, "H"),
+    "N": ("N-Acetyl Hexosamine", "C8O6NH15", {"C": 8, "O": 5, "N": 1, "H": 13}, "N"),
+    "X": ("Xylose", "C5O5H10", {"C": 5, "O": 4, "N": 0, "H": 8}, "X"),
+    "S": ("Acetyl Neuraminic Acid", "C11O9NH19", {"C": 11, "O": 8, "N": 1, "H": 17}, "S"),
+    "Am": ("Lactonized Acetyl Neuraminic Acid alpha2,3 bound", "C11O8N2H20", {"C": 11, "O": 7, "N": 2, "H": 18}, "L"),
+    "E": ("Ethyl-Esterified Acetyl Neuraminic Acid alpha2,6 bound", "C13O9NH23", {"C": 13, "O": 8, "N": 1, "H": 21}, "E"),
+    "F": ("Deoxyhexose", "C6O5H12", {"C": 6, "O": 4, "N": 0, "H": 10}, "F"),
+    "G": ("Glycolyl Neuraminic Acid", "C11O10NH19", {"C": 11, "O": 9, "N": 1, "H": 17}, "G"),
+    "AmG": ("Lactonized Glycolyl Neuraminic Acid alpha2,3 bound", "C11O8N2H20", {"C": 11, "O": 8, "N": 2, "H": 18}, "A"),
+    "EG": ("Ethyl-Esterified Glycolyl Neuraminic Acid alpha2,6 bound", "C13O9NH23", {"C": 13, "O": 9, "N": 1, "H": 21}, "R"),
+    "HN": ("Hexosamine", "C6O5NH13", {"C": 6, "O": 4, "N": 1, "H": 11}, "M"),
+    "UA": ("Uronic Acid", "C6O7H10", {"C": 6, "O": 6, "N": 0, "H": 8}, "U")
     }
 '''A hardcoded dictionary containing each single letter code for monosaccharides as key
 and a tuple containing the full monosaccharide name, its full molecular formula and its
@@ -552,6 +554,7 @@ def form_to_comp(string):
         A dictionary with keys containing the monosaccharides/atoms letter(s) and values
         containing the amounts of each. ie. {"H": 5, "N": 4, "S": 1, "F": 1, "G": 1}.
     '''
+    string = string.split("+")[0] #avoids getting phosphorylation and sulfation symbols
     counts = {}
     split_str = split('(\\d+)', string)
     negative = False
@@ -712,7 +715,7 @@ def sum_monos(*compositions):
     summed_comp : dict
         Dictionary containing the sum of each monosaccharides of the compositions.
     '''
-    summed_comp = {"H": 0, "N": 0, "X": 0, "S": 0, "Am": 0, "E": 0, "F": 0, "G": 0, "AmG": 0, "EG": 0, "T": 0}
+    summed_comp = {"H": 0, "N": 0, "X": 0, "S": 0, "Am": 0, "E": 0, "F": 0, "G": 0, "AmG": 0, "EG": 0, "T": 0, "HN": 0, "UA": 0}
     for i in compositions:
         for j in i:
             summed_comp[j]+=i[j]
@@ -824,7 +827,7 @@ def calculate_isotopic_pattern(glycan_atoms,
                                           overall_threshold = 1e-4)
     else:
         isotopologue = mass.isotopologues(glycan_atoms, report_abundance = True,
-                                          elements_with_isotopes = ["C", "N", "O", "H"],
+                                          elements_with_isotopes = ["C", "N", "O", "H", "S", "P", "Na"],
                                           overall_threshold = 1e-4)
     isotop_arranged = []
     relative_isotop_pattern = []

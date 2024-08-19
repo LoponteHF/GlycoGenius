@@ -578,7 +578,7 @@ def analyze_mz_array(sliced_mz,
                 if len(iso_actual) == 2:
                     iso_quali = (iso_quali*0.8)
                 
-                mz_isos = [glycan_info['Adducts_mz'][glycan_id]]+mz_isos
+                mz_isos = [found_mz]+mz_isos
                 
                 if not retest:
                     buffer.append(([glycan_id, file_id, ms1_id, float("%.4f" % round(ret_time, 4))], [ppm_error, iso_quali, intensity, [mz_isos, iso_target, iso_actual, iso_quali]]))

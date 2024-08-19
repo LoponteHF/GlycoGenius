@@ -327,6 +327,8 @@ def imp_exp_gen_library(custom_glycans_list,
                         min_max_fuc,
                         min_max_ac,
                         min_max_gc,
+                        min_max_hn,
+                        min_max_ua,
                         force_nglycan,
                         max_adducts,
                         adducts_exclusion,
@@ -342,7 +344,9 @@ def imp_exp_gen_library(custom_glycans_list,
                         internal_standard,
                         permethylated,
                         lactonized_ethyl_esterified,
-                        reduced):
+                        reduced,
+                        min_max_sulfation,
+                        min_max_phosphorylation):
     '''Imports, generates and/or exports a glycans library.
 
     Parameters
@@ -383,6 +387,12 @@ def imp_exp_gen_library(custom_glycans_list,
     min_max_gc : tuple
         Minimum and maximum amount of N-Glicolyl Neuraminic acids for the hypotethical
         glycans in the library. ie. (5, 20).
+        
+    min_max_hn : tuple
+        Minimum and maximum amount of Hexosamines for the hypotethical glycans in the library. ie. (5, 20).
+        
+    min_max_ua : tuple
+        Minimum and maximum amount of Uronic Acids for the hypotethical glycans in the library. ie. (5, 20).
         
     force_nglycan : boolean
         Indicates whether the function should force strict conditions based on the
@@ -503,6 +513,11 @@ def imp_exp_gen_library(custom_glycans_list,
                 high_res = library_metadata[16]
                 if len(library_metadata) > 18:
                     min_max_xyl = library_metadata[18]
+                if len(library_metadata) > 19:
+                    min_max_hn = library_metadata[19]
+                    min_max_ua = library_metadata[20]
+                    min_max_sulfation = library_metadata[21]
+                    min_max_phosphorylation = library_metadata[22]
             print("Done!")
             shutil.rmtree(save_path+begin_time+"_Temp")
         except:
@@ -561,6 +576,8 @@ def imp_exp_gen_library(custom_glycans_list,
         min_max_ac = (0, (max([monos['S'], monos['Am'], monos['E']])+1) if (monos['S'] != 0 or monos['Am'] != 0 or monos['E'] != 0) else 0)
         min_max_gc = (0, (max([monos['G'], monos['AmG'], monos['EG']])+1) if (monos['G'] != 0 or monos['AmG'] != 0 or monos['EG'] != 0) else 0)
         min_max_xyl = (0, (monos['X']+1) if monos['X'] != 0 else 0)
+        min_max_hn = (0, (monos['HN']+1) if monos['HN'] != 0 else 0)
+        min_max_ua = (0, (monos['UA']+1) if monos['UA'] != 0 else 0)
         full_library = Library_Tools.full_glycans_library(custom_glycans_comp,
                                             max_adducts,
                                             adducts_exclusion,
@@ -570,7 +587,9 @@ def imp_exp_gen_library(custom_glycans_list,
                                             high_res,
                                             internal_standard,
                                             permethylated,
-                                            reduced)
+                                            reduced,
+                                            min_max_sulfation,
+                                            min_max_phosphorylation)
         print('Done!')
     else:
         time_formatted = str(datetime.datetime.now()).split(" ")[-1].split(".")[0]+" - "
@@ -583,6 +602,8 @@ def imp_exp_gen_library(custom_glycans_list,
                                                  min_max_fuc,
                                                  min_max_ac,
                                                  min_max_gc,
+                                                 min_max_hn,
+                                                 min_max_ua,
                                                  lactonized_ethyl_esterified,
                                                  force_nglycan)
         full_library = Library_Tools.full_glycans_library(monos_library,
@@ -594,7 +615,9 @@ def imp_exp_gen_library(custom_glycans_list,
                                             high_res,
                                             internal_standard,
                                             permethylated,
-                                            reduced)
+                                            reduced,
+                                            min_max_sulfation,
+                                            min_max_phosphorylation)
         print('Done!')
     if imp_exp_library[1] or only_gen_lib:
         time_formatted = str(datetime.datetime.now()).split(" ")[-1].split(".")[0]+" - "
@@ -621,16 +644,20 @@ def imp_exp_gen_library(custom_glycans_list,
         if not imp_exp_library[0]:
             with open(save_path+exp_lib_name+'.ggl', 'w') as f:
                 f.write(f'full_library = {str(full_library)}\n')
-                f.write(f'metadata = {[min_max_monos, min_max_hex, min_max_hexnac, min_max_fuc, min_max_sia, min_max_ac, min_max_gc, force_nglycan, max_adducts, max_charges, tag_mass, internal_standard, permethylated, lactonized_ethyl_esterified, reduced, fast_iso, high_res, custom_glycans_list, min_max_xyl]}')
+                f.write(f'metadata = {[min_max_monos, min_max_hex, min_max_hexnac, min_max_fuc, min_max_sia, min_max_ac, min_max_gc, force_nglycan, max_adducts, max_charges, tag_mass, internal_standard, permethylated, lactonized_ethyl_esterified, reduced, fast_iso, high_res, custom_glycans_list, min_max_xyl, min_max_hn, min_max_ua, min_max_sulfation, min_max_phosphorylation]}')
                 f.close()
         if lactonized_ethyl_esterified:
-            df = {'Glycan' : [], 'Hex' : [], 'HexNAc' : [], 'Xylose' : [], 'dHex' : [], 'a2,3-Neu5Ac' : [], 'a2,6-Neu5Ac' : [], 'a2,3-Neu5Gc' : [], 'a2,6-Neu5Gc' : [], 'Isotopic Distribution' : [], 'Neutral Mass + Tag' : []}
+            df = {'Glycan' : [], 'Hex' : [], 'HexN' : [], 'HexNAc' : [], 'Xylose' : [], 'dHex' : [], 'a2,3-Neu5Ac' : [], 'a2,6-Neu5Ac' : [], 'a2,3-Neu5Gc' : [], 'a2,6-Neu5Gc' : [], 'UroA': [], 'Isotopic Distribution' : [], 'Neutral Mass + Tag' : []}
         else:
-            df = {'Glycan' : [], 'Hex' : [], 'HexNAc' : [], 'Xylose' : [], 'dHex' : [], 'Neu5Ac' : [], 'Neu5Gc' : [], 'Isotopic Distribution' : [], 'Neutral Mass + Tag' : []}
+            df = {'Glycan' : [], 'Hex' : [], 'HexN' : [], 'HexNAc' : [], 'Xylose' : [], 'dHex' : [], 'Neu5Ac' : [], 'Neu5Gc' : [], 'UroA': [], 'Isotopic Distribution' : [], 'Neutral Mass + Tag' : []}
         for i_i, i in enumerate(full_library):
             if lactonized_ethyl_esterified:
                 df['Glycan'].append(i)
                 df['Hex'].append(full_library[i]['Monos_Composition']['H'])
+                if 'HN' in full_library[i]['Monos_Composition']:
+                    df['HexN'].append(full_library[i]['Monos_Composition']['HN'])
+                else:
+                    df['HexN'].append(0)
                 df['HexNAc'].append(full_library[i]['Monos_Composition']['N'])
                 if 'X' in full_library[i]['Monos_Composition']:
                     df['Xylose'].append(full_library[i]['Monos_Composition']['X'])
@@ -641,9 +668,17 @@ def imp_exp_gen_library(custom_glycans_list,
                 df['a2,6-Neu5Ac'].append(full_library[i]['Monos_Composition']['E'])
                 df['a2,3-Neu5Gc'].append(full_library[i]['Monos_Composition']['AmG'])
                 df['a2,6-Neu5Gc'].append(full_library[i]['Monos_Composition']['EG'])
+                if 'UA' in full_library[i]['Monos_Composition']:
+                    df['UroA'].append(full_library[i]['Monos_Composition']['UA'])
+                else:
+                    df['UroA'].append(0)
             else:
                 df['Glycan'].append(i)
                 df['Hex'].append(full_library[i]['Monos_Composition']['H'])
+                if 'HN' in full_library[i]['Monos_Composition']:
+                    df['HexN'].append(full_library[i]['Monos_Composition']['HN'])
+                else:
+                    df['HexN'].append(0)
                 df['HexNAc'].append(full_library[i]['Monos_Composition']['N'])
                 if 'X' in full_library[i]['Monos_Composition']:
                     df['Xylose'].append(full_library[i]['Monos_Composition']['X'])
@@ -652,6 +687,10 @@ def imp_exp_gen_library(custom_glycans_list,
                 df['dHex'].append(full_library[i]['Monos_Composition']['F'])
                 df['Neu5Ac'].append(full_library[i]['Monos_Composition']['S'])
                 df['Neu5Gc'].append(full_library[i]['Monos_Composition']['G'])
+                if 'UA' in full_library[i]['Monos_Composition']:
+                    df['UroA'].append(full_library[i]['Monos_Composition']['UA'])
+                else:
+                    df['UroA'].append(0)
             temp_isotopic = []
             for j in full_library[i]['Isotopic_Distribution']:
                 temp_isotopic.append(float("%.3f" % round(j, 3)))
@@ -3316,6 +3355,8 @@ def analyze_ms2(ms2_index,
                 min_max_fuc,
                 min_max_ac,
                 min_max_gc,
+                min_max_hn,
+                min_max_ua,
                 max_charges,
                 tag_mass,
                 nglycan,
@@ -3377,6 +3418,12 @@ def analyze_ms2(ms2_index,
     min_max_gc : tuple
         Minimum and maximum amount of N-Glicolyl Neuraminic acids for the hypotethical
         glycans in the library. ie. (5, 20).
+        
+    min_max_hn : tuple
+        Minimum and maximum amount of Hexosamines for the hypotethical glycans in the library. ie. (5, 20).
+        
+    min_max_ua : tuple
+        Minimum and maximum amount of Uronic Acids for the hypotethical glycans in the library. ie. (5, 20).
         
     max_charges : int
         The maximum amount of charges to calculate per glycan.
@@ -3465,6 +3512,8 @@ def analyze_ms2(ms2_index,
                                   min_max_fuc,
                                   min_max_ac,
                                   min_max_gc,
+                                  min_max_hn,
+                                  min_max_ua,
                                   max_charges,
                                   tolerance,
                                   tag_mass,
@@ -3683,14 +3732,18 @@ def analyze_glycan_ms2(ms2_index,
                                         and n[0]['Monos_Composition']['E'] <= analyzed_data[0][i]['Monos_Composition']['E'] 
                                         and n[0]['Monos_Composition']['F'] <= analyzed_data[0][i]['Monos_Composition']['F'] 
                                         and n[0]['Monos_Composition']['AmG'] <= analyzed_data[0][i]['Monos_Composition']['AmG'] 
-                                        and n[0]['Monos_Composition']['EG'] <= analyzed_data[0][i]['Monos_Composition']['EG']):
+                                        and n[0]['Monos_Composition']['EG'] <= analyzed_data[0][i]['Monos_Composition']['EG'] 
+                                        and n[0]['Monos_Composition']['HN'] <= analyzed_data[0][i]['Monos_Composition']['HN'] 
+                                        and n[0]['Monos_Composition']['UA'] <= analyzed_data[0][i]['Monos_Composition']['UA']):
                                             good_fragments.append(n_n)
                                 else:
                                     if (n[0]['Monos_Composition']['H'] <= analyzed_data[0][i]['Monos_Composition']['H']
                                         and n[0]['Monos_Composition']['N'] <= analyzed_data[0][i]['Monos_Composition']['N'] 
                                         and n[0]['Monos_Composition']['S'] <= analyzed_data[0][i]['Monos_Composition']['S'] 
                                         and n[0]['Monos_Composition']['F'] <= analyzed_data[0][i]['Monos_Composition']['F'] 
-                                        and n[0]['Monos_Composition']['G'] <= analyzed_data[0][i]['Monos_Composition']['G']):
+                                        and n[0]['Monos_Composition']['G'] <= analyzed_data[0][i]['Monos_Composition']['G'] 
+                                        and n[0]['Monos_Composition']['HN'] <= analyzed_data[0][i]['Monos_Composition']['HN'] 
+                                        and n[0]['Monos_Composition']['UA'] <= analyzed_data[0][i]['Monos_Composition']['UA']):
                                             good_fragments.append(n_n)
                             if len(good_fragments) == 0:
                                 continue

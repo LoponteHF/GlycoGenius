@@ -76,9 +76,11 @@ custom_glycans_list = H3N2, H5N2, H5N4S2F1
 ;
 total_monosaccharides = 5, 22
 hexoses = 3, 10
+hexosamines = 0, 0
 hexnacs = 2, 8
 xylose = 0, 0
 sialic_acids = 0, 4
+uronic_acids = 0, 0
 fucoses = 0, 2
 neu5ac = 0, 4
 neu5gc = 0, 0
@@ -135,6 +137,14 @@ aminated_ethyl_esterified = no
 ;	be identified as 'Am' and Ethyl Esterified Acetyl
 ;	Sialic Acid will be identified as 'E'.
 ;
+min_max_sulfation_per_glycan = 0, 0
+;	Minimum and maximum amount of sulfation
+;	substituents per glycan.
+;
+min_max_phosphorylation_per_glycan = 0, 0
+;	Minimum and maximum amount of phosphorylation
+;	substituents per glycan.
+;
 fast_iso = yes
 ; 	Allows you to calculate the isotopic distribution
 ;	of glycans based only on carbon isotopes (fast, 
@@ -186,7 +196,7 @@ accuracy_value = 10
 ;	raw data using max_ppm, but this may lead to 
 ;	false positives.
 ;
-ret_time_interval = 1, 999
+ret_time_interval = 0, 999
 ; 	The minimum and maximum retention time, in MINUTES, 
 ;	used for various portions of the script. A shorter 
 ;	interval of ret_time makes the script run faster, 

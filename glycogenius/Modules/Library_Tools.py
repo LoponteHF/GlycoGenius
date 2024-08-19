@@ -66,6 +66,10 @@ def generate_combinations_with_constraints(characters, length, constraints):
             counts['AmG'] = counts.pop('A')
         if 'R' in counts:
             counts['EG'] = counts.pop('R')
+        if 'M' in counts:
+            counts['HN'] = counts.pop('M')
+        if 'U' in counts:
+            counts['UA'] = counts.pop('U')
         valid_combinations.append(counts)
 
     return valid_combinations
@@ -78,6 +82,8 @@ def generate_glycans_library(min_max_mono,
                              min_max_fuc,
                              min_max_ac,
                              min_max_gc,
+                             min_max_hn,
+                             min_max_ua,
                              lactonized_ethyl_esterified,
                              n_glycan):
     '''Generates a list of combinatorial analysis of monosaccharides from the minimum
@@ -118,6 +124,12 @@ def generate_glycans_library(min_max_mono,
         Minimum and maximum amount of N-Glicolyl Neuraminic acids for the hypotethical
         glycans in the library. ie. (5, 20).
         
+    min_max_hn : tuple
+        Minimum and maximum amount of Hexosamines for the hypotethical glycans in the library. ie. (5, 20).
+        
+    min_max_ua : tuple
+        Minimum and maximum amount of Uronic Acids for the hypotethical glycans in the library. ie. (5, 20).
+        
     lactonized_ethyl_esterified : boolean
         Whether the glycans were submitted to lactonization/ethyl-esterification
         derivatization, which differentiates the mass of alpha2-3 and alpha2-6 -bound 
@@ -149,17 +161,19 @@ def generate_glycans_library(min_max_mono,
         glycans generated.
     '''
     glycans = []
-    def_glycan_comp = {"H": 0, "N": 0, "X": 0, "S": 0, "Am": 0, "E": 0, "F": 0, "G": 0, "AmG": 0, "EG": 0}
+    def_glycan_comp = {"H": 0, "N": 0, "X": 0, "S": 0, "Am": 0, "E": 0, "F": 0, "G": 0, "AmG": 0, "EG": 0, "HN": 0, "UA": 0}
     
     if lactonized_ethyl_esterified:
-        monos_chars = "HNXLEFAR" #H = Hexose, N = HexNAc, X = Xylose, L = Amidated Neu5Ac, E = Ethyl-esterified Neu5Ac, F = DeoxyHexose, A = Amidated Neu5Gc, R = Ethyl-esterified Neu5Gc, S = Neu5Ac, G = Neu5Gc
+        monos_chars = "HNXLEFARMU" #H = Hexose, N = HexNAc, X = Xylose, L = Amidated Neu5Ac, E = Ethyl-esterified Neu5Ac, F = DeoxyHexose, A = Amidated Neu5Gc, R = Ethyl-esterified Neu5Gc, S = Neu5Ac, G = Neu5Gc, M = Hexosamine, U = Uronic Acids
     else:
-        monos_chars = "HNXSFG"
+        monos_chars = "HNXSFGMU"
         
     constraints = {'H': (min_max_hex[0], min_max_hex[1]),
                    'N': (min_max_hexnac[0], min_max_hexnac[1]),
                    'X': (min_max_xyl[0], min_max_xyl[1]),
-                   'F': (min_max_fuc[0], min_max_fuc[1])}
+                   'F': (min_max_fuc[0], min_max_fuc[1]),
+                   'M': (min_max_hn[0], min_max_hn[1]),
+                   'U': (min_max_ua[0], min_max_ua[1])}
                    
     if lactonized_ethyl_esterified:
         constraints['L'] = (min_max_ac[0], min_max_ac[1])
@@ -219,7 +233,9 @@ def full_glycans_library(library,
                          high_res = False,
                          internal_standard = 0.0,
                          permethylated = False,
-                         reduced = False):
+                         reduced = False,
+                         min_max_sulfation = [0, 0],
+                         min_max_phosphorylation = [0, 0]):
     '''Uses the generated glycans library and increments it with calculations of its
     mass, neutral mass with tag mass, its isotopic distribution pattern (intensoids) and
     the mz of the chosen adducts combinations.
@@ -270,6 +286,12 @@ def full_glycans_library(library,
         
     reduced : boolean
         Whether or not the sample was reduced.
+        
+    min_max_sulfation : list
+        Minimum and maximum amount of sulfations per glycan.
+        
+    min_max_phosphorylation : list
+        Minimum and maximum amount of phosphorylations per glycan.
 
     Uses
     ----
@@ -336,53 +358,71 @@ def full_glycans_library(library,
         tag = ({"C": 0, "O": 0, "N": 0, "H": 0}, 0.0)
     adducts_combo = General_Functions.gen_adducts_combo(max_adducts, adducts_exclusion, max_charges)
     for i in library:
-        i_formula = General_Functions.comp_to_formula(i)
-        i_atoms = General_Functions.sum_atoms(General_Functions.glycan_to_atoms(i, permethylated), General_Functions.form_to_comp('H2O'))
-        if tag[1] == 0.0:
-            if permethylated:
-                i_atoms = General_Functions.sum_atoms(i_atoms, {'C': 2, 'H': 4})
-                if reduced:
-                    i_atoms = General_Functions.sum_atoms(i_atoms, {'O': 1})
-            if not permethylated and reduced:
-                i_atoms = General_Functions.sum_atoms(i_atoms, {'H': 2})
-        i_atoms_tag = General_Functions.sum_atoms(i_atoms, tag[0])
-        i_neutral_mass = mass.calculate_mass(composition=i_atoms)
-        i_neutral_tag = i_neutral_mass+tag[1]
-        i_iso_dist = General_Functions.calculate_isotopic_pattern(i_atoms_tag, fast, high_res)
-        iso_corrected = i_iso_dist[0]
-        if fast:
-            iso_corrected = []
-            for j_j, j in enumerate(i_iso_dist[0]):
-                if j_j == 1:
-                    iso_corrected.append(abs(j*1.02))
-                    continue
-                if j_j == 2:
-                    iso_corrected.append(abs(j*(10.8*(i_neutral_mass**-0.267))))
-                    continue
-                if j_j == 3:
-                    iso_corrected.append(abs(j*(122.62*(i_neutral_mass**-0.528))))
-                    continue
-                if j_j == 4:
-                    iso_corrected.append(abs(j*(2192.6*(i_neutral_mass**-0.833))))
-                    continue
-                else:
-                    iso_corrected.append(j)
-                    continue
-        full_library[i_formula] = {}
-        full_library[i_formula]['Monos_Composition'] = i
-        full_library[i_formula]['Atoms_Glycan+Tag'] = i_atoms_tag
-        full_library[i_formula]['Neutral_Mass'] = i_neutral_mass
-        full_library[i_formula]['Neutral_Mass+Tag'] = i_neutral_tag
-        full_library[i_formula]['Isotopic_Distribution'] = iso_corrected
-        full_library[i_formula]['Isotopic_Distribution_Masses'] = i_iso_dist[1]
-        full_library[i_formula]['Adducts_mz'] = {}
-        for j in adducts_combo:
-            charges = sum(j.values())
-            mz = mass.calculate_mass(i_atoms_tag,
-                                     charge = charges,
-                                     charge_carrier = j,
-                                     carrier_charge = charges)
-            full_library[i_formula]['Adducts_mz'][General_Functions.comp_to_formula(j)] = mz
+        for s in range(min_max_sulfation[0], min_max_sulfation[1]+1):
+            for p in range(min_max_phosphorylation[0], min_max_phosphorylation[1]+1):
+                sulfations = f"{s}(s)"
+                phosphorylations = f"{p}(p)"
+                i_formula = General_Functions.comp_to_formula(i)
+                if s > 0:
+                    i_formula = f"{i_formula}+{sulfations}"
+                if p > 0:
+                    i_formula = f"{i_formula}+{phosphorylations}"
+                i_atoms = General_Functions.sum_atoms(General_Functions.glycan_to_atoms(i, permethylated), General_Functions.form_to_comp('H2O'))
+                if tag[1] == 0.0:
+                    if permethylated:
+                        i_atoms = General_Functions.sum_atoms(i_atoms, {'C': 2, 'H': 4})
+                        if reduced:
+                            i_atoms = General_Functions.sum_atoms(i_atoms, {'O': 1})
+                    if not permethylated and reduced:
+                        i_atoms = General_Functions.sum_atoms(i_atoms, {'H': 2})
+                base_mass = mass.calculate_mass(composition=i_atoms)
+                i_atoms = General_Functions.sum_atoms(i_atoms, {'S': 1*s, 'O': 3*s}) #sum sulfation atoms
+                i_atoms = General_Functions.sum_atoms(i_atoms, {'P': 1*p, 'O': 3*p, 'H': 1*p}) #sum phosphorylation atoms
+                i_atoms_tag = General_Functions.sum_atoms(i_atoms, tag[0])
+                i_neutral_mass = mass.calculate_mass(composition=i_atoms)
+                i_neutral_tag = i_neutral_mass+tag[1]
+                i_iso_dist = General_Functions.calculate_isotopic_pattern(i_atoms_tag, fast, high_res)
+                iso_corrected = i_iso_dist[0]
+                if fast:
+                    iso_corrected = []
+                    for j_j, j in enumerate(i_iso_dist[0]):
+                        if j_j == 1:
+                            iso_corrected.append(abs(j*1.02)) #default correction
+                            iso_corrected[-1] = iso_corrected[-1]+((((80/base_mass)/2)*iso_corrected[-1])*s)
+                            continue
+                        if j_j == 2:
+                            iso_corrected.append(abs(j*(10.8*(i_neutral_mass**-0.267)))) #default correction
+                            iso_corrected[-1] = iso_corrected[-1]+(((((80/base_mass)*6)-0.0733)*iso_corrected[-1])*s)
+                            iso_corrected[-1] = iso_corrected[-1]+((((80/base_mass)/2)*iso_corrected[-1])*p)
+                            continue
+                        if j_j == 3:
+                            iso_corrected.append(abs(j*(122.62*(i_neutral_mass**-0.528)))) #default correction
+                            iso_corrected[-1] = iso_corrected[-1]+(((((80/base_mass)*6)-0.0733)*iso_corrected[-1])*s)
+                            iso_corrected[-1] = iso_corrected[-1]+((((80/base_mass)/2)*iso_corrected[-1])*p)
+                            continue
+                        if j_j == 4:
+                            iso_corrected.append(abs(j*(2192.6*(i_neutral_mass**-0.833)))) #default correction
+                            iso_corrected[-1] = iso_corrected[-1]+(((((80/base_mass)*6)-0.0733)*iso_corrected[-1])*s)
+                            iso_corrected[-1] = iso_corrected[-1]+((((80/base_mass)/2)*iso_corrected[-1])*p)
+                            continue
+                        else:
+                            iso_corrected.append(j)
+                            continue
+                full_library[i_formula] = {}
+                full_library[i_formula]['Monos_Composition'] = i
+                full_library[i_formula]['Atoms_Glycan+Tag'] = i_atoms_tag
+                full_library[i_formula]['Neutral_Mass'] = i_neutral_mass
+                full_library[i_formula]['Neutral_Mass+Tag'] = i_neutral_tag
+                full_library[i_formula]['Isotopic_Distribution'] = iso_corrected
+                full_library[i_formula]['Isotopic_Distribution_Masses'] = i_iso_dist[1]
+                full_library[i_formula]['Adducts_mz'] = {}
+                for j in adducts_combo:
+                    charges = sum(j.values())
+                    mz = mass.calculate_mass(i_atoms_tag,
+                                             charge = charges,
+                                             charge_carrier = j,
+                                             carrier_charge = charges)
+                    full_library[i_formula]['Adducts_mz'][General_Functions.comp_to_formula(j)] = mz
     
     full_library = dict(sorted(full_library.items()))
             
@@ -402,7 +442,7 @@ def full_glycans_library(library,
         for i in range(len(i_iso_dist[0])):
             i_iso_dist[1].append(internal_standard+(i*General_Functions.h_mass))
         full_library[i_formula] = {}
-        full_library[i_formula]['Monos_Composition'] = {"H": 0, "N": 0, "X": 0, "S": 0, "Am": 0, "E": 0, "F": 0, "G": 0, "AmG": 0, "EG": 0}
+        full_library[i_formula]['Monos_Composition'] = {"H": 0, "N": 0, "X": 0, "S": 0, "Am": 0, "E": 0, "F": 0, "G": 0, "AmG": 0, "EG": 0, "HN": 0, "UA": 0}
         full_library[i_formula]['Neutral_Mass'] = i_neutral_mass
         full_library[i_formula]['Neutral_Mass+Tag'] = i_neutral_mass
         full_library[i_formula]['Isotopic_Distribution'] = i_iso_dist[0]
@@ -422,6 +462,8 @@ def fragments_library(min_max_mono,
                       min_max_fuc,
                       min_max_ac,
                       min_max_gc,
+                      min_max_hn,
+                      min_max_ua,
                       max_charges,
                       tolerance,
                       tag_mass,
@@ -467,6 +509,14 @@ def fragments_library(min_max_mono,
 
     min_max_gc : tuple
         Minimum and maximum amount of N-Glicolyl Neuraminic acids for the hypotethical
+        glycans in the library. ie. (5, 20).
+        
+    min_max_hn : tuple
+        Minimum and maximum amount of Hexosamine for the hypotethical
+        glycans in the library. ie. (5, 20).
+        
+    min_max_ua : tuple
+        Minimum and maximum amount of Uronic Acid for the hypotethical
         glycans in the library. ie. (5, 20).
 
     max_charges : int
@@ -537,18 +587,20 @@ def fragments_library(min_max_mono,
     '''
     print("Building fragments library...", end = "", flush = True)
     glycans = []
-    def_glycan_comp = {"H": 0, "N": 0, "X": 0, "S": 0, "Am": 0, "E": 0, "F": 0, "G": 0, "AmG": 0, "EG": 0, "T" : 0}
+    def_glycan_comp = {"H": 0, "N": 0, "X": 0, "S": 0, "Am": 0, "E": 0, "F": 0, "G": 0, "AmG": 0, "EG": 0, "T" : 0, "HN": 0, "UA": 0}
     
     if lactonized_ethyl_esterified:
-        monos_chars = "HNXLEFART"
+        monos_chars = "HNXLEFARTMU"
     else:
-        monos_chars = "HNXSFGT"
+        monos_chars = "HNXSFGTMU"
         
     constraints = {'H': (0, min_max_hex[1]),
                    'N': (0, min_max_hexnac[1]),
                    'X': (0, min_max_xyl[1]),
                    'F': (0, min_max_fuc[1]),
-                   'T': (0, 1)}
+                   'T': (0, 1),
+                   'M': (0, min_max_hn[1]),
+                   'U': (0, min_max_ua[1])}
                    
     if lactonized_ethyl_esterified:
         constraints['L'] = (0, min_max_ac[1])
