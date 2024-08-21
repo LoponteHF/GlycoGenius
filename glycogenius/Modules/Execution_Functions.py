@@ -1217,7 +1217,7 @@ def make_df1_refactor(df1,
                         to_remove_glycan.append(df1[i_i]["Glycan"][j_j])
                         to_remove_adduct.append(j)
                         continue
-                    if type(max_ppm) == int:
+                    if type(max_ppm) == float:
                         if abs(float(temp_ppm[k_k])) > max_ppm:
                             to_remove.append(k_k)
                             to_remove_glycan.append(df1[i_i]["Glycan"][j_j])
@@ -2922,7 +2922,10 @@ def pre_processing(data,
             if not from_GUI:
                 print("WARNING: Data seems denoised. Don't trust S/N\nmeasurements.")
         
-        return zeroes_arrays, inf_arrays, threads_arrays, ms1_id, rt_array_report, temp_noise, temp_avg_noise, data_id
+        acquisition_interval = rt_array_report[len(rt_array_report)//2]-rt_array_report[(len(rt_array_report)//2)-1]
+        sampling_rate = round((1/60)/acquisition_interval)
+        
+        return zeroes_arrays, inf_arrays, threads_arrays, ms1_id, rt_array_report, temp_noise, temp_avg_noise, data_id, sampling_rate
     except KeyboardInterrupt:
         if not from_GUI:
             print("\n\n----------Execution cancelled by user.----------\n", flush=True)
@@ -3025,6 +3028,7 @@ def analyze_files(library,
     inf_arrays = []
     threads_arrays = []
     ms1_id = []
+    sampling_rates = []
     
     if not custom_noise[0]:
         time_formatted = str(datetime.datetime.now()).split(" ")[-1].split(".")[0]+" - "
@@ -3053,6 +3057,7 @@ def analyze_files(library,
             inf_arrays.append([])
             threads_arrays.append([])
             ms1_id.append([])
+            sampling_rates.append(1)
             result = executor.submit(pre_processing,
                                      i,
                                      ms1_index,
@@ -3071,6 +3076,7 @@ def analyze_files(library,
         rt_array_report[result_data[7]] = result_data[4]
         noise[result_data[7]] = result_data[5]
         noise_avg[result_data[7]] = percentile(result_data[6], 66.8)
+        sampling_rates[result_data[7]] = result_data[8]
     
     ambiguities = {}
     for i_i, i in enumerate(library):
@@ -3118,6 +3124,7 @@ def analyze_files(library,
                                      ms1_id,
                                      i,
                                      i_i,
+                                     sampling_rates,
                                      from_GUI)
             results.append(result)
             if from_GUI:
@@ -3160,6 +3167,7 @@ def analyze_glycan(library,
                   ms1_id,
                   i,
                   i_i,
+                  sampling_rates,
                   from_GUI = False):
     '''Analyzes one single glycan. Core function of analyze_files.
     
@@ -3286,7 +3294,8 @@ def analyze_glycan(library,
                                                   inf_arrays,
                                                   threads_arrays,
                                                   rt_arrays,
-                                                  ms1_id)
+                                                  ms1_id,
+                                                  sampling_rates)
         for j in temp_eic[0]: #moving through adducts
             glycan_data['Adducts_mz_data'][j] = {}
             for k in temp_eic[0][j]: #moving through samples

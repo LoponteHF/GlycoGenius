@@ -31,6 +31,7 @@ import os
 date = datetime.datetime.now()
 begin_time = str(date)[2:4]+str(date)[5:7]+str(date)[8:10]+"_"+str(date)[11:13]+str(date)[14:16]+str(date)[17:19]
 temp_folder = os.path.join(tempfile.gettempdir(), "gg_"+begin_time)
+os.makedirs(temp_folder, exist_ok=True)
 
 version1 = "0.0.0"
 version2 = "0.0.0"

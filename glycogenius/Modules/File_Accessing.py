@@ -145,7 +145,7 @@ def eic_from_glycan(files,
                     threads_arrays,
                     rt_arrays,
                     ms1_id,
-                    rewind = 10):
+                    sampling_rates):
     '''Generates a very processed EIC for each adduct of each glycan of each sample.
     Removes non-monoisotopic peaks, check charges and calculates multiple quality scoring
     data.
@@ -302,34 +302,47 @@ def eic_from_glycan(files,
                                  ms1_id[j_j][k_k],
                                  ms1_id[-1],
                                  adduct_mass,
-                                 adduct_charge)
-                if len(buffer) > 4 and buffer[-1] != None and buffer[-2] != None and buffer[-3] != None and buffer[-4] == None:
-                    for l_l in range(-3, -3-rewind, -1):
-                        if l_l == -len(buffer) or buffer[l_l-1] != None: # the l_l limit is set to -10 to be compatible with buffer_size
+                                 adduct_charge,
+                                 sampling_rates)
+                if len(buffer) > 4*sampling_rates[j_j]:
+                    no_rewind = False
+                    for l in range(-1, -(4*sampling_rates[j_j])-2, -1):
+                        if buffer[l] == None and l != -(4*sampling_rates[j_j])-1:
+                            no_rewind = True
                             break
-                        analyze_mz_array(j[thread_numbers[k_k+l_l]]['m/z array'],
-                                         j[thread_numbers[k_k+l_l]]['intensity array'],
-                                         glycan_info,
-                                         tolerance,
-                                         min_isotops,
-                                         noise,
-                                         avg_noise,
-                                         max_charges,
-                                         ppm_info,
-                                         iso_fitting_quality,
-                                         data,
-                                         raw_data,
-                                         isotopic_fits,
-                                         i,
-                                         j_j,
-                                         thread_numbers[k_k+l_l],
-                                         j[thread_numbers[k_k+l_l]]['retentionTime'],
-                                         ms1_id[j_j][k_k+l_l],
-                                         ms1_id[-1],
-                                         adduct_mass,
-                                         adduct_charge,
-                                         retest = True,
-                                         retest_no = l_l-1)
+                        if buffer[l] != None and l == -(4*sampling_rates[j_j])-1:
+                            no_rewind = True
+                            break
+                    if not no_rewind:
+                        for l_l in range(-4*sampling_rates[j_j], -4-len(buffer), -1):
+                            if l_l == -len(buffer) or buffer[l_l-1] != None:
+                                break
+                            analyze_mz_array(j[thread_numbers[k_k+l_l]]['m/z array'],
+                                             j[thread_numbers[k_k+l_l]]['intensity array'],
+                                             glycan_info,
+                                             tolerance,
+                                             min_isotops,
+                                             noise,
+                                             avg_noise,
+                                             max_charges,
+                                             ppm_info,
+                                             iso_fitting_quality,
+                                             data,
+                                             raw_data,
+                                             isotopic_fits,
+                                             i,
+                                             j_j,
+                                             thread_numbers[k_k+l_l],
+                                             j[thread_numbers[k_k+l_l]]['retentionTime'],
+                                             ms1_id[j_j][k_k+l_l],
+                                             ms1_id[-1],
+                                             adduct_mass,
+                                             adduct_charge,
+                                             sampling_rates,
+                                             retest = True,
+                                             retest_no = l_l-1)
+                            if buffer[l_l-1] == None:
+                                break
     return data, ppm_info, iso_fitting_quality, verbose_info, raw_data, isotopic_fits
 
     
@@ -354,6 +367,7 @@ def analyze_mz_array(sliced_mz,
                      last_ms1_id,
                      adduct_mass,
                      adduct_charge,
+                     sampling_rates,
                      filtered = True,
                      retest = False,
                      retest_no = 0):
@@ -596,8 +610,8 @@ def analyze_mz_array(sliced_mz,
     # print(f"Buffer before clean-up: {buffer}")
     
     #dynamical clean-up of buffer
-    min_in_a_row = 4
-    buffer_size = 10
+    min_in_a_row = 4*sampling_rates[file_id]
+    buffer_size = 10*sampling_rates[file_id]
     if filtered:
         in_a_row = 0
         for i_i, i in enumerate(buffer):
