@@ -479,6 +479,7 @@ def imp_exp_gen_library(custom_glycans_list,
     '''
     date = datetime.datetime.now()
     begin_time = str(date)[2:4]+str(date)[5:7]+str(date)[8:10]+"_"+str(date)[11:13]+str(date)[14:16]+str(date)[17:19]
+    is_custom = False
     if imp_exp_library[0]:
         time_formatted = str(datetime.datetime.now()).split(" ")[-1].split(".")[0]+" - "
         print(time_formatted+'Importing existing library...', end = '', flush = True)
@@ -494,6 +495,9 @@ def imp_exp_gen_library(custom_glycans_list,
             except:
                 library_metadata = []
             if len(library_metadata) > 0:
+                if library_metadata[17][0]:
+                    is_custom = True
+                    custom_glycans_list[1] = library_metadata[17][1]
                 min_max_monos = library_metadata[0]
                 min_max_hex = library_metadata[1]
                 min_max_hexnac = library_metadata[2]
@@ -619,6 +623,8 @@ def imp_exp_gen_library(custom_glycans_list,
                                             min_max_sulfation,
                                             min_max_phosphorylation)
         print('Done!')
+    if is_custom:
+        custom_glycans_list[0] = True
     if imp_exp_library[1] or only_gen_lib:
         time_formatted = str(datetime.datetime.now()).split(" ")[-1].split(".")[0]+" - "
         print(time_formatted+'Exporting glycans library...', end = '', flush = True)
@@ -2285,7 +2291,7 @@ def output_filtered_data(curve_fit_score,
     #start of excel data printing
     df2 = DataFrame(df2) 
     meta_df = DataFrame(meta_dataframe)
-    if type(max_ppm) == int:
+    if type(max_ppm) == float:
         ppm_title_label = str(max_ppm)
     else:
         ppm_title_label = str(max_ppm[0])+"-"+str(max_ppm[1])

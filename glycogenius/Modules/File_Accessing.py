@@ -514,7 +514,7 @@ def analyze_mz_array(sliced_mz,
                 
             if not bad:
                 for i in charge_range: #check if it's monoisotopic and correct charge
-                    if (len(buffer) <= 2 or (len(buffer) > 2 and buffer[-3] == None)) and not retest: #only check if it's monoisotopic if at least one of the last 3 RT got nothing...
+                    if (len(buffer) <= round(2*sampling_rates[file_id]) or (len(buffer) > round(2*sampling_rates[file_id]) and buffer[round(-2*sampling_rates[file_id])-1] == None)) and not retest: #only check if it's monoisotopic if at least one of the last 3 RT got nothing...
                         temp_id = General_Functions.binary_search_with_tolerance(sliced_mz, found_mz-(General_Functions.h_mass/i), 0, mz_id, General_Functions.tolerance_calc(tolerance[0], tolerance[1], found_mz-(General_Functions.h_mass/i)), sliced_int) #check monoisotopic
                         if temp_id != -1 and sliced_int[temp_id] > 0:
                             expected_value = (sliced_mz[temp_id]*i*0.0006)+0.1401 #based on linear regression of the relationship between masses and the second isotopic peak relative intensity of the average of different organic macromolecules
@@ -610,8 +610,8 @@ def analyze_mz_array(sliced_mz,
     # print(f"Buffer before clean-up: {buffer}")
     
     #dynamical clean-up of buffer
-    min_in_a_row = 4*sampling_rates[file_id]
-    buffer_size = 10*sampling_rates[file_id]
+    min_in_a_row = round(4*sampling_rates[file_id])
+    buffer_size = round(10*sampling_rates[file_id])
     if filtered:
         in_a_row = 0
         for i_i, i in enumerate(buffer):
@@ -716,6 +716,7 @@ def peak_curve_fit(rt_int,
     '''
     x = rt_int[0][peak['peak_interval_id'][0]:peak['peak_interval_id'][1]+1]
     y = rt_int[1][peak['peak_interval_id'][0]:peak['peak_interval_id'][1]+1]
+    baseline_correction = min(y[0], y[-1])
     interval = x[len(x)//2]-x[(len(x)//2)-1]
     fits_list = []
     for m in range(1, 11):
@@ -730,16 +731,17 @@ def peak_curve_fit(rt_int,
             before = sorted(before)
             temp_x = before+x+after
             temp_y = y_adds+y+y_adds
-            max_amp_id = temp_y.index(max(temp_y))
-            counts_max = 0
-            for i in temp_y:
-                if i == temp_y[max_amp_id]:
-                    counts_max += 1
-            max_amp_id += int(counts_max/2)
+            max_amp = max(temp_y)
+            maximums = []
+            for index, i in enumerate(temp_y):
+                if i > max_amp*0.8:
+                    maximums.append(index)
+            max_amp_id = round(sum(maximums)/len(maximums))
             y_gaussian = []
             for i in temp_x:
                 y_gaussian.append(General_Functions.normpdf(i, temp_x[max_amp_id], (temp_x[-1]-temp_x[0])/m))
-            scaler = (temp_y[max_amp_id]/y_gaussian[max_amp_id])
+            y_gaussian = [i-min(y_gaussian) for i in y_gaussian]
+            scaler = (max_amp/y_gaussian[max_amp_id])
             y_gaussian_scaled = []
             for j in y_gaussian:
                 y_gaussian_scaled.append(j*scaler)
