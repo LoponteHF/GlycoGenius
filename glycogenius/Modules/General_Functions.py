@@ -766,16 +766,41 @@ def calculate_comp_from_mass(tag_mass):
         to the tag's added mass in dictionary form and the calculated hypothetical mass
         of the molecule as float.
     '''
-    closest = ({}, 0)
-    test_tag_mass = 0
-    atoms_number = int(tag_mass/5)
-    while atoms_number > atoms_number/2:
-        for i in combinations_with_replacement("CONH", atoms_number):
-            seq_readable = count_seq_letters("".join(i))
-            test_tag_mass = mass.calculate_mass(composition = seq_readable)
-            if abs(test_tag_mass-tag_mass) < abs(closest[1]-tag_mass):
-                closest = (seq_readable, test_tag_mass)
-        atoms_number -= 1      
+    elements = "CONH"
+    closest = ({}, float('inf'))
+    
+    # Estimate minimum and maximum number of carbon atoms
+    min_carbons = int(((0.05 * tag_mass) + 0.5) * 0.7)
+    max_carbons = int(((0.05 * tag_mass) + 0.5) * 1.3)
+
+    max_nitrogens = max(3, int(tag_mass/200))  # Maximum number of nitrogen atoms allowed
+    min_atoms = max(min_carbons, int(tag_mass/10))  # Min total atoms considered per combination
+    max_atoms = int(tag_mass/5)  # Max total atoms considered per combination
+    
+    # print(f"Carbon range: {min_carbons} to {max_carbons}, Max Nitrogens: {max_nitrogens}, Min atoms: {min_atoms}, Max atoms: {max_atoms}")
+
+    # Generate combinations within the carbon range
+    for c_count in range(min_carbons, max_carbons + 1):
+        for n_count in range(0, max_nitrogens + 1):
+            for total_atoms in range(min_atoms, max_atoms + 1):
+                non_carbon_nitrogen_count = total_atoms - c_count
+                if non_carbon_nitrogen_count < n_count:
+                    continue
+                
+                # Generate combinations of 'O' and 'H', with fixed 'N' count
+                combos = combinations_with_replacement('OH', non_carbon_nitrogen_count - n_count)
+                
+                for combo in combos:
+                    seq_readable = count_seq_letters('C' * c_count + 'N' * n_count + ''.join(combo))
+                    test_tag_mass = mass.calculate_mass(composition=seq_readable)
+                    
+                    if abs(test_tag_mass - tag_mass) < abs(closest[1] - tag_mass):
+                        closest = (seq_readable, test_tag_mass)
+
+                    # Early stopping if we find a very close match
+                    if abs(test_tag_mass - tag_mass) < 1e-3:
+                        return closest
+
     return closest
     
 def calculate_isotopic_pattern(glycan_atoms,

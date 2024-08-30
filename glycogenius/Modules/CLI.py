@@ -33,6 +33,27 @@ begin_time = str(date)[2:4]+str(date)[5:7]+str(date)[8:10]+"_"+str(date)[11:13]+
 temp_folder = os.path.join(tempfile.gettempdir(), "gg_"+begin_time)
 os.makedirs(temp_folder, exist_ok=True)
 
+def find_most_recent_version(ver1, ver2):
+    '''
+    '''
+    ver1int = [int(x) for x in ver1.split(".")]
+    ver2int = [int(x) for x in ver2.split(".")]
+    if ver1int[0] > ver2int[0]:
+        return ver1
+    elif ver2int[0] > ver1int[0]:
+        return ver2
+    elif ver1int[0] == ver2int[0] and ver1int[1] > ver2int[1]:
+        return ver1
+    elif ver1int[0] == ver2int[0] and ver2int[1] > ver1int[1]:
+        return ver2
+    elif ver1int[0] == ver2int[0] and ver1int[1] == ver2int[1] and ver1int[2] > ver2int[2]:
+        return ver1
+    elif ver1int[0] == ver2int[0] and ver1int[1] == ver2int[1] and ver2int[2] > ver1int[2]:
+        return ver2
+    else:
+        return ver1
+    
+#fetches the version from package info or setup file, depending on use mode
 version1 = "0.0.0"
 version2 = "0.0.0"
 try:
@@ -47,10 +68,9 @@ try:
                 version2 = lines[13:-2].strip("'")
 except:
     pass
-if version2 > version1:
-    version = version2
-else:
-    version = version1
+version = find_most_recent_version(version1, version2)
+
+forced_structures = ['none', 'n_glycans', 'o_glycans', 'gags']
     
 def print_header(complete = True):
     '''Prints a default header to be used in CLI.
@@ -267,19 +287,17 @@ def interactive_terminal():
                         continue
                 glycans_list.append(var)
                 print("Current glycans: ", glycans_list)
-            n_glycan = True
-            while True:
-                var = input("Force compositions to N-glycans structure\n (default: yes) (y/n): ")
+            forced = None
+            while forced == None:
+                var = input("Force class structures? (default: 'n_glycans')\n('none'/'n_glycans'/'o_glycans'/'gags'): ")
                 if var == '':
-                    n_glycan = True
+                    forced = 'n_glycans'
                     break
-                if var == 'y':
-                    n_glycan = True
-                    break
-                if var == 'n':
-                    n_glycan = False
+                elif var.lower() in forced_structures:
+                    forced = var.lower()
                     break
                 else:
+                    input("\nWrong Input. Press Enter to try again.\n")
                     continue
         if input_order[1] == 2:
             lib_settings = [None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None]
@@ -486,14 +504,15 @@ def interactive_terminal():
                         lib_settings[20] = var
                 if i == 20:
                     while lib_settings[14] == None:
-                        var = input("Force compositions to N-glycans structure\n (default: yes) (y/n): ")
+                        var = input("Force class structures? (default: 'n_glycans')\n('none'/'n_glycans'/'o_glycans'/'gags'): ")
                         if var == '':
-                            lib_settings[14] = True
-                        if var == 'y':
-                            lib_settings[14] = True
-                        if var == 'n':
-                            lib_settings[14] = False
+                            lib_settings[14] = 'n_glycans'
+                            break
+                        elif var.lower() in forced_structures:
+                            lib_settings[14] = var.lower()
+                            break
                         else:
+                            input("\nWrong Input. Press Enter to try again.\n")
                             continue
         print_sep()
         adducts = {}
@@ -688,7 +707,7 @@ def interactive_terminal():
                     path = var
                     break
             if input_order[1] == 1:
-                return input_order, glycans_list, adducts, max_charges, tag_mass, fast_iso, high_res, path, permethylated, reduced, lacto_eesterified, n_glycan, min_sulfation, max_sulfation, min_phosphorylation, max_phosphorylation
+                return input_order, glycans_list, adducts, max_charges, tag_mass, fast_iso, high_res, path, permethylated, reduced, lacto_eesterified, forced, min_sulfation, max_sulfation, min_phosphorylation, max_phosphorylation
             if input_order[1] == 2:
                 return input_order, lib_settings, adducts, max_charges, tag_mass, fast_iso, high_res, path, permethylated, reduced, lacto_eesterified, min_sulfation, max_sulfation, min_phosphorylation, max_phosphorylation
         else:
@@ -717,26 +736,29 @@ def interactive_terminal():
                         input("\nWrong Input. Press Enter to try again.\n")
                         continue
                 print("")
-            accuracy_unit = "mz"
+            accuracy_unit = "ppm"
             while True:
-                var = input("What is the accuracy unit you want to input for\nmz tolerance? (default: mz) (ppm/mz): ")
-                if var == 'ppm':
-                    accuracy_unit = var
+                var = input("What is the accuracy unit you want to input for\nmz tolerance? (default: ppm) (ppm/mz): ")
+                if var == 'ppm' or var == '':
                     break
-                if var == 'mz' or var == '':
+                if var == 'mz':
+                    accuracy_unit = var
                     break
                 else:
                     input("\nWrong Input. Press Enter to try again.\n")
                     continue
             print("")
-            accuracy_value = 0.0
+            accuracy_value = 10.0
             while True:
-                var = input("Insert the accuracy value for the unit you've\nchosen (ie. '0.01' for 'mz' or '10' for 'ppm'): ")
-                try:
-                    var = float(var)
-                except:
-                    input("\nWrong Input. Press Enter to try again.\n")
-                    continue
+                var = input("Insert the accuracy value for the unit you've\nchosen (ie. '0.01' for 'mz' or '10' for 'ppm') (default: 10): ")
+                if var == '':
+                    break
+                else:
+                    try:
+                        var = float(var)
+                    except:
+                        input("\nWrong Input. Press Enter to try again.\n")
+                        continue
                 accuracy_value = var
                 break
             print("")
@@ -766,13 +788,13 @@ def interactive_terminal():
                 break
             print("")
             min_isotop = 2
-            max_ppm = 10
+            max_ppm = 10.0
             while True:
                 var = input("Insert the maximum PPM error that a detected\nglycan must have in order to show up in\nresults' table (default: 10 ppm): ")
                 if var == '':
                     break
                 try:
-                    var = int(var)
+                    var = float(var)
                 except:
                     input("\nWrong Input. Press Enter to try again.\n")
                     continue
@@ -860,7 +882,7 @@ def interactive_terminal():
                     path = var
                     break
             if input_order[1] == 1:
-                return input_order, glycans_list, adducts, max_charges, tag_mass, fast_iso, high_res, ms2, accuracy_unit, accuracy_value, rt_int, min_isotop, max_ppm, iso_fit, curve_fit, sn, files, path, permethylated, reduced, lacto_eesterified, n_glycan, min_sulfation, max_sulfation, min_phosphorylation, max_phosphorylation
+                return input_order, glycans_list, adducts, max_charges, tag_mass, fast_iso, high_res, ms2, accuracy_unit, accuracy_value, rt_int, min_isotop, max_ppm, iso_fit, curve_fit, sn, files, path, permethylated, reduced, lacto_eesterified, forced, min_sulfation, max_sulfation, min_phosphorylation, max_phosphorylation
             if input_order[1] == 2:
                 return input_order, lib_settings, adducts, max_charges, tag_mass, fast_iso, high_res, ms2, accuracy_unit, accuracy_value, rt_int, min_isotop, max_ppm, iso_fit, curve_fit, sn, files, path, permethylated, reduced, lacto_eesterified, min_sulfation, max_sulfation, min_phosphorylation, max_phosphorylation
     if input_order[0] == 3:
@@ -882,14 +904,17 @@ def interactive_terminal():
                 path = var
                 break
         print("")
-        max_ppm = 10
+        max_ppm = 10.0
         while True:
-            var = input("Insert the maximum amount of PPM difference that\na detected glycan must have in order to show up\nin results' table: ")
-            try:
-                var = int(var)
-            except:
-                input("\nWrong Input. Press Enter to try again.\n")
-                continue
+            var = input("Insert the maximum amount of PPM difference that\na detected glycan must have in order to show up\nin results' table (default: 10): ")
+            if var == '':
+                break
+            else:
+                try:
+                    var = float(var)
+                except:
+                    input("\nWrong Input. Press Enter to try again.\n")
+                    continue
             max_ppm = var
             break
         print("")
@@ -994,7 +1019,7 @@ def CLI():
     min_max_ac = [0, 0]
     min_max_gc = [0, 0]
     min_max_ua = [0, 0]
-    force_nglycan = False
+    forced = 'none'
     max_adducts = {}
     adducts_exclusion = []
     max_charges = 0
@@ -1006,7 +1031,7 @@ def CLI():
     min_max_phosphorylation = [0, 0]
     fast_iso = True
     high_res = False
-    internal_standard = 0.0
+    internal_standard = '0.0'
     imp_exp_library = [False, False]
     exp_lib_name = ''
     library_path = ''
@@ -1024,6 +1049,7 @@ def CLI():
     close_peaks = [False, 3]
     align_chromatograms = True
     percentage_auc = 0.1
+    min_samples = 0
     max_ppm = 10
     iso_fit_score = 0.9
     curve_fit_score = 0.9
@@ -1109,7 +1135,7 @@ def CLI():
             min_max_gc = (parameters[1][10], parameters[1][11])
             min_max_sia = (parameters[1][12], parameters[1][13])
             min_max_ua = (parameters[1][19], parameters[1][20])
-            force_nglycan = parameters[1][14]
+            forced = parameters[1][14]
             max_adducts = parameters[2]
             max_charges = parameters[3]
             reducing_end_tag = parameters[4]
@@ -1120,7 +1146,7 @@ def CLI():
         if parameters[0][0] == 1: #if only generating
             lactonized_ethyl_esterified = parameters[10]
             if parameters[0][1] == 1:
-                force_nglycan = parameters[11]
+                forced = parameters[11]
                 min_max_sulfation = (parameters[12], parameters[13])
                 min_max_phosphorylation = (parameters[14], parameters[15])
             else:
@@ -1163,7 +1189,7 @@ def CLI():
             reduced = parameters[19]
             lactonized_ethyl_esterified = parameters[20]
             if parameters[0][1] == 1:
-                force_nglycan = parameters[21]
+                forced = parameters[21]
                 min_max_sulfation = (parameters[22], parameters[23])
                 min_max_phosphorylation = (parameters[24], parameters[25])
             else:
@@ -1201,7 +1227,10 @@ def CLI():
             min_max_sia = library_metadata[4]
             min_max_ac = library_metadata[5]
             min_max_gc = library_metadata[6]
-            force_nglycan = library_metadata[7]
+            if type(library_metadata[7]) == bool:
+                forced = 'n_glycans'
+            else:
+                forced = library_metadata[7]
             max_adducts = library_metadata[8]
             max_charges = library_metadata[9]
             tag_mass = library_metadata[10]
@@ -1220,9 +1249,9 @@ def CLI():
                 min_max_phosphorylation = library_metadata[22]
         
     #args to execution functions:
-    output_filtered_data_args = [curve_fit_score, iso_fit_score, s_to_n, max_ppm, percentage_auc, reanalysis, reanalysis_path, save_path, analyze_ms2[0], analyze_ms2[2], reporter_ions, plot_metaboanalyst, compositions, align_chromatograms, force_nglycan, ret_time_interval[2], rt_tolerance_frag, iso_fittings, output_plot_data, multithreaded_analysis, number_cores, 0.0]
+    output_filtered_data_args = [curve_fit_score, iso_fit_score, s_to_n, max_ppm, percentage_auc, reanalysis, reanalysis_path, save_path, analyze_ms2[0], analyze_ms2[2], reporter_ions, plot_metaboanalyst, compositions, align_chromatograms, forced, ret_time_interval[2], rt_tolerance_frag, iso_fittings, output_plot_data, multithreaded_analysis, number_cores, 0.0, min_samples]
 
-    imp_exp_gen_library_args = [custom_glycans_list, min_max_monos, min_max_hex, min_max_hexnac, min_max_xyl, min_max_sia, min_max_fuc, min_max_ac, min_max_gc, min_max_hn, min_max_ua, force_nglycan, max_adducts, adducts_exclusion, max_charges, reducing_end_tag, fast_iso, high_res, imp_exp_library, library_path, exp_lib_name, only_gen_lib, save_path, internal_standard, permethylated, lactonized_ethyl_esterified, reduced, min_max_sulfation, min_max_phosphorylation]
+    imp_exp_gen_library_args = [custom_glycans_list, min_max_monos, min_max_hex, min_max_hexnac, min_max_xyl, min_max_sia, min_max_fuc, min_max_ac, min_max_gc, min_max_hn, min_max_ua, forced, max_adducts, adducts_exclusion, max_charges, reducing_end_tag, fast_iso, high_res, imp_exp_library, library_path, exp_lib_name, only_gen_lib, save_path, internal_standard, permethylated, lactonized_ethyl_esterified, reduced, min_max_sulfation, min_max_phosphorylation]
 
     list_of_data_args = [samples_list]
 
@@ -1232,9 +1261,9 @@ def CLI():
 
     analyze_files_args = [None, None, None, None, tolerance, ret_time_interval, min_isotopologue_peaks, min_ppp, max_charges, custom_noise, close_peaks, multithreaded_analysis, number_cores, None]
 
-    analyze_ms2_args = [None, None, None, ret_time_interval, tolerance, min_max_monos, min_max_hex, min_max_hexnac, min_max_xyl,  min_max_sia, min_max_fuc, min_max_ac, min_max_gc, min_max_hn, min_max_ua, max_charges, reducing_end_tag, force_nglycan, permethylated, reduced, lactonized_ethyl_esterified, analyze_ms2[1], analyze_ms2[2], ret_time_interval[2], multithreaded_analysis, number_cores]
+    analyze_ms2_args = [None, None, None, ret_time_interval, tolerance, min_max_monos, min_max_hex, min_max_hexnac, min_max_xyl,  min_max_sia, min_max_fuc, min_max_ac, min_max_gc, min_max_hn, min_max_ua, max_charges, reducing_end_tag, forced, permethylated, reduced, lactonized_ethyl_esterified, analyze_ms2[1], analyze_ms2[2], ret_time_interval[2], multithreaded_analysis, number_cores]
 
-    arrange_raw_data_args = [None, samples_names, analyze_ms2[0], save_path, [(custom_glycans_list, min_max_monos, min_max_hex, min_max_hexnac, min_max_sia, min_max_fuc, min_max_ac, min_max_gc, force_nglycan, max_adducts, adducts_exclusion, max_charges, reducing_end_tag, permethylated, reduced, lactonized_ethyl_esterified, fast_iso, high_res, internal_standard, imp_exp_library, exp_lib_name, library_path, only_gen_lib, min_max_xyl, min_max_hn, min_max_ua, min_max_sulfation, min_max_phosphorylation), (multithreaded_analysis, number_cores, analyze_ms2, reporter_ions, tolerance, ret_time_interval, rt_tolerance_frag, min_isotopologue_peaks, min_ppp, close_peaks, align_chromatograms, percentage_auc, max_ppm, iso_fit_score, curve_fit_score, s_to_n, custom_noise, samples_path, save_path, plot_metaboanalyst, compositions, iso_fittings, reanalysis, reanalysis_path, output_plot_data)]]
+    arrange_raw_data_args = [None, samples_names, analyze_ms2[0], save_path, [(custom_glycans_list, min_max_monos, min_max_hex, min_max_hexnac, min_max_sia, min_max_fuc, min_max_ac, min_max_gc, forced, max_adducts, adducts_exclusion, max_charges, reducing_end_tag, permethylated, reduced, lactonized_ethyl_esterified, fast_iso, high_res, internal_standard, imp_exp_library, exp_lib_name, library_path, only_gen_lib, min_max_xyl, min_max_hn, min_max_ua, min_max_sulfation, min_max_phosphorylation), (multithreaded_analysis, number_cores, analyze_ms2, reporter_ions, tolerance, ret_time_interval, rt_tolerance_frag, min_isotopologue_peaks, min_ppp, close_peaks, align_chromatograms, percentage_auc, max_ppm, iso_fit_score, curve_fit_score, s_to_n, custom_noise, samples_path, save_path, plot_metaboanalyst, compositions, iso_fittings, reanalysis, reanalysis_path, output_plot_data)]]
 
     return output_filtered_data_args, imp_exp_gen_library_args, list_of_data_args, index_spectra_from_file_ms1_args, index_spectra_from_file_ms2_args, analyze_files_args, analyze_ms2_args, arrange_raw_data_args, samples_names, reanalysis, analyze_ms2[0]
     

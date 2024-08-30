@@ -90,12 +90,15 @@ neu5gc = 0, 0
 ;
 
 [common_library_building_settings]
-force_nglycan = yes
-; 	Used to force some monosaccharides compositions
-;	associated with N-Glycans biologically known 
-;	features. If not used, gives a much broader 
-;	library that can be used for analysis of 
-;	O-Glycans, for example.
+force_class_structure = none
+; 	Used to force some monosaccharides compositions 
+;	compatible with structures of N-glycans, O-glycans
+;	or GAGs.
+;	Options:
+;	- none
+;	- n_glycans
+;	- o_glycans
+;	- gags
 ;
 max_adducts = H3
 adducts_exclusion = 
@@ -241,6 +244,10 @@ auc_percentage_threshold = 1
 ;	peak has a area under curve of 100 and 
 ;	auc_percentage_threshold is set to 1%, every peak 
 ;	with an auc of 1 and below will be supressed)
+;
+minimum_samples = 0
+;	Filter out glycans that weren't found in at least
+;	a certain number of samples, set by 'minimum_samples'.
 ;
 max_ppm_threshold = 10
 ; 	Maximum PPM error for data curation. If value is 
