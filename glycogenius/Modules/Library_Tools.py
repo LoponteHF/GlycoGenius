@@ -22,11 +22,13 @@ from itertools import combinations_with_replacement
 from collections import Counter
 from re import split
 from math import inf
+import concurrent.futures
 import pathlib
 import importlib
 import copy
 import sys
 import datetime
+import os
 
 ##---------------------------------------------------------------------------------------
 ##Library generating-associated functions (these functions make vast use of the general
@@ -184,11 +186,24 @@ def generate_glycans_library(min_max_mono,
     else:
         constraints['S'] = (min_max_ac[0], min_max_ac[1])
         constraints['G'] = (min_max_gc[0], min_max_gc[1])
+      
+    results = []
+    cpu_number = (os.cpu_count())-2 if os.cpu_count() < 60 else 60
+    if cpu_number <= 0:
+        cpu_number = 1
+    with concurrent.futures.ProcessPoolExecutor(max_workers = cpu_number) as executor:  
+        for i in range(min_max_mono[0], min_max_mono[1]+1):
+            result = executor.submit(generate_combinations_with_constraints,
+                                     monos_chars,
+                                     i,
+                                     constraints)
+            results.append(result)
         
-    for i in range(min_max_mono[0], min_max_mono[1]+1):
-        combinations = generate_combinations_with_constraints(monos_chars, i, constraints)
-        for j in combinations:
-            glycans.append(General_Functions.sum_monos(def_glycan_comp, j))
+        for index, i in enumerate(results):
+            result_data = i.result()
+            for j in result_data:
+                glycans.append(General_Functions.sum_monos(def_glycan_comp, j))
+            results[index] = None
             
     to_be_removed = []
     for i_i, i in enumerate(glycans):
@@ -234,7 +249,7 @@ def generate_glycans_library(min_max_mono,
         if lactonized_ethyl_esterified:
             for i_i, i in enumerate(glycans):
                 if ((i['Am']+i['E']+i['AmG']+i['EG'] > i['N']+i['H'])
-                    or (i['H'] > i['N'])
+                    or (i['H'] > i['N']+1)
                     or (i['N'] > i['H']+3)
                     or (i['X'] > 0)
                     or (i['HN'] > 0)
@@ -245,7 +260,7 @@ def generate_glycans_library(min_max_mono,
             for i_i, i in enumerate(glycans):
                 if ((i['S']+i['G'] > i['N']+i['H'])
                     or (i['F'] > i['N']+i['H'])
-                    or (i['H'] > i['N'])
+                    or (i['H'] > i['N']+1)
                     or (i['N'] > i['H']+3)
                     or (i['X'] > 0)
                     or (i['HN'] > 0)
@@ -416,92 +431,131 @@ def full_glycans_library(library,
         tag_mass = tag[1]
     else:
         tag = ({"C": 0, "O": 0, "N": 0, "H": 0}, 0.0)
+        
     adducts_combo = General_Functions.gen_adducts_combo(max_adducts, adducts_exclusion, max_charges)
-    for i in library:
-        monos_count = sum(i.values())
-        number = 1
-        if monos_count <= 4 and forced == 'gags':
-            number = 2
-        for w in range(number):
-            for s in range(min_max_sulfation[0], min_max_sulfation[1]+1):
-                if s > monos_count*3:
-                    break
-                for p in range(min_max_phosphorylation[0], min_max_phosphorylation[1]+1):
-                    if p > monos_count*2:
-                        break
-                    sulfations = f"{s}(s)"
-                    phosphorylations = f"{p}(p)"
-                    i_formula = General_Functions.comp_to_formula(i)
-                    if s > 0:
-                        i_formula = f"{i_formula}+{sulfations}"
-                    if p > 0:
-                        i_formula = f"{i_formula}+{phosphorylations}"
-                    if w > 0:
-                        i_formula = f"{i_formula}-H2O"
-                    i_atoms = General_Functions.glycan_to_atoms(i, permethylated)
-                    if w == 0:
-                        i_atoms = General_Functions.sum_atoms(i_atoms, General_Functions.form_to_comp('H2O'))
-                    if tag[1] == 0.0:
-                        if permethylated:
-                            i_atoms = General_Functions.sum_atoms(i_atoms, {'C': 2, 'H': 4})
-                            if reduced:
-                                i_atoms = General_Functions.sum_atoms(i_atoms, {'O': 1})
-                        if not permethylated and reduced:
-                            i_atoms = General_Functions.sum_atoms(i_atoms, {'H': 2})
-                    base_mass = mass.calculate_mass(composition=i_atoms)
-                    i_atoms = General_Functions.sum_atoms(i_atoms, {'S': 1*s, 'O': 3*s}) #sum sulfation atoms
-                    i_atoms = General_Functions.sum_atoms(i_atoms, {'P': 1*p, 'O': 3*p, 'H': 1*p}) #sum phosphorylation atoms
-                    i_atoms_tag = General_Functions.sum_atoms(i_atoms, tag[0])
-                    i_neutral_mass = mass.calculate_mass(composition=i_atoms)
-                    i_neutral_tag = i_neutral_mass+tag[1]
-                    i_iso_dist = General_Functions.calculate_isotopic_pattern(i_atoms_tag, fast, high_res)
-                    iso_corrected = i_iso_dist[0]
-                    if fast:
-                        iso_corrected = []
-                        for j_j, j in enumerate(i_iso_dist[0]):
-                            if j_j == 1:
-                                iso_corrected.append(abs(j*1.02)) #default correction
-                                iso_corrected[-1] = iso_corrected[-1]+((((80/base_mass)/2)*iso_corrected[-1])*s)
-                                continue
-                            if j_j == 2:
-                                iso_corrected.append(abs(j*(10.8*(i_neutral_mass**-0.267)))) #default correction
-                                iso_corrected[-1] = iso_corrected[-1]+(((((80/base_mass)*6)-0.0733)*iso_corrected[-1])*s)
-                                iso_corrected[-1] = iso_corrected[-1]+((((80/base_mass)/2)*iso_corrected[-1])*p)
-                                continue
-                            if j_j == 3:
-                                iso_corrected.append(abs(j*(122.62*(i_neutral_mass**-0.528)))) #default correction
-                                iso_corrected[-1] = iso_corrected[-1]+(((((80/base_mass)*6)-0.0733)*iso_corrected[-1])*s)
-                                iso_corrected[-1] = iso_corrected[-1]+((((80/base_mass)/2)*iso_corrected[-1])*p)
-                                continue
-                            if j_j == 4:
-                                iso_corrected.append(abs(j*(2192.6*(i_neutral_mass**-0.833)))) #default correction
-                                iso_corrected[-1] = iso_corrected[-1]+(((((80/base_mass)*6)-0.0733)*iso_corrected[-1])*s)
-                                iso_corrected[-1] = iso_corrected[-1]+((((80/base_mass)/2)*iso_corrected[-1])*p)
-                                continue
-                            else:
-                                iso_corrected.append(j)
-                                continue
-                    full_library[i_formula] = {}
-                    full_library[i_formula]['Monos_Composition'] = i
-                    full_library[i_formula]['Atoms_Glycan+Tag'] = i_atoms_tag
-                    full_library[i_formula]['Neutral_Mass'] = i_neutral_mass
-                    full_library[i_formula]['Neutral_Mass+Tag'] = i_neutral_tag
-                    full_library[i_formula]['Isotopic_Distribution'] = iso_corrected
-                    full_library[i_formula]['Isotopic_Distribution_Masses'] = i_iso_dist[1]
-                    full_library[i_formula]['Adducts_mz'] = {}
-                    for j in adducts_combo:
-                        charges = sum(j.values())
-                        mz = mass.calculate_mass(i_atoms_tag,
-                                                 charge = charges,
-                                                 charge_carrier = j,
-                                                 carrier_charge = charges)
-                        full_library[i_formula]['Adducts_mz'][General_Functions.comp_to_formula(j)] = mz
+    
+    results = []
+    cpu_number = (os.cpu_count())-2 if os.cpu_count() < 60 else 60
+    if cpu_number <= 0:
+        cpu_number = 1
+    with concurrent.futures.ProcessPoolExecutor(max_workers = cpu_number) as executor:
+        for i in library:
+            result = executor.submit(calculate_one_glycan,
+                                     i,
+                                     adducts_combo,
+                                     tag,
+                                     forced,
+                                     fast,
+                                     high_res,
+                                     permethylated,
+                                     reduced,
+                                     min_max_sulfation,
+                                     min_max_phosphorylation)
+            results.append(result)
+        
+        for index, i in enumerate(results):
+            result_data = i.result()
+            full_library[result_data[1]] = result_data[0]
+            results[index] = None
     
     full_library = dict(sorted(full_library.items()))
             
     if internal_standard != '0.0' and internal_standard != 0.0:
         full_library = include_internal_standard(full_library, tag_mass, fast, high_res, internal_standard, permethylated, reduced, adducts_combo)
     return full_library
+    
+def calculate_one_glycan(i,
+                         adducts_combo,
+                         tag,
+                         forced,
+                         fast,
+                         high_res,
+                         permethylated,
+                         reduced,
+                         min_max_sulfation,
+                         min_max_phosphorylation):
+    '''
+    '''
+    monos_count = sum(i.values())
+    number = 1
+    if monos_count <= 4 and forced == 'gags':
+        number = 2
+    for w in range(number):
+        for s in range(min_max_sulfation[0], min_max_sulfation[1]+1):
+            if s > monos_count*3:
+                break
+            for p in range(min_max_phosphorylation[0], min_max_phosphorylation[1]+1):
+                if p > monos_count*2:
+                    break
+                sulfations = f"{s}(s)"
+                phosphorylations = f"{p}(p)"
+                i_formula = General_Functions.comp_to_formula(i)
+                if s > 0:
+                    i_formula = f"{i_formula}+{sulfations}"
+                if p > 0:
+                    i_formula = f"{i_formula}+{phosphorylations}"
+                if w > 0:
+                    i_formula = f"{i_formula}-H2O"
+                i_atoms = General_Functions.glycan_to_atoms(i, permethylated)
+                if w == 0:
+                    i_atoms = General_Functions.sum_atoms(i_atoms, General_Functions.form_to_comp('H2O'))
+                if tag[1] == 0.0:
+                    if permethylated:
+                        i_atoms = General_Functions.sum_atoms(i_atoms, {'C': 2, 'H': 4})
+                        if reduced:
+                            i_atoms = General_Functions.sum_atoms(i_atoms, {'O': 1})
+                    if not permethylated and reduced:
+                        i_atoms = General_Functions.sum_atoms(i_atoms, {'H': 2})
+                base_mass = mass.calculate_mass(composition=i_atoms)
+                i_atoms = General_Functions.sum_atoms(i_atoms, {'S': 1*s, 'O': 3*s}) #sum sulfation atoms
+                i_atoms = General_Functions.sum_atoms(i_atoms, {'P': 1*p, 'O': 3*p, 'H': 1*p}) #sum phosphorylation atoms
+                i_atoms_tag = General_Functions.sum_atoms(i_atoms, tag[0])
+                i_neutral_mass = mass.calculate_mass(composition=i_atoms)
+                i_neutral_tag = i_neutral_mass+tag[1]
+                i_iso_dist = General_Functions.calculate_isotopic_pattern(i_atoms_tag, fast, high_res)
+                iso_corrected = i_iso_dist[0]
+                if fast:
+                    iso_corrected = []
+                    for j_j, j in enumerate(i_iso_dist[0]):
+                        if j_j == 1:
+                            iso_corrected.append(abs(j*1.02)) #default correction
+                            iso_corrected[-1] = iso_corrected[-1]+((((80/base_mass)/2)*iso_corrected[-1])*s)
+                            continue
+                        if j_j == 2:
+                            iso_corrected.append(abs(j*(10.8*(i_neutral_mass**-0.267)))) #default correction
+                            iso_corrected[-1] = iso_corrected[-1]+(((((80/base_mass)*6)-0.0733)*iso_corrected[-1])*s)
+                            iso_corrected[-1] = iso_corrected[-1]+((((80/base_mass)/2)*iso_corrected[-1])*p)
+                            continue
+                        if j_j == 3:
+                            iso_corrected.append(abs(j*(122.62*(i_neutral_mass**-0.528)))) #default correction
+                            iso_corrected[-1] = iso_corrected[-1]+(((((80/base_mass)*6)-0.0733)*iso_corrected[-1])*s)
+                            iso_corrected[-1] = iso_corrected[-1]+((((80/base_mass)/2)*iso_corrected[-1])*p)
+                            continue
+                        if j_j == 4:
+                            iso_corrected.append(abs(j*(2192.6*(i_neutral_mass**-0.833)))) #default correction
+                            iso_corrected[-1] = iso_corrected[-1]+(((((80/base_mass)*6)-0.0733)*iso_corrected[-1])*s)
+                            iso_corrected[-1] = iso_corrected[-1]+((((80/base_mass)/2)*iso_corrected[-1])*p)
+                            continue
+                        else:
+                            iso_corrected.append(j)
+                            continue
+                glycan_info = {}
+                glycan_info['Monos_Composition'] = i
+                glycan_info['Atoms_Glycan+Tag'] = i_atoms_tag
+                glycan_info['Neutral_Mass'] = i_neutral_mass
+                glycan_info['Neutral_Mass+Tag'] = i_neutral_tag
+                glycan_info['Isotopic_Distribution'] = iso_corrected
+                glycan_info['Isotopic_Distribution_Masses'] = i_iso_dist[1]
+                glycan_info['Adducts_mz'] = {}
+                for j in adducts_combo:
+                    charges = sum(j.values())
+                    mz = mass.calculate_mass(i_atoms_tag,
+                                             charge = charges,
+                                             charge_carrier = j,
+                                             carrier_charge = charges)
+                    glycan_info['Adducts_mz'][General_Functions.comp_to_formula(j)] = mz
+                    
+    return glycan_info, i_formula
 
 def include_internal_standard(full_library,
                               tag_mass,

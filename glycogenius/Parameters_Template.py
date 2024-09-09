@@ -165,9 +165,13 @@ high_resolution_isotopic_dist = no
 ;	on FT mass spectrometers.
 ;
 internal_standard_mass = 0.0
-; 	If using an internal standard, insert its mass 
-;	here for the script to calculate its area. This 
-;	also allows the script to output a normalized 
+; 	If using an internal standard, insert its mass,
+;	chemical formula or glycan formula here for 
+;	GlycoGenius to calculate its area. 
+;	If a glycan formula is used, reducing end modifications
+;	and permethylation (if selected) are applied to the 
+;	internal standard.
+;	This also allows the script to output a normalized 
 ;	metaboanalyst compatible file.
 ;
 

@@ -541,7 +541,7 @@ def analyze_mz_array(sliced_mz,
                 for i_i, i in enumerate(glycan_info['Isotopic_Distribution_Masses']): #check isotopic peaks and add to the intensity
                     if i_i == 0: #ignores monoisotopic this time around
                         continue
-                    temp_id = General_Functions.binary_search_with_tolerance(sliced_mz, found_mz+(i_i*(General_Functions.h_mass/abs(adduct_charge))), mz_id, sliced_mz_length, General_Functions.tolerance_calc(tolerance[0], tolerance[1], found_mz+(i_i*(General_Functions.h_mass/abs(adduct_charge)))), sliced_int)
+                    temp_id = General_Functions.binary_search_with_tolerance(sliced_mz, found_mz+(i_i*(General_Functions.h_mass/abs(adduct_charge))), mz_id, sliced_mz_length, General_Functions.tolerance_calc(tolerance[0], tolerance[1], found_mz+(i_i*(General_Functions.h_mass/abs(adduct_charge)))), sliced_int, mz_isos)
                     if temp_id != -1 and sliced_int[temp_id] > 0:
                         isos_found += 1
                         mz_isos.append(sliced_mz[temp_id])

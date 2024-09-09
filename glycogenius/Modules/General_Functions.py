@@ -64,7 +64,7 @@ times during a run.
 ##General functions (these functions use only external libraries, such as itertools and
 ##pyteomics).
 
-def binary_search_with_tolerance(arr, target, low, high, tolerance, int_arr = []):
+def binary_search_with_tolerance(arr, target, low, high, tolerance, int_arr = [], black_list = []):
     '''A function to quickly find a target in an array by splitting the array recurssively in two and looking for the mid point, finding out if value is bigger or smaller than  target, then splitting again. It also checks if found target in target array is within a tolerance, and picks the most intense one within the tolerance if intensity array is available, else picks the closest one to target.
     
     Parameters
@@ -130,17 +130,34 @@ def binary_search_with_tolerance(arr, target, low, high, tolerance, int_arr = []
             return -1
 
         if len(int_arr) != 0:
-            selected_id = range_search[0]+numpy.argmax(array_slice)
+            relative_id = numpy.argmax(array_slice)
         else:
-            selected_id = range_search[0]+(numpy.abs(array_slice - target).argmin())
-        
+            relative_id = (numpy.abs(array_slice - target).argmin())
+        selected_id = range_search[0]+relative_id
+            
+        # This avoids picking the same peak twice
+        forbidden_ids = []
+        while arr[selected_id] in black_list:
+            forbidden_ids.append(relative_id)
+            if len(int_arr) != 0:
+                array_slice[relative_id] = 0
+            else:
+                array_slice[relative_id] += 1000
+            if len(int_arr) != 0:
+                relative_id = numpy.argmax(array_slice)
+            else:
+                relative_id = (numpy.abs(array_slice - target).argmin())
+            if relative_id in forbidden_ids:
+                return -1
+            selected_id = range_search[0]+relative_id
+            
         return selected_id
     elif arr[mid] < target:
         # If target is greater, ignore the left half
-        return binary_search_with_tolerance(arr, target, mid + 1, high, tolerance, int_arr)
+        return binary_search_with_tolerance(arr, target, mid + 1, high, tolerance, int_arr, black_list)
     else:
         # If target is smaller, ignore the right half
-        return binary_search_with_tolerance(arr, target, low, mid - 1, tolerance, int_arr)
+        return binary_search_with_tolerance(arr, target, low, mid - 1, tolerance, int_arr, black_list)
 
 def linear_regression(x, y, th = 2.5):
     '''Traces a linear regression of supplied 2d data points and returns the slope,
@@ -539,7 +556,7 @@ def normpdf(x, mean, sd):
     num = exp(-(float(x)-float(mean))**2/(2*var))
     return num/denom
 
-def form_to_comp(string):
+def form_to_comp(string, form_type = 'glycan'):
     '''Separates a molecular formula or monosaccharides formula of glycans into a
     dictionary with each atom/monosaccharide as a key and its amount as value.
 

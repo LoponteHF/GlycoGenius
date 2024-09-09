@@ -270,9 +270,11 @@ def index_spectra_from_file(files,
                                      i_i)
             results.append(result)
     
-    for i in results:
-        result_data = i.result()
-        indexes[result_data[1]] = result_data[0]
+        for index, i in enumerate(results):
+            result_data = i.result()
+            indexes[result_data[1]] = result_data[0]
+            results[index] = None
+        
     return indexes
     
 def get_indexes(file,
@@ -1052,9 +1054,10 @@ def align_assignments(df, df_type, multithreaded, number_cores, deltas = None, r
                                          deltas)
                 results.append(result)
             
-        for i in results:
-            result_data = i.result()
-            dataframe[result_data[0]] = result_data[1]
+            for index, i in enumerate(results):
+                result_data = i.result()
+                dataframe[result_data[0]] = result_data[1]
+                results[index] = None
             
         return dataframe
 
@@ -2581,13 +2584,13 @@ def output_filtered_data(curve_fit_score,
                 result = executor.submit(arrange_iso_outputs, i_i, i, isotopic_fits_dataframes)
                 results.append(result)
                 isotopic_fits_dataframes_arranged.append(None)
-        for i in results:
-            current_result = i.result()
-            isotopic_fits_dataframes_arranged[current_result[2]] = current_result[0]
-            if current_result[1] > biggest_len:
-                biggest_len = current_result[1]
+            for index, i in enumerate(results):
+                current_result = i.result()
+                isotopic_fits_dataframes_arranged[current_result[2]] = current_result[0]
+                if current_result[1] > biggest_len:
+                    biggest_len = current_result[1]
+                results[index] = None
         del isotopic_fits_dataframes
-        del results
         
         with concurrent.futures.ProcessPoolExecutor(max_workers = cpu_count if cpu_count < 60 else 60) as executor:
             for i_i, i in enumerate(isotopic_fits_dataframes_arranged):
@@ -3261,16 +3264,17 @@ def analyze_files(library,
                                      from_GUI)
             results.append(result)
             
-    for i in results:
-        result_data = i.result()
-        zeroes_arrays[result_data[7]] = result_data[0]
-        inf_arrays[result_data[7]] = result_data[1]
-        threads_arrays[result_data[7]] = result_data[2]
-        ms1_id[result_data[7]] = result_data[3]
-        rt_array_report[result_data[7]] = result_data[4]
-        noise[result_data[7]] = result_data[5]
-        noise_avg[result_data[7]] = percentile(result_data[6], 66.8)
-        sampling_rates[result_data[7]] = result_data[8]
+        for index, i in enumerate(results):
+            result_data = i.result()
+            zeroes_arrays[result_data[7]] = result_data[0]
+            inf_arrays[result_data[7]] = result_data[1]
+            threads_arrays[result_data[7]] = result_data[2]
+            ms1_id[result_data[7]] = result_data[3]
+            rt_array_report[result_data[7]] = result_data[4]
+            noise[result_data[7]] = result_data[5]
+            noise_avg[result_data[7]] = percentile(result_data[6], 66.8)
+            sampling_rates[result_data[7]] = result_data[8]
+            results[index] = None
     
     ambiguities = {}
     for i_i, i in enumerate(library):
@@ -3292,36 +3296,34 @@ def analyze_files(library,
     
     is_result = None
     results = []
-    temp_results = []
     with concurrent.futures.ProcessPoolExecutor(max_workers = cpu_count if cpu_count < 60 else 60) as executor:
         for i_i, i in enumerate(library):
             if i in ambiguities.keys(): #skips ambiguities
-                time_formatted = str(datetime.datetime.now()).split(" ")[-1].split(".")[0]+" - "
-                print(time_formatted+'Tracing glycan '+str(i)+': '+str(i_i+1)+'/'+str(lib_size))
+                results.append(i)
                 continue
             if i == 'Internal Standard':
                 is_result = executor.submit(analyze_glycan, 
-                                         library,
-                                         lib_size,
-                                         data,
-                                         ms1_index,
-                                         tolerance,
-                                         ret_time_interval,
-                                         min_isotops,
-                                         min_ppp,
-                                         max_charges,
-                                         noise,
-                                         noise_avg,
-                                         close_peaks,
-                                         zeroes_arrays,
-                                         inf_arrays,
-                                         threads_arrays,
-                                         rt_array_report,
-                                         ms1_id,
-                                         i,
-                                         i_i,
-                                         sampling_rates,
-                                         from_GUI)
+                                            library,
+                                            lib_size,
+                                            data,
+                                            ms1_index,
+                                            tolerance,
+                                            ret_time_interval,
+                                            min_isotops,
+                                            min_ppp,
+                                            max_charges,
+                                            noise,
+                                            noise_avg,
+                                            close_peaks,
+                                            zeroes_arrays,
+                                            inf_arrays,
+                                            threads_arrays,
+                                            rt_array_report,
+                                            ms1_id,
+                                            i,
+                                            i_i,
+                                            sampling_rates,
+                                            from_GUI)
             else:
                 result = executor.submit(analyze_glycan, 
                                          library,
@@ -3346,28 +3348,31 @@ def analyze_files(library,
                                          sampling_rates,
                                          from_GUI)
                 results.append(result)
-            if from_GUI:
-                temp_results.append(result)
-                if len(temp_results) == cpu_count+1:
-                    for k_k, k in enumerate(temp_results):
-                        k.result()
-                        del temp_results[k_k]
-                        if len(temp_results) < cpu_count:
-                            break
+        for index, i in enumerate(results):
+            if type(i) == str: #ambiguity
                 time_formatted = str(datetime.datetime.now()).split(" ")[-1].split(".")[0]+" - "
-                if i == 'Internal Standard':
-                    print(time_formatted+'Tracing '+str(i)+': '+str(i_i+1)+'/'+str(lib_size))
-                else:
-                    print(time_formatted+'Tracing glycan '+str(i)+': '+str(i_i+1)+'/'+str(lib_size))
-    for i in results:
-        result_data = i.result()
-        analyzed_data[result_data[1]] = result_data[0]
-        
+                print(time_formatted+'Traced glycan '+i+': '+str(index+1)+'/'+str(lib_size))
+            else:
+                result_data = i.result()
+                time_formatted = str(datetime.datetime.now()).split(" ")[-1].split(".")[0]+" - "
+                print(time_formatted+'Traced glycan '+str(result_data[1])+': '+str(index+1)+'/'+str(lib_size))
+                analyzed_data[result_data[1]] = result_data[0]
+            
+            # Pickling all the data into separate files
+            # with open("D:/Arquivos/Desktop/test/"+result_data[1], 'wb') as f:
+                # dill.dump(result_data[0], f)
+                # f.close()
+                
+            results[index] = None
+    
     for i in ambiguities: #sorts ambiguities
         analyzed_data[i] = analyzed_data[ambiguities[i][0]]
     
     if is_result != None:
+        time_formatted = str(datetime.datetime.now()).split(" ")[-1].split(".")[0]+" - "
+        print(time_formatted+'Traced Internal Standard: '+str(lib_size)+'/'+str(lib_size))
         analyzed_data['Internal Standard'] = is_result.result()[0]
+        del is_result
         
     time_formatted = str(datetime.datetime.now()).split(" ")[-1].split(".")[0]+" - "
     print(time_formatted+'MS1 tracing done in '+str(datetime.datetime.now() - begin_time).split(".")[0]+'!')
@@ -3499,10 +3504,6 @@ def analyze_glycan(library,
         The glycan analyzed.
     '''
     try:
-        if not from_GUI:
-            time_formatted = str(datetime.datetime.now()).split(" ")[-1].split(".")[0]+" - "
-            print(time_formatted+'Tracing glycan '+str(i)+': '+str(i_i+1)+'/'+str(lib_size))
-        
         glycan_data = library[i]
         glycan_data['Adducts_mz_data'] = {}
         temp_eic = File_Accessing.eic_from_glycan(data,
@@ -3554,6 +3555,7 @@ def analyze_glycan(library,
                         l['Signal-to-Noise'] = l['int']/(General_Functions.local_noise_calc(noise[k][l['id']], glycan_data['Adducts_mz'][j], noise_avg[k]))
                         glycan_data['Adducts_mz_data'][j][k][1].append(l)
         return glycan_data, i
+        
     except KeyboardInterrupt:
         if not from_GUI:
             print("\n\n----------Execution cancelled by user.----------\n", flush=True)
@@ -3790,20 +3792,13 @@ def analyze_ms2(ms2_index,
                                      i,
                                      from_GUI)
             results.append(result)
-            if from_GUI:
-                temp_results.append(result)
-                if len(temp_results) == cpu_count+1:
-                    for k_k, k in enumerate(temp_results):
-                        k.result()
-                        del temp_results[k_k]
-                        if len(temp_results) < cpu_count:
-                            break
-                time_formatted = str(datetime.datetime.now()).split(" ")[-1].split(".")[0]+" - "
-                print(time_formatted+'Analyzing glycan '+str(i)+': '+str(i_i+1)+'/'+str(len(analyzed_data[0])))
             
-    for i in results:
-        result_data = i.result()
-        fragments_data[result_data[1]] = result_data[0]
+        for index, i in enumerate(results):
+            result_data = i.result()
+            time_formatted = str(datetime.datetime.now()).split(" ")[-1].split(".")[0]+" - "
+            print(time_formatted+'Analyzed glycan '+str(result_data[1])+': '+str(index+1)+'/'+str(len(analyzed_data[0])))
+            fragments_data[result_data[1]] = result_data[0]
+            results[index] = None
         
     time_formatted = str(datetime.datetime.now()).split(" ")[-1].split(".")[0]+" - "
     print(time_formatted+'MS2 analysis done in '+str(datetime.datetime.now() - begin_time).split(".")[0]+'!')
@@ -3874,9 +3869,6 @@ def analyze_glycan_ms2(ms2_index,
         A series of information on the MS2 data analyzed.
     '''
     try:
-        if not from_GUI:
-            time_formatted = str(datetime.datetime.now()).split(" ")[-1].split(".")[0]+" - "
-            print(time_formatted+'Analyzing glycan '+str(i)+': '+str(i_i+1)+'/'+str(len(analyzed_data[0])))
         fragments_mz_list = list(indexed_fragments.keys())
         superscripts = {'0': '⁰', '1': '¹', '2': '²', '3': '³', '4': '⁴', '5': '⁵', '6': '⁶', '7': '⁷', '8': '⁸', '9': '⁹', '+': '⁺', '-': '⁻', '=': '⁼', '(': '⁽', ')': '⁾', 'n': 'ⁿ', 'i': 'ⁱ'}
         fragments_data = {}
@@ -3986,6 +3978,7 @@ def analyze_glycan_ms2(ms2_index,
                             if m[5] == k[l]['retentionTime']:
                                 m[7] = total
         return fragments_data, i
+        
     except KeyboardInterrupt:
         if not from_GUI:
             print("\n\n----------Execution cancelled by user.----------\n", flush=True)
