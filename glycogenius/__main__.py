@@ -1,4 +1,4 @@
-# from .Modules.core import main
+from .Modules.core import main
 
-# if __name__ == "__main__":
-	# main()
+if __name__ == "__main__":
+	main()
