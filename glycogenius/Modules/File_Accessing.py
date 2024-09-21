@@ -44,7 +44,7 @@ class make_mzxml(object):
     
     Parameters
     ----------
-    object : string
+    path_to_mzml : string
         A string containing the path to the mzML file.
         
     Uses

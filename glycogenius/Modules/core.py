@@ -22,7 +22,9 @@ from . import CLI
 import time
 import os
 import datetime
+import tempfile
 import copy
+import shutil
 
 #-----------------------------------------------------------------------------
 
@@ -35,11 +37,17 @@ def main(args=[]):
                 args = CLI.CLI()
             
         begin_time = datetime.datetime.now()
+        begin_time_string = str(begin_time)[2:4]+str(begin_time)[5:7]+str(begin_time)[8:10]+"_"+str(begin_time)[11:13]+str(begin_time)[14:16]+str(begin_time)[17:19]
+        temp_folder = os.path.join(tempfile.gettempdir(), "gg_"+begin_time_string)
+        os.makedirs(temp_folder, exist_ok=True)
+        
+        args[0][23] = temp_folder
 
         if args[9]:
             Execution_Functions.output_filtered_data(*args[0])
 
         else:
+            args[1][29] = temp_folder
             library = Execution_Functions.imp_exp_gen_library(*args[1])
             Execution_Functions.print_sep()
             pre_processing_begin_time = datetime.datetime.now()
@@ -63,6 +71,7 @@ def main(args=[]):
             args[5][2] = data
             args[5][3] = ms1_index
             args[5][13] = pre_processing_begin_time
+            args[5][14] = temp_folder
             analyzed_data = Execution_Functions.analyze_files(*args[5])
             if args[10]:
                 # Safeguard MS1 save in case of crashes during MS2 analysis
@@ -83,9 +92,13 @@ def main(args=[]):
                 args[6][0] = ms2_index
                 args[6][1] = data
                 args[6][2] = analyzed_data
+                args[6][26] = library
+                args[6][27] = temp_folder
                 analyzed_data = Execution_Functions.analyze_ms2(*args[6])
             Execution_Functions.print_sep()
             args[7][0] = analyzed_data
+            args[7][5] = library
+            args[7][6] = temp_folder
             temp_time = Execution_Functions.arrange_raw_data(*args[7])
             Execution_Functions.print_sep()
             args[0][21] = temp_time
@@ -94,6 +107,8 @@ def main(args=[]):
                 
         time_formatted = str(datetime.datetime.now()).split(" ")[-1].split(".")[0]+" - "   
         print(time_formatted+'Finished! Time elapsed: '+str(datetime.datetime.now() - begin_time).split(".")[0])
+        shutil.rmtree(temp_folder)
+        
         if os.isatty(0):
             input('\nPress Enter to exit.')
         else:

@@ -27,6 +27,7 @@ from re import split
 from math import inf, isnan
 from statistics import mean, median
 import concurrent.futures
+import zipfile
 import time
 import os
 import dill
@@ -101,15 +102,12 @@ def generate_cfg_file(path, comments):
         Creates 2 files: a .ini and a .bat file.
     '''
     print("Creating parameters file...")
-    glycogenius_path = str(pathlib.Path(__file__).parent.parent.resolve())
+    glycogenius_path = pathlib.Path(__file__).parent.parent.resolve()
     curr_os = platform.system()
     pathlib.Path(path).mkdir(exist_ok = True, parents = True)
-    pathlib.Path(path+"Sample Files").mkdir(exist_ok = True, parents = True)
-    for i_i, i in enumerate(glycogenius_path):
-        if i == "\\":
-            glycogenius_path = glycogenius_path[:i_i]+"/"+glycogenius_path[i_i+1:]
+    pathlib.Path(os.path.join(path, "Sample Files")).mkdir(exist_ok = True, parents = True)
     with open(path+'glycogenius_parameters.ini', 'w') as g:
-        with open(glycogenius_path+'/Parameters_Template.py', 'r') as f:
+        with open(os.path.join(glycogenius_path, 'Parameters_Template.py'), 'r') as f:
             for line in f:
                 if "samples_directory =" in line:
                     g.write("samples_directory = "+path+"Sample Files/\n")
@@ -155,19 +153,12 @@ def samples_path_to_list(path):
     samples_list : list
         A list containing the path to each file to be analyzed.
     '''
-    if len(path) == 0:
+    if len(str(path)) == 0:
         return []
-    path = path.strip()
-    path = path.strip("'")
-    path = path.strip("\"")
+        
     mzml_possibilities = list(map(''.join, product(*zip("mzml".upper(), "mzml".lower()))))
     mzxml_possibilities = list(map(''.join, product(*zip("mzxml".upper(), "mzxml".lower()))))
     file_extensions = mzml_possibilities+mzxml_possibilities
-    for i_i, i in enumerate(path):
-        if i == "\\":
-            path = path[:i_i]+"/"+path[i_i+1:]
-    if path[-1] != "/":
-        path+= "/"
     try:
         dir_list = os.listdir(path)
     except:
@@ -175,7 +166,7 @@ def samples_path_to_list(path):
     samples_list = []
     for i_i, i in enumerate(dir_list):
         if i.split('.')[-1] in file_extensions:
-            samples_list.append(path+i)
+            samples_list.append(os.path.join(path, i))
     return samples_list
     
 def list_of_data(samples_list):
@@ -365,7 +356,8 @@ def imp_exp_gen_library(custom_glycans_list,
                         lactonized_ethyl_esterified,
                         reduced,
                         min_max_sulfation,
-                        min_max_phosphorylation):
+                        min_max_phosphorylation,
+                        temp_folder):
     '''Imports, generates and/or exports a glycans library.
 
     Parameters
@@ -504,52 +496,37 @@ def imp_exp_gen_library(custom_glycans_list,
         time_formatted = str(datetime.datetime.now()).split(" ")[-1].split(".")[0]+" - "
         print(time_formatted+'Importing existing library...', end = '', flush = True)
         try:
-            pathlib.Path(save_path+begin_time+"_Temp").mkdir(exist_ok = True, parents = True)
-            shutil.copy(library_path, os.path.join(save_path+begin_time+"_Temp", 'glycans_library.py'))
-            spec = importlib.util.spec_from_file_location("glycans_library", save_path+begin_time+"_Temp/glycans_library.py")
-            lib_module = importlib.util.module_from_spec(spec)
-            spec.loader.exec_module(lib_module)
-            full_library = lib_module.full_library
-            try:
-                library_metadata = lib_module.metadata
-            except:
-                library_metadata = []
-            if len(library_metadata) > 0:
-                if library_metadata[17][0]:
-                    is_custom = True
-                    custom_glycans_list[1] = library_metadata[17][1]
-                min_max_monos = library_metadata[0]
-                min_max_hex = library_metadata[1]
-                min_max_hexnac = library_metadata[2]
-                min_max_fuc = library_metadata[3]
-                min_max_sia = library_metadata[4]
-                min_max_ac = library_metadata[5]
-                min_max_gc = library_metadata[6]
-                if type(library_metadata[7]) == bool:
-                    if library_metadata[7]:
-                        forced = 'n_glycan'
-                    else:
-                        forced = 'none'
-                else:
-                    forced = library_metadata[7]
-                max_adducts = library_metadata[8]
-                max_charges = library_metadata[9]
-                tag_mass = library_metadata[10]
-                internal_standard = library_metadata[11]
-                permethylated = library_metadata[12]
-                lactonized_ethyl_esterified = library_metadata[13]
-                reduced = library_metadata[14]
-                fast_iso = library_metadata[15]
-                high_res = library_metadata[16]
-                if len(library_metadata) > 18:
-                    min_max_xyl = library_metadata[18]
-                if len(library_metadata) > 19:
-                    min_max_hn = library_metadata[19]
-                    min_max_ua = library_metadata[20]
-                    min_max_sulfation = library_metadata[21]
-                    min_max_phosphorylation = library_metadata[22]
+            with open(library_path, 'rb') as f:
+                library_data = dill.load(f)
+                f.close()
+            full_library = library_data[0]
+            library_metadata = library_data[1]
+            if library_metadata[17][0]:
+                is_custom = True
+                custom_glycans_list[1] = library_metadata[17][1]
+            min_max_monos = library_metadata[0]
+            min_max_hex = library_metadata[1]
+            min_max_hexnac = library_metadata[2]
+            min_max_fuc = library_metadata[3]
+            min_max_sia = library_metadata[4]
+            min_max_ac = library_metadata[5]
+            min_max_gc = library_metadata[6]
+            forced = library_metadata[7]
+            max_adducts = library_metadata[8]
+            max_charges = library_metadata[9]
+            tag_mass = library_metadata[10]
+            internal_standard = library_metadata[11]
+            permethylated = library_metadata[12]
+            lactonized_ethyl_esterified = library_metadata[13]
+            reduced = library_metadata[14]
+            fast_iso = library_metadata[15]
+            high_res = library_metadata[16]
+            min_max_xyl = library_metadata[18]
+            min_max_hn = library_metadata[19]
+            min_max_ua = library_metadata[20]
+            min_max_sulfation = library_metadata[21]
+            min_max_phosphorylation = library_metadata[22]
             print("Done!")
-            shutil.rmtree(save_path+begin_time+"_Temp")
         except:
             print("\n\nGlycan library file not found. Check if the\npath used in 'library_path' is correct or set\n'imp_library' to 'no'.\n")
             if os.isatty(0):
@@ -689,9 +666,9 @@ def imp_exp_gen_library(custom_glycans_list,
         else:
             exp_lib_name = begin_time+'_glycans_lib'
         if not imp_exp_library[0]:
-            with open(save_path+exp_lib_name+'.ggl', 'w') as f:
-                f.write(f'full_library = {str(full_library)}\n')
-                f.write(f'metadata = {[min_max_monos, min_max_hex, min_max_hexnac, min_max_fuc, min_max_sia, min_max_ac, min_max_gc, forced, max_adducts, max_charges, tag_mass, internal_standard, permethylated, lactonized_ethyl_esterified, reduced, fast_iso, high_res, custom_glycans_list, min_max_xyl, min_max_hn, min_max_ua, min_max_sulfation, min_max_phosphorylation]}')
+            metadata = [min_max_monos, min_max_hex, min_max_hexnac, min_max_fuc, min_max_sia, min_max_ac, min_max_gc, forced, max_adducts, max_charges, tag_mass, internal_standard, permethylated, lactonized_ethyl_esterified, reduced, fast_iso, high_res, custom_glycans_list, min_max_xyl, min_max_hn, min_max_ua, min_max_sulfation, min_max_phosphorylation]
+            with open(os.path.join(save_path, exp_lib_name+'.ggl'), 'wb') as f:
+                dill.dump([full_library, metadata], f)
                 f.close()
         if lactonized_ethyl_esterified:
             df = {'Glycan' : [], 'Hex' : [], 'HexN' : [], 'HexNAc' : [], 'Xylose' : [], 'dHex' : [], 'a2,3-Neu5Ac' : [], 'a2,6-Neu5Ac' : [], 'a2,3-Neu5Gc' : [], 'a2,6-Neu5Gc' : [], 'UroA': [], 'Isotopic Distribution' : [], 'Neutral Mass + Tag' : []}
@@ -701,43 +678,25 @@ def imp_exp_gen_library(custom_glycans_list,
             if lactonized_ethyl_esterified:
                 df['Glycan'].append(i)
                 df['Hex'].append(full_library[i]['Monos_Composition']['H'])
-                if 'HN' in full_library[i]['Monos_Composition']:
-                    df['HexN'].append(full_library[i]['Monos_Composition']['HN'])
-                else:
-                    df['HexN'].append(0)
+                df['HexN'].append(full_library[i]['Monos_Composition']['HN'])
                 df['HexNAc'].append(full_library[i]['Monos_Composition']['N'])
-                if 'X' in full_library[i]['Monos_Composition']:
-                    df['Xylose'].append(full_library[i]['Monos_Composition']['X'])
-                else:
-                    df['Xylose'].append(0)
+                df['Xylose'].append(full_library[i]['Monos_Composition']['X'])
                 df['dHex'].append(full_library[i]['Monos_Composition']['F'])
                 df['a2,3-Neu5Ac'].append(full_library[i]['Monos_Composition']['Am'])
                 df['a2,6-Neu5Ac'].append(full_library[i]['Monos_Composition']['E'])
                 df['a2,3-Neu5Gc'].append(full_library[i]['Monos_Composition']['AmG'])
                 df['a2,6-Neu5Gc'].append(full_library[i]['Monos_Composition']['EG'])
-                if 'UA' in full_library[i]['Monos_Composition']:
-                    df['UroA'].append(full_library[i]['Monos_Composition']['UA'])
-                else:
-                    df['UroA'].append(0)
+                df['UroA'].append(full_library[i]['Monos_Composition']['UA'])
             else:
                 df['Glycan'].append(i)
                 df['Hex'].append(full_library[i]['Monos_Composition']['H'])
-                if 'HN' in full_library[i]['Monos_Composition']:
-                    df['HexN'].append(full_library[i]['Monos_Composition']['HN'])
-                else:
-                    df['HexN'].append(0)
+                df['HexN'].append(full_library[i]['Monos_Composition']['HN'])
                 df['HexNAc'].append(full_library[i]['Monos_Composition']['N'])
-                if 'X' in full_library[i]['Monos_Composition']:
-                    df['Xylose'].append(full_library[i]['Monos_Composition']['X'])
-                else:
-                    df['Xylose'].append(0)
+                df['Xylose'].append(full_library[i]['Monos_Composition']['X'])
                 df['dHex'].append(full_library[i]['Monos_Composition']['F'])
                 df['Neu5Ac'].append(full_library[i]['Monos_Composition']['S'])
                 df['Neu5Gc'].append(full_library[i]['Monos_Composition']['G'])
-                if 'UA' in full_library[i]['Monos_Composition']:
-                    df['UroA'].append(full_library[i]['Monos_Composition']['UA'])
-                else:
-                    df['UroA'].append(0)
+                df['UroA'].append(full_library[i]['Monos_Composition']['UA'])
             temp_isotopic = []
             for j in full_library[i]['Isotopic_Distribution']:
                 temp_isotopic.append(float("%.3f" % round(j, 3)))
@@ -753,10 +712,10 @@ def imp_exp_gen_library(custom_glycans_list,
             file_name = library_path.split("\\")[-1].split("/")[-1].split(".")[-2]
         else:
             file_name = exp_lib_name
-        with ExcelWriter(save_path+file_name+'.xlsx') as writer:
+        with ExcelWriter(os.path.join(save_path, file_name+'.xlsx')) as writer:
             df.to_excel(writer, index = False)
             General_Functions.autofit_columns_excel(df, writer.sheets['Sheet1'])
-        with open(save_path+file_name+'_skyline_transitions.csv', 'w') as f:
+        with open(os.path.join(save_path, file_name+'_skyline_transitions.csv'), 'w') as f:
             f.write('Precursor Name, Precursor Formula, Precursor Adduct, Precursor Charge\n')
             for i_i, i in enumerate(full_library):
                 for j_j, j in enumerate(full_library[i]['Adducts_mz']):
@@ -777,6 +736,9 @@ def imp_exp_gen_library(custom_glycans_list,
         print("If you wish to analyze files,")
         print("set 'only_gen_lib' to False and input")
         print("remaining parameters.")
+        
+        shutil.rmtree(temp_folder)
+        
         if os.isatty(0):
             input("\nPress Enter to exit.")
             os._exit(1)
@@ -791,7 +753,7 @@ def imp_exp_gen_library(custom_glycans_list,
     print(time_formatted+'Library length: '+str(len(full_library)))
     return full_library
     
-def align_assignments(df, df_type, multithreaded, number_cores, deltas = None, rt_tol = None):
+def align_assignments(df, df_type, multithreaded, number_cores, temp_folder = None, gg_file = None, deltas = None, rt_tol = None, iso_fit_score = 0, curve_fit_score = 0, max_ppm = 0, s_to_n = 0):
     '''Aligns the results obtained from running the whole program and uses
     the identifications to align the chromatograms between samples for 
     visualization purposes.
@@ -1029,7 +991,6 @@ def align_assignments(df, df_type, multithreaded, number_cores, deltas = None, r
         
     if df_type == "chromatograms": #for when you want to align chromatograms based on existing deltas calculated previously
     
-        results = []
         if multithreaded:
             if number_cores == 'all':
                 cpu_count = (os.cpu_count())-2
@@ -1046,24 +1007,34 @@ def align_assignments(df, df_type, multithreaded, number_cores, deltas = None, r
         else:
             cpu_count = 1
             
+        results = []
         with concurrent.futures.ProcessPoolExecutor(max_workers = cpu_count if cpu_count < 60 else 60) as executor:
-            for i_i, i in enumerate(dataframe): #sample by sample
+            for i_i, i in enumerate(dataframe['File_Name']): #sample by sample
                 result = executor.submit(adjust_chromatogram,
                                          i,
                                          i_i,
-                                         deltas)
+                                         deltas, 
+                                         iso_fit_score,
+                                         curve_fit_score,
+                                         max_ppm,
+                                         s_to_n,
+                                         temp_folder,
+                                         gg_file)
                 results.append(result)
             
             for index, i in enumerate(results):
                 result_data = i.result()
-                dataframe[result_data[0]] = result_data[1]
                 results[index] = None
-            
-        return dataframe
 
 def adjust_chromatogram(i,
                         i_i,
-                        deltas):
+                        deltas,
+                        iso_fit_score,
+                        curve_fit_score,
+                        max_ppm,
+                        s_to_n,
+                        temp_folder,
+                        gg_file):
     '''Actual alignment of chromatogram. This function does just the adjustment part of the alignment for a given chromatogram. Used in the concurrent.futures for alignment.
     
     Parameters
@@ -1091,36 +1062,55 @@ def adjust_chromatogram(i,
     i_i : int
         Sample index.
     '''
+    eic_name = 'RTs'
+    sample_RTs = General_Functions.access_chromatogram(i_i, f"{i_i}_{eic_name}", temp_folder, gg_file)
+        
     if len(deltas[i_i]) > 0:
-        chromatogram_length_rt = i['RTs_'+str(i_i)][-1]
-        chromatogram_beg_rt = i['RTs_'+str(i_i)][0]
-        chromatogram_length = len(i['RTs_'+str(i_i)])
-        chromatogram_interval = i['RTs_'+str(i_i)][-1]/len(i['RTs_'+str(i_i)])
+        
+        if f"eics_list" not in os.listdir(temp_folder):
+            General_Functions.open_gg(gg_file, temp_folder, file = f"eics_list")
+        
+        with open(os.path.join(temp_folder, f"eics_list"), 'rb') as f:
+            loaded_eics_list = dill.load(f)
+            chromatograms_list = loaded_eics_list[i_i]
+            f.close()
+            
+        chromatogram_length_rt = sample_RTs[-1]
+        chromatogram_beg_rt = sample_RTs[0]
+        chromatogram_length = len(sample_RTs)
+        chromatogram_interval = sample_RTs[-1]/len(sample_RTs)
         points_per_minute = int(1/chromatogram_interval)
         interval_list_rts = []
         interval_list = []
-        for j in range(len(i['RTs_'+str(i_i)])-1, -1, -1):
-            if i['RTs_'+str(i_i)][j] < list(deltas[i_i].keys())[0]: #this finds the zero before the peaks
+        for j in range(len(sample_RTs)-1, -1, -1):
+            if sample_RTs[j] < list(deltas[i_i].keys())[0]: #this finds the zero before the peaks
                 zero = True
-                for k_k, k in enumerate(i):
+                for k_k, k in enumerate(chromatograms_list):
                     if k_k != 0:
-                        if i[k][j] > max(i[k])*0.01:
+                        
+                        # Load the target chromatogram
+                        target_chromatogram = General_Functions.access_chromatogram(i_i, f"{i_i}_smoothed_{k}", temp_folder, gg_file)
+                            
+                        if target_chromatogram[j] > max(target_chromatogram)*0.01:
                             zero = False
                             break
                 if zero:
-                    interval_list_rts.append(i['RTs_'+str(i_i)][j])
+                    interval_list_rts.append(sample_RTs[j])
                     interval_list.append(j)
                     break
         if not zero:
-            interval_list_rts.append(i['RTs_'+str(i_i)][0])
+            interval_list_rts.append(sample_RTs[0])
             interval_list.append(0)
-                    
-        for j_j, j in enumerate(i['RTs_'+str(i_i)]):
+        for j_j, j in enumerate(sample_RTs):
             if j > list(deltas[i_i].keys())[-1]: #this finds the zero after the peaks
                 zero = True
-                for k_k, k in enumerate(i):
+                for k_k, k in enumerate(chromatograms_list):
                     if k_k != 0:
-                        if i[k][j_j] > max(i[k])*0.1:
+                        
+                        # Load the target chromatogram
+                        target_chromatogram = General_Functions.access_chromatogram(i_i, f"{i_i}_smoothed_{k}", temp_folder, gg_file)
+                            
+                        if target_chromatogram[j_j] > max(target_chromatogram)*0.1:
                             zero = False
                             break
                 if zero:
@@ -1128,55 +1118,60 @@ def adjust_chromatogram(i,
                     interval_list.append(j_j)
                     break
         if not zero:
-            interval_list_rts.append(i['RTs_'+str(i_i)][-1])
-            interval_list.append(len(i['RTs_'+str(i_i)])-1)
+            interval_list_rts.append(sample_RTs[-1])
+            interval_list.append(len(sample_RTs)-1)
         for j_j, j in enumerate(interval_list):
             x = []
             y = []
             if j_j == len(interval_list)-1:
-                last_range = len(i['RTs_'+str(i_i)])-1
+                last_range = len(sample_RTs)-1
             else:
                 last_range = interval_list[j_j+1]
             for k_k, k in enumerate(deltas[i_i]):
-                if k > i['RTs_'+str(i_i)][j] and k < i['RTs_'+str(i_i)][last_range]:
+                if k > sample_RTs[j] and k < sample_RTs[last_range]:
                     x.append(float(k))
                     y.append(deltas[i_i][k][0])
             if len(x) == 0:
                 continue
             linear_equation = General_Functions.linear_regression(x, y)
-            lower_boundary = i['RTs_'+str(i_i)][j-1]
-            upper_boundary = i['RTs_'+str(i_i)][last_range]
+            lower_boundary = sample_RTs[j-1]
+            upper_boundary = sample_RTs[last_range]
             lowest = inf
             lowest_id = 0
             highest = 0
             highest_id = inf
             for k in range(j, last_range):
-                i['RTs_'+str(i_i)][k] = i['RTs_'+str(i_i)][k] + (i['RTs_'+str(i_i)][k]*linear_equation[0])+linear_equation[1]
-                if i['RTs_'+str(i_i)][k] < lowest:
-                    lowest = i['RTs_'+str(i_i)][k]
+                sample_RTs[k] = sample_RTs[k] + (sample_RTs[k]*linear_equation[0])+linear_equation[1]
+                if sample_RTs[k] < lowest:
+                    lowest = sample_RTs[k]
                     lowest_id = k
-                if i['RTs_'+str(i_i)][k] > highest:
-                    highest = i['RTs_'+str(i_i)][k]
+                if sample_RTs[k] > highest:
+                    highest = sample_RTs[k]
                     highest_id = k
             if lowest != inf and lowest < lower_boundary:
                 if j_j > 0:
-                    interval = (lowest-i['RTs_'+str(i_i)][interval_list[j_j-1]])/(lowest_id+1-interval_list[j_j-1])
+                    interval = (lowest-sample_RTs[interval_list[j_j-1]])/(lowest_id+1-interval_list[j_j-1])
                     for l_l, l in enumerate(range(lowest_id-1, interval_list[j_j-1], -1)):
-                        i['RTs_'+str(i_i)][l] = float("%.4f" % round(lowest-(interval*(l_l+1)), 4))
+                        sample_RTs[l] = float("%.4f" % round(lowest-(interval*(l_l+1)), 4))
                 else:
                     interval = (lowest)/(lowest_id+1)   
                     for l_l, l in enumerate(range(lowest_id-1, -1, -1)):
-                        i['RTs_'+str(i_i)][l] = float("%.4f" % round(lowest-(interval*(l_l+1)), 4))
+                        sample_RTs[l] = float("%.4f" % round(lowest-(interval*(l_l+1)), 4))
             if highest != 0 and highest > upper_boundary:
                 if j_j != len(interval_list)-2:
-                    interval = (i['RTs_'+str(i_i)][interval_list[j_j+2]]-highest)/(interval_list[j_j+2]-highest_id)
+                    interval = (sample_RTs[interval_list[j_j+2]]-highest)/(interval_list[j_j+2]-highest_id)
                     for l_l, l in enumerate(range(highest_id+1, interval_list[j_j+1])):
-                        i['RTs_'+str(i_i)][l] = float("%.4f" % round(highest+(interval*(l_l+1)), 4))
+                        sample_RTs[l] = float("%.4f" % round(highest+(interval*(l_l+1)), 4))
                 else:
                     interval = (chromatogram_length_rt-highest)/(chromatogram_length-1-highest_id)
                     for l_l, l in enumerate(range(highest_id+1, chromatogram_length)):
-                        i['RTs_'+str(i_i)][l] = float("%.4f" % round(highest+(interval*(l_l+1)), 4))
-    return i_i, i
+                        sample_RTs[l] = float("%.4f" % round(highest+(interval*(l_l+1)), 4))
+    
+    with open(os.path.join(temp_folder, f"{i_i}_aligned_{eic_name}_{iso_fit_score}_{curve_fit_score}_{max_ppm}_{s_to_n}"), 'wb') as f:
+        dill.dump(sample_RTs, f)
+        f.close()
+    
+    return None
         
 def make_df1_refactor(df1,
                       df2,
@@ -1844,7 +1839,7 @@ def calculate_fucosylation_sialylation(compositions_dataframes):
         
     proportion_fucsia : dictionaries
         A dictionary containing the proportion of fucosylated, sialylated and fucosylated+sialylated glycans per sample.
-    '''   
+    '''
     glycans_fucsia = {}
     for i_i, i in enumerate(compositions_dataframes):
         for j_j, j in enumerate(i['Glycan']):
@@ -1879,7 +1874,6 @@ def calculate_fucosylation_sialylation(compositions_dataframes):
         proportion_fucsia['Fuc+Sia'].append(float("%.2f" % round((total_fucsia/total_sample)*100, 2)))
         
     return glycans_fucsia, proportion_fucsia
-    
     
 def create_metaboanalyst_files(plot_metaboanalyst,
                                df2,
@@ -2083,7 +2077,8 @@ def output_filtered_data(curve_fit_score,
                          multithreaded,
                          number_cores,
                          temp_time,
-                         min_samples = 0,
+                         min_samples,
+                         temp_folder,
                          from_GUI = False,
                          metab_groups = []):
     '''This function filters and converts raw results data into human readable
@@ -2194,28 +2189,27 @@ def output_filtered_data(curve_fit_score,
         Creates excel files of processed data.
     '''
     
-    #preparation for arranging the data
+    # Preparation for arranging the data
     date = datetime.datetime.now() #gets date information
     begin_time = str(date)[2:4]+str(date)[5:7]+str(date)[8:10]+"_"+str(date)[11:13]+str(date)[14:16]+str(date)[17:19] #arranges the date information for the filename
-    if reanalysis: #if it is a reanalysis, attempts to open a gg file
+    
+    # Checks whether it's a reanalysis or not
+    if reanalysis:
         time_formatted = str(datetime.datetime.now()).split(" ")[-1].split(".")[0]+" - "
         if from_GUI:
             print(time_formatted+"Saving results files...")
         else:
             print(time_formatted+"Reanalyzing raw data...")
-        temp_path = save_path+begin_time+"_Temp/"
-        pathlib.Path(temp_path).mkdir(exist_ok = True, parents = True)
         try:
-            General_Functions.open_gg(gg_file, temp_path)
+            General_Functions.open_gg(gg_file, temp_folder)
         except:
             print("\nAnalysis file not found. If you're reanalyzing\nan existing analysis result file, check if the\npath in 'analysis_file' is correct, otherwise\nchange 'reanalysis' to 'no' and try again.\n")
             return
     else: #if its not, it opens the already loaded raw data files
         time_formatted = str(datetime.datetime.now()).split(" ")[-1].split(".")[0]+" - "
         print(time_formatted+"Analyzing raw data...")
-        temp_path = save_path+temp_time+"_Temp/"
-        pathlib.Path(temp_path).mkdir(exist_ok = True, parents = True)
-    with open(temp_path+'raw_data_1', 'rb') as f:
+        
+    with open(os.path.join(temp_folder, 'results'), 'rb') as f:
         file = dill.load(f)
         df1 = file[0]
         df2 = file[1]
@@ -2447,7 +2441,7 @@ def output_filtered_data(curve_fit_score,
         ppm_title_label = str(max_ppm)
     else:
         ppm_title_label = str(max_ppm[0])+"-"+str(max_ppm[1])
-    with ExcelWriter(save_path+begin_time+'_Results_'+ppm_title_label+'_'+str(iso_fit_score)+'_'+str(curve_fit_score)+'_'+str(sn)+'.xlsx') as writer:
+    with ExcelWriter(os.path.join(save_path, begin_time+'_Results_'+ppm_title_label+'_'+str(iso_fit_score)+'_'+str(curve_fit_score)+'_'+str(sn)+'.xlsx')) as writer:
         dfs = [df2, meta_df]
         sheets_names = ['Index references', 'Detected Glycans']
         time_formatted = str(datetime.datetime.now()).split(" ")[-1].split(".")[0]+" - "
@@ -2492,37 +2486,40 @@ def output_filtered_data(curve_fit_score,
         del fragments_refactor_dataframes
         del fragments_dataframes
     print("Done!")
-    
-    found_eic_raw_dataframes = [] #This creates a file with only the found glycan's EIC
-    found_eic_processed_dataframes = []
-
-    with open(temp_path+'raw_data_2', 'rb') as f:
-        raw_eic_dataframes = dill.load(f)
-        f.close()
-    with open(temp_path+'raw_data_4', 'rb') as f:
-        smoothed_eic_dataframes = dill.load(f)
-        f.close()
-            
+         
+    samples_aligned = False
     if align_chromatograms:
         if len(df2['Sample_Number']) > 1 and good_alignment: #aligns the chromatograms, may take some time (around 1 minute per sample, depending on run length)
+                
             time_formatted = str(datetime.datetime.now()).split(" ")[-1].split(".")[0]+" - "
             print(time_formatted+"Aligning chromatograms...", end='', flush=True)
-            smoothed_eic_dataframes = align_assignments(smoothed_eic_dataframes, 'chromatograms', multithreaded, number_cores, aligned_total_glycans[1])
+            align_assignments(df2, 'chromatograms', multithreaded, number_cores, temp_folder, gg_file, aligned_total_glycans[1], None, iso_fit_score, curve_fit_score, max_ppm, sn)
+            samples_aligned = True
             print("Done!")
         
-    for i_i, i in enumerate(df1_refactor): #this selects only the found glycans to draw their EIC
-        found_eic_raw_dataframes.append({})
-        found_eic_raw_dataframes[i_i]['RTs_'+str(i_i)] = raw_eic_dataframes[i_i]['RTs_'+str(i_i)]
+    
+    # Select found glycans EICs
+    found_eic_processed_dataframes = []
+    for i_i, i in enumerate(df1_refactor):
         found_eic_processed_dataframes.append({})
-        found_eic_processed_dataframes[i_i]['RTs_'+str(i_i)] = smoothed_eic_dataframes[i_i]['RTs_'+str(i_i)]
+        
+        eic_name = 'RTs'
+        if samples_aligned:
+            with open(os.path.join(temp_folder, f"{i_i}_aligned_{eic_name}_{iso_fit_score}_{curve_fit_score}_{max_ppm}_{sn}"), "rb") as f:
+                found_eic_processed_dataframes[i_i]['RTs_'+str(i_i)] = dill.load(f)
+                f.close()
+        else:
+            found_eic_processed_dataframes[i_i]['RTs_'+str(i_i)] = General_Functions.access_chromatogram(i_i, f"{i_i}_{eic_name}", temp_folder, gg_file)
+        
         for j_j, j in enumerate(i['Glycan']):
             query = j+"+"+i['Adduct'][j_j]+" - "+str(i['mz'][j_j])
             try:
-                found_eic_raw_dataframes[i_i][query] = raw_eic_dataframes[i_i][query]
-                found_eic_processed_dataframes[i_i][query] = smoothed_eic_dataframes[i_i][query]
+                found_eic_processed_dataframes[i_i][query] = General_Functions.access_chromatogram(i_i, f"{i_i}_smoothed_{query}", temp_folder, gg_file)
             except:
                 pass
-    found_eic_processed_dataframes_simplified = [] #combines adducts EICs
+    
+    # Combines adducts of found EICs (deconvolution)
+    found_eic_processed_dataframes_simplified = []
     found_eic_processed_dataframes_copy = copy.deepcopy(found_eic_processed_dataframes)
     for i_i, i in enumerate(found_eic_processed_dataframes_copy):
         current_glycan = ""
@@ -2540,23 +2537,21 @@ def output_filtered_data(curve_fit_score,
                     found_eic_processed_dataframes_simplified[i_i][working_glycan][k_k] += k
     del found_eic_processed_dataframes_copy
     
+    # Print found EICs to excel files
     time_formatted = str(datetime.datetime.now()).split(" ")[-1].split(".")[0]+" - "
     print(time_formatted+"Creating data plotting files...", end='', flush=True)
-    with ExcelWriter(save_path+begin_time+'_Found_Glycans_EICs.xlsx') as writer:
+    with ExcelWriter(os.path.join(save_path, begin_time+'_Found_Glycans_EICs.xlsx')) as writer:
         df2.to_excel(writer, sheet_name="Index references", index = False)
         General_Functions.autofit_columns_excel(df2, writer.sheets["Index references"])
-        for i_i, i in enumerate(found_eic_raw_dataframes):
-            found_eic_raw_dataframes_df = DataFrame(i)
+        for i_i, i in enumerate(found_eic_processed_dataframes_simplified):
             found_eic_processed_dataframes_simplified_df = DataFrame(found_eic_processed_dataframes_simplified[i_i])
-            found_eic_raw_dataframes_df.to_excel(writer, sheet_name="RAW_Sample_"+str(i_i), index = False)
             found_eic_processed_dataframes_simplified_df.to_excel(writer, sheet_name="Processed_Sample_"+str(i_i), index = False)
     del found_eic_processed_dataframes_simplified
     del found_eic_processed_dataframes_simplified_df
-    del found_eic_raw_dataframes
-    del found_eic_raw_dataframes_df
     
+    # Plot isotopic fittings and curve fittings on demand
     if output_isotopic_fittings:
-        with open(temp_path+'raw_data_6', 'rb') as f: #start of isotopic fits output
+        with open(os.path.join(temp_folder, 'isotopic_fittings'), 'rb') as f: #start of isotopic fits output
             isotopic_fits_dataframes = dill.load(f)
             f.close()
             
@@ -2597,7 +2592,7 @@ def output_filtered_data(curve_fit_score,
                 executor.submit(write_iso_to_excel, save_path, begin_time, i_i, i, isotopic_fits_dataframes_arranged, biggest_len)
         del isotopic_fits_dataframes_arranged
         
-        with open(temp_path+'raw_data_5', 'rb') as f:
+        with open(os.path.join(temp_folder, 'curve_fittings'), 'rb') as f:
             curve_fitting_dataframes = dill.load(f)
             f.close()
         biggest_len = 0
@@ -2611,7 +2606,7 @@ def output_filtered_data(curve_fit_score,
                     while len(i[j]) < biggest_len:
                         i[j].append(None)
                         
-        with ExcelWriter(save_path+begin_time+'_curve_fitting_Plot_Data.xlsx') as writer:
+        with ExcelWriter(os.path.join(save_path, begin_time+'_curve_fitting_Plot_Data.xlsx')) as writer:
             df2.to_excel(writer, sheet_name="Index references", index = False)
             General_Functions.autofit_columns_excel(df2, writer.sheets["Index references"])
             for i_i, i in enumerate(curve_fitting_dataframes):
@@ -2630,32 +2625,66 @@ def output_filtered_data(curve_fit_score,
                 else:
                     curve_df = DataFrame(curve_fitting_dataframes[i_i])
                     curve_df.to_excel(writer, sheet_name="Sample_"+str(i_i), index = False)
+                    
         del curve_fitting_dataframes
         del curve_df        
         
-    
+    # Prints EIC of all glycans
     if output_plot_data:
-        with ExcelWriter(save_path+begin_time+'_processed_EIC_Plot_Data.xlsx') as writer: #smoothed eic, now changed to processed to avoid TMI
+        with open(os.path.join(temp_folder, "eics_list"), "rb") as f:
+            eics = dill.load(f)
+            f.close()
+    
+        with ExcelWriter(os.path.join(save_path, begin_time+'_processed_EIC_Plot_Data.xlsx')) as writer: #smoothed eic, now changed to processed to avoid TMI
             df2.to_excel(writer, sheet_name="Index references", index = False)
             General_Functions.autofit_columns_excel(df2, writer.sheets["Index references"])
-            for i_i, i in enumerate(smoothed_eic_dataframes):
-                smoothed_eic_df = DataFrame(i)
+            
+            for i_i in eics:
+                smoothed_eic_dataframes = {}
+                
+                eic_name = "RTs"
+                if samples_aligned:
+                    rts_name = f"{i_i}_aligned_{eic_name}_{iso_fit_score}_{curve_fit_score}_{max_ppm}_{sn}"
+                else:
+                    rts_name = f"{i_i}_{eic_name}"
+                    
+                smoothed_eic_dataframes[f"RTs_{i_i}"] = General_Functions.access_chromatogram(i_i, rts_name, temp_folder, gg_file)
+                
+                for j_j, j in enumerate(eics[i_i]):
+                    if j_j == 0:
+                        continue
+                    file_name = str(i_i)+"_smoothed_"+j
+                    
+                    smoothed_eic_dataframes[j] = General_Functions.access_chromatogram(i_i, file_name, temp_folder, gg_file)
+                    
+                smoothed_eic_df = DataFrame(smoothed_eic_dataframes)
                 smoothed_eic_df.to_excel(writer, sheet_name="Sample_"+str(i_i), index = False)
         del smoothed_eic_dataframes
         del smoothed_eic_df
         
-        with ExcelWriter(save_path+begin_time+'_raw_EIC_Plot_Data.xlsx') as writer:
+        with ExcelWriter(os.path.join(save_path, begin_time+'_raw_EIC_Plot_Data.xlsx')) as writer:
             df2.to_excel(writer, sheet_name="Index references", index = False)
             General_Functions.autofit_columns_excel(df2, writer.sheets["Index references"])
-            for i_i, i in enumerate(raw_eic_dataframes):
-                raw_eic_df = DataFrame(i)
+                
+            for i_i in eics:
+                raw_eic_dataframes = {}
+                rts_name = str(i_i)+"_RTs"
+                
+                raw_eic_dataframes[f"RTs_{i_i}"] = General_Functions.access_chromatogram(i_i, rts_name, temp_folder, gg_file)
+                
+                for j_j, j in enumerate(eics[i_i]):
+                    if j_j == 0:
+                        continue
+                    file_name = str(i_i)+"_raw_"+j
+                    
+                    raw_eic_dataframes[j] = General_Functions.access_chromatogram(i_i, file_name, temp_folder, gg_file)
+                        
+                raw_eic_df = DataFrame(raw_eic_dataframes)
                 raw_eic_df.to_excel(writer, sheet_name="Sample_"+str(i_i), index = False)
         del raw_eic_dataframes
         del raw_eic_df
-    elif reanalysis and not output_plot_data:
-        del smoothed_eic_dataframes
-        del raw_eic_dataframes
-    shutil.rmtree(temp_path)
+        del eics
+        
     print("Done!")
     
 def arrange_iso_outputs(i_i,
@@ -2763,12 +2792,24 @@ def write_iso_to_excel(save_path,
     except KeyboardInterrupt:
         print("\n\n----------Execution cancelled by user.----------\n", flush=True)
         raise SystemExit(1)
+        
+def combine_raw_data_per_sample(sample_no, temp_folder):
+    '''
+    '''
+    files_list = os.listdir(temp_folder)
+    with zipfile.ZipFile(os.path.join(temp_folder, f"{sample_no}_eics"), 'w', compression=zipfile.ZIP_DEFLATED) as zipf:
+        for file in files_list:
+            if file[:2] == f"{sample_no}_":
+                zipf.write(os.path.join(temp_folder, file), arcname=file)
+                os.remove(os.path.join(temp_folder, file))
 
 def arrange_raw_data(analyzed_data,
                      samples_names,
                      analyze_ms2,
                      save_path,
                      parameters,
+                     library,
+                     temp_folder,
                      file_name = None,
                      from_GUI = False):
     '''Arrange the raw results data into pickled files to be processed by output_filtered_data.
@@ -2814,29 +2855,31 @@ def arrange_raw_data(analyzed_data,
     date = datetime.datetime.now()
     begin_time = str(date)[2:4]+str(date)[5:7]+str(date)[8:10]+"_"+str(date)[11:13]+str(date)[14:16]+str(date)[17:19]
     date, time = begin_time.split("_")
-    temp_path = save_path+begin_time+"_Temp/"
     time_formatted = str(datetime.datetime.now()).split(" ")[-1].split(".")[0]+" - "
     print(time_formatted+'Arranging raw data...', end='', flush = True)
     df1 = []
     df2 = {"Sample_Number" : [], "File_Name" : [], "Average_Noise_Level" : []}
-    raw_eic_dataframes = []
-    eic_dataframes = []
-    smoothed_eic_dataframes = []
+    eics_list = {}
     curve_fitting_dataframes = []
     isotopic_fits_dataframes = []
     if analyze_ms2:
         fragments_dataframes = []
     for i_i, i in enumerate(samples_names):
         isotopic_fits_dataframes.append({})
-        raw_eic_dataframes.append({})
-        eic_dataframes.append({})
-        smoothed_eic_dataframes.append({})
+        
         temp_eic_rt = []
         for j in analyzed_data[1][i_i]:
             temp_eic_rt.append(j)
-        raw_eic_dataframes[i_i]['RTs_'+str(i_i)] = temp_eic_rt
-        eic_dataframes[i_i]['RTs_'+str(i_i)] = temp_eic_rt
-        smoothed_eic_dataframes[i_i]['RTs_'+str(i_i)] = temp_eic_rt
+        
+        # Name of EIC        
+        eic_name = 'RTs'
+        eics_list[i_i] = [f'RTs_{i_i}']
+        
+        # Create the retention time list for the samples
+        with open(os.path.join(temp_folder, f"{i_i}_{eic_name}"), 'wb') as f:
+            dill.dump(temp_eic_rt, f)
+            f.close()
+            
         curve_fitting_dataframes.append({})
         df2["Sample_Number"].append(i_i)
         df2["File_Name"].append(i)
@@ -2846,32 +2889,60 @@ def arrange_raw_data(analyzed_data,
             fragments_dataframes.append({"Glycan" : [], "Adduct" : [], "Precursor_mz" : [], "Fragment" : [], "Fragment_mz" : [], "Fragment_Intensity" : [], "RT" : [], "% TIC explained" : []})
         else:
             df1.append({"Glycan" : [], "Adduct" : [], "mz" : [], "RT" : [], "AUC" : [], "PPM" : [], "S/N" : [], "Iso_Fitting_Score" : [], "Curve_Fitting_Score" : []})
-    for i_i, i in enumerate(analyzed_data[0]): #i = glycan (key)
-        for j_j, j in enumerate(analyzed_data[0][i]['Adducts_mz_data']): #j = adduct (key)
-            for k_k, k in enumerate(analyzed_data[0][i]['Adducts_mz_data'][j]): #k = sample number (key)
-                isotopic_fits_dataframes[k_k][i+'_'+j] = analyzed_data[0][i]['Adducts_mz_data'][j][k][4]
+            
+    for i_i, i in enumerate(library): #i = glycan (key)
+    
+        # Load data from file
+        with open(os.path.join(temp_folder, i), 'rb') as f:
+            glycan = dill.load(f)
+            f.close()
+            
+        for j_j, j in enumerate(glycan['Adducts_mz_data']): #j = adduct (key)
+            for k_k, k in enumerate(glycan['Adducts_mz_data'][j]): #k = sample number (key)
+                isotopic_fits_dataframes[k_k][i+'_'+j] = glycan['Adducts_mz_data'][j][k][4]
+                
+                # Determine names of EICs
+                eic_name = str(i)+'+'+str(j)+' - '+str(float("%.4f" % round(glycan['Adducts_mz'][j], 4)))
+                eics_list[k_k].append(eic_name)
+                
+                # Raw EIC
                 temp_eic_int = []
-                for l in analyzed_data[0][i]['Adducts_mz_data'][j][k][3]:
+                for l in glycan['Adducts_mz_data'][j][k][3]:
                     temp_eic_int.append(int(l))
-                raw_eic_dataframes[k_k][str(i)+'+'+str(j)+' - '+str(float("%.4f" % round(analyzed_data[0][i]['Adducts_mz'][j], 4)))] = temp_eic_int
+                
+                # Create the Raw EIC files for the samples and glycans
+                with open(os.path.join(temp_folder, f"{k_k}_raw_{eic_name}"), 'wb') as f:
+                    dill.dump(temp_eic_int, f)
+                    f.close()
+                
                 temp_eic_int = []
-                for l in analyzed_data[0][i]['Adducts_mz_data'][j][k][0]:
+                for l in glycan['Adducts_mz_data'][j][k][0]:
                     temp_eic_int.append(int(l))
-                eic_dataframes[k_k][str(i)+'+'+str(j)+' - '+str(float("%.4f" % round(analyzed_data[0][i]['Adducts_mz'][j], 4)))] = temp_eic_int
+                
+                # Create the Filtered EIC files for the samples and glycans
+                # with open(os.path.join(temp_folder, f"{k_k}_eic_{eic_name}"), 'wb') as f:
+                    # dill.dump(temp_eic_int, f)
+                    # f.close()
+                    
                 temp_eic_int = []
-                for l in analyzed_data[0][i]['Adducts_mz_data'][j][k][2]:
+                for l in glycan['Adducts_mz_data'][j][k][2]:
                     temp_eic_int.append(int(l))
-                smoothed_eic_dataframes[k_k][str(i)+'+'+str(j)+' - '+str(float("%.4f" % round(analyzed_data[0][i]['Adducts_mz'][j], 4)))] = temp_eic_int
+                    
+                # Create the Smoothed EIC files for the samples and glycans
+                with open(os.path.join(temp_folder, f"{k_k}_smoothed_{eic_name}"), 'wb') as f:
+                    dill.dump(temp_eic_int, f)
+                    f.close()
+                    
             found = False
-            for k_k, k in enumerate(analyzed_data[0][i]['Adducts_mz_data'][j]):
-                if len(analyzed_data[0][i]['Adducts_mz_data'][j][k][1]) != 0:
+            for k_k, k in enumerate(glycan['Adducts_mz_data'][j]):
+                if len(glycan['Adducts_mz_data'][j][k][1]) != 0:
                     found = True
             if not found:
                 continue
-            for k_k, k in enumerate(analyzed_data[0][i]['Adducts_mz_data'][j]): #k = sample (key)
+            for k_k, k in enumerate(glycan['Adducts_mz_data'][j]): #k = sample (key)
                 df1[k_k]["Glycan"].append(i)
                 df1[k_k]["Adduct"].append(j)
-                df1[k_k]["mz"].append(float("%.4f" % round(analyzed_data[0][i]['Adducts_mz'][j], 4)))
+                df1[k_k]["mz"].append(float("%.4f" % round(glycan['Adducts_mz'][j], 4)))
                 temp_rts = []
                 temp_aucs = []
                 temp_ppm = []
@@ -2879,7 +2950,7 @@ def arrange_raw_data(analyzed_data,
                 temp_iso_score = []
                 temp_curve_score = []
                 temp_curve_data_total = []
-                for l_l, l in enumerate(analyzed_data[0][i]['Adducts_mz_data'][j][k][1]):
+                for l_l, l in enumerate(glycan['Adducts_mz_data'][j][k][1]):
                     temp_rts.append(float("%.4f" % round(l['rt'], 4)))
                     temp_aucs.append(float("%.2f" % round(l['AUC'], 2)))
                     temp_ppm.append(float("%.2f" % round(l['Average_PPM'][0], 2)))
@@ -2901,7 +2972,13 @@ def arrange_raw_data(analyzed_data,
                         temp_curve_data_ideal.append(l['Curve_Fit_Score'][3][m_m])
                     temp_curve_data_total.append((temp_curve_data_rt, temp_curve_data_actual, temp_curve_data_ideal))
                 if analyze_ms2:
-                    temp_fragments = analyzed_data[3][i][j][k_k]
+                
+                    # Load MS2 data
+                    with open(os.path.join(temp_folder, 'frag_data_'+i), 'rb') as f:
+                        glycan_fragments = dill.load(f)
+                        f.close()
+                    temp_fragments = glycan_fragments[j][k_k]
+                    
                 if len(temp_rts) == 0:
                     df1[k_k]["RT"].append([0.0])
                     df1[k_k]["AUC"].append([0.0])
@@ -2946,8 +3023,17 @@ def arrange_raw_data(analyzed_data,
                         for n in temp_curve_data_total[m_m][2]:
                             temp_array.append(int(n))
                         curve_fitting_dataframes[k_k][str(i)+"+"+str(j)+"_"+str(m)+"_Ideal_ints"] = temp_array
-    pathlib.Path(temp_path).mkdir(exist_ok = True, parents = True)
-    with open(temp_path+'raw_data_1', 'wb') as f:
+        try:
+            os.remove(os.path.join(temp_folder, i))
+            if analyze_ms2:
+                os.remove(os.path.join(temp_folder, 'frag_data_'+i))
+        except:
+            pass
+            
+    for i_i, i in enumerate(samples_names):
+        combine_raw_data_per_sample(i_i, temp_folder)
+                        
+    with open(os.path.join(temp_folder, 'results'), 'wb') as f:
         if analyze_ms2:
             dill.dump([df1, df2, fragments_dataframes, version], f)
             del df1
@@ -2958,27 +3044,20 @@ def arrange_raw_data(analyzed_data,
             del df1
             del df2
         f.close()
-    with open(temp_path+'raw_data_2', 'wb') as f:
-        dill.dump(raw_eic_dataframes, f)
-        del raw_eic_dataframes
+        
+    with open(os.path.join(temp_folder, 'eics_list'), 'wb') as f:
+        dill.dump(eics_list, f)
         f.close()
-    with open(temp_path+'raw_data_3', 'wb') as f:
-        dill.dump(eic_dataframes, f)
-        del eic_dataframes
-        f.close()
-    with open(temp_path+'raw_data_4', 'wb') as f:
-        dill.dump(smoothed_eic_dataframes, f)
-        del smoothed_eic_dataframes
-        f.close()
-    with open(temp_path+'raw_data_5', 'wb') as f:
+        
+    with open(os.path.join(temp_folder, 'curve_fittings'), 'wb') as f:
         dill.dump(curve_fitting_dataframes, f)
         del curve_fitting_dataframes
         f.close()
-    with open(temp_path+'raw_data_6', 'wb') as f:
+    with open(os.path.join(temp_folder, 'isotopic_fittings'), 'wb') as f:
         dill.dump(isotopic_fits_dataframes, f)
         del isotopic_fits_dataframes
         f.close()
-    with open(temp_path+'raw_data_7', 'wb') as f:
+    with open(os.path.join(temp_folder, 'metadata'), 'wb') as f:
         parameters.append(begin_time)
         dill.dump(parameters, f)
         f.close()
@@ -3016,12 +3095,11 @@ def arrange_raw_data(analyzed_data,
                     gg_name = gg_name
                 break
                 
-    General_Functions.make_gg(temp_path, save_path, gg_name)
+    General_Functions.make_gg(temp_folder, save_path, gg_name)
     print("Done!")
     if from_GUI:
         time_formatted = str(datetime.datetime.now()).split(" ")[-1].split(".")[0]+" - "
         print(time_formatted+"File name is '"+gg_name+".gg'.")
-        shutil.rmtree(temp_path)
     return begin_time
 
 def print_sep(): ##Complete
@@ -3142,6 +3220,7 @@ def analyze_files(library,
                   multithreaded,
                   number_cores,
                   begin_time,
+                  temp_folder,
                   from_GUI = False): ##Complete
     '''Integrates all the file-accessing associated functions in this script to go
     through the files data, draw and process eic of hypothetical glycans, does 
@@ -3216,7 +3295,6 @@ def analyze_files(library,
     noise : dict
         A dictionary containing the noise level for each sample.
     '''
-    analyzed_data = {}
     mean_sel_peaks = 0.0
     noise = {}
     noise_avg = {}
@@ -3356,27 +3434,36 @@ def analyze_files(library,
                 result_data = i.result()
                 time_formatted = str(datetime.datetime.now()).split(" ")[-1].split(".")[0]+" - "
                 print(time_formatted+'Traced glycan '+str(result_data[1])+': '+str(index+1)+'/'+str(lib_size))
-                analyzed_data[result_data[1]] = result_data[0]
-            
-            # Pickling all the data into separate files
-            # with open("D:/Arquivos/Desktop/test/"+result_data[1], 'wb') as f:
-                # dill.dump(result_data[0], f)
-                # f.close()
+                
+                # Pickling all the data into separate files
+                with open(os.path.join(temp_folder, result_data[1]), 'wb') as f:
+                    dill.dump(result_data[0], f)
+                    f.close()
                 
             results[index] = None
     
     for i in ambiguities: #sorts ambiguities
-        analyzed_data[i] = analyzed_data[ambiguities[i][0]]
+        shutil.copy(os.path.join(temp_folder, ambiguities[i][0]), os.path.join(temp_folder, i))
+        with open(os.path.join(temp_folder, i), 'rb') as f:
+            glycan = dill.load(f)
+            f.close()
+        glycan['Monos_Composition'] = General_Functions.sum_monos(General_Functions.default_composition, General_Functions.form_to_comp(i))
+        with open(os.path.join(temp_folder, i), 'wb') as f:
+            dill.dump(glycan, f)
+            f.close()
+        
     
     if is_result != None:
         time_formatted = str(datetime.datetime.now()).split(" ")[-1].split(".")[0]+" - "
         print(time_formatted+'Traced Internal Standard: '+str(lib_size)+'/'+str(lib_size))
-        analyzed_data['Internal Standard'] = is_result.result()[0]
+        with open(os.path.join(temp_folder, 'Internal Standard'), 'wb') as f:
+            dill.dump(is_result.result()[0], f)
+            f.close()
         del is_result
         
     time_formatted = str(datetime.datetime.now()).split(" ")[-1].split(".")[0]+" - "
     print(time_formatted+'MS1 tracing done in '+str(datetime.datetime.now() - begin_time).split(".")[0]+'!')
-    return analyzed_data, rt_array_report, noise_avg
+    return None, rt_array_report, noise_avg
     
 def analyze_glycan(library,
                   lib_size,
@@ -3587,6 +3674,8 @@ def analyze_ms2(ms2_index,
                 rt_tolerance,
                 multithreaded,
                 number_cores,
+                library,
+                temp_folder,
                 from_GUI = False):
     '''Analyzes the MS2 data in the sample files, outputting the found matches.
     
@@ -3714,13 +3803,17 @@ def analyze_ms2(ms2_index,
     if no_ms2:
         print('No MS2 data to analyze...')
         dummy_fragment_data = {}
-        for i in analyzed_data[0]:
+        for i in library:
             dummy_fragment_data[i] = {}
-            for j in analyzed_data[0][i]['Adducts_mz_data']:
+            for j in library[i]['Adducts_mz']:
                 dummy_fragment_data[i][j] = {}
                 for k_k, k in enumerate(data):
                     dummy_fragment_data[i][j][k_k] = []
-        return analyzed_data[0], analyzed_data[1], analyzed_data[2], dummy_fragment_data
+            with open(os.path.join(temp_folder, 'frag_data_'+result_data[1]), 'wb') as f:
+                dill.dump(dummy_fragment_data[i], f)
+                f.close()
+            dummy_fragment_data[i] = None
+        return library, analyzed_data[1], analyzed_data[2]
     time_formatted = str(datetime.datetime.now()).split(" ")[-1].split(".")[0]+" - "
     print(time_formatted+'Analyzing MS2 data...')
     fragments = Library_Tools.fragments_library(min_max_monos,
@@ -3775,13 +3868,16 @@ def analyze_ms2(ms2_index,
     else:
         cpu_count = 1
     with concurrent.futures.ProcessPoolExecutor(max_workers = cpu_count if cpu_count < 60 else 60) as executor:
-        for i_i, i in enumerate(analyzed_data[0]): #goes through each glycan found in analysis
+        for i_i, i in enumerate(library): #goes through each glycan found in analysis
+            with open(os.path.join(temp_folder, i), 'rb') as f:
+                glycan = dill.load(f)
+                f.close()
             result = executor.submit(analyze_glycan_ms2,
                                      ms2_index,
                                      fragments,
                                      indexed_fragments,
                                      data, 
-                                     analyzed_data, 
+                                     glycan, 
                                      lactonized_ethyl_esterified,
                                      rt_interval,
                                      tolerance,
@@ -3796,13 +3892,15 @@ def analyze_ms2(ms2_index,
         for index, i in enumerate(results):
             result_data = i.result()
             time_formatted = str(datetime.datetime.now()).split(" ")[-1].split(".")[0]+" - "
-            print(time_formatted+'Analyzed glycan '+str(result_data[1])+': '+str(index+1)+'/'+str(len(analyzed_data[0])))
-            fragments_data[result_data[1]] = result_data[0]
+            print(time_formatted+'Analyzed glycan '+str(result_data[1])+': '+str(index+1)+'/'+str(len(library)))
+            with open(os.path.join(temp_folder, 'frag_data_'+result_data[1]), 'wb') as f:
+                dill.dump(result_data[0], f)
+                f.close()
             results[index] = None
         
     time_formatted = str(datetime.datetime.now()).split(" ")[-1].split(".")[0]+" - "
     print(time_formatted+'MS2 analysis done in '+str(datetime.datetime.now() - begin_time).split(".")[0]+'!')
-    return analyzed_data[0], analyzed_data[1], analyzed_data[2], fragments_data
+    return library, analyzed_data[1], analyzed_data[2]
                                  
 def analyze_glycan_ms2(ms2_index,
                        fragments,
@@ -3872,14 +3970,14 @@ def analyze_glycan_ms2(ms2_index,
         fragments_mz_list = list(indexed_fragments.keys())
         superscripts = {'0': '⁰', '1': '¹', '2': '²', '3': '³', '4': '⁴', '5': '⁵', '6': '⁶', '7': '⁷', '8': '⁸', '9': '⁹', '+': '⁺', '-': '⁻', '=': '⁼', '(': '⁽', ')': '⁾', 'n': 'ⁿ', 'i': 'ⁱ'}
         fragments_data = {}
-        for j_j, j in enumerate(analyzed_data[0][i]['Adducts_mz_data']): #goes through each adduct
+        for j_j, j in enumerate(analyzed_data['Adducts_mz_data']): #goes through each adduct
             adduct_charge = General_Functions.form_to_charge(j)
             fragments_data[j] = {}
             for k_k, k in enumerate(data): #goes through each file
                 fragments_data[j][k_k] = []
                 if len(ms2_index[k_k]) == 0:
                     continue
-                if len(analyzed_data[0][i]['Adducts_mz_data'][j][k_k][1]) == 0 and not unrestricted_fragments: #checks if found the adduct
+                if len(analyzed_data['Adducts_mz_data'][j][k_k][1]) == 0 and not unrestricted_fragments: #checks if found the adduct
                     continue
                 for l in ms2_index[k_k]:
                     if len(k[l]['intensity array']) == 0: #skips spectra without peaks
@@ -3888,10 +3986,10 @@ def analyze_glycan_ms2(ms2_index,
                         if k[l]['retentionTime'] < rt_interval[0] or k[l]['retentionTime'] > rt_interval[1]: #unrestricted_fragments checks for glycans not found in MS1 analysis, so it looks through the whole retention time selected
                             continue
                     else:
-                        if k[l]['retentionTime'] < analyzed_data[0][i]['Adducts_mz_data'][j][k_k][1][0]['peak_interval'][0] - rt_tolerance or k[l]['retentionTime'] > analyzed_data[0][i]['Adducts_mz_data'][j][k_k][1][-1]['peak_interval'][1] + rt_tolerance: #skips spectra outside peak interval of peaks found
+                        if k[l]['retentionTime'] < analyzed_data['Adducts_mz_data'][j][k_k][1][0]['peak_interval'][0] - rt_tolerance or k[l]['retentionTime'] > analyzed_data['Adducts_mz_data'][j][k_k][1][-1]['peak_interval'][1] + rt_tolerance: #skips spectra outside peak interval of peaks found
                             continue       
                     found_matching_mz = False #checks if precursor matches adduct mz
-                    for m_m, m in enumerate(analyzed_data[0][i]['Isotopic_Distribution_Masses']): 
+                    for m_m, m in enumerate(analyzed_data['Isotopic_Distribution_Masses']): 
                         if m_m > 4:
                             break
                         target_mz = (m+(General_Functions.h_mass*adduct_charge))/abs(adduct_charge)
@@ -3935,24 +4033,24 @@ def analyze_glycan_ms2(ms2_index,
                             good_fragments = []
                             for n_n, n in enumerate(possible_fragments):
                                 if lactonized_ethyl_esterified:
-                                    if (n[0]['Monos_Composition']['H'] <= analyzed_data[0][i]['Monos_Composition']['H']
-                                        and n[0]['Monos_Composition']['N'] <= analyzed_data[0][i]['Monos_Composition']['N'] 
-                                        and n[0]['Monos_Composition']['Am'] <= analyzed_data[0][i]['Monos_Composition']['Am'] 
-                                        and n[0]['Monos_Composition']['E'] <= analyzed_data[0][i]['Monos_Composition']['E'] 
-                                        and n[0]['Monos_Composition']['F'] <= analyzed_data[0][i]['Monos_Composition']['F'] 
-                                        and n[0]['Monos_Composition']['AmG'] <= analyzed_data[0][i]['Monos_Composition']['AmG'] 
-                                        and n[0]['Monos_Composition']['EG'] <= analyzed_data[0][i]['Monos_Composition']['EG'] 
-                                        and n[0]['Monos_Composition']['HN'] <= analyzed_data[0][i]['Monos_Composition']['HN'] 
-                                        and n[0]['Monos_Composition']['UA'] <= analyzed_data[0][i]['Monos_Composition']['UA']):
+                                    if (n[0]['Monos_Composition']['H'] <= analyzed_data['Monos_Composition']['H']
+                                        and n[0]['Monos_Composition']['N'] <= analyzed_data['Monos_Composition']['N'] 
+                                        and n[0]['Monos_Composition']['Am'] <= analyzed_data['Monos_Composition']['Am'] 
+                                        and n[0]['Monos_Composition']['E'] <= analyzed_data['Monos_Composition']['E'] 
+                                        and n[0]['Monos_Composition']['F'] <= analyzed_data['Monos_Composition']['F'] 
+                                        and n[0]['Monos_Composition']['AmG'] <= analyzed_data['Monos_Composition']['AmG'] 
+                                        and n[0]['Monos_Composition']['EG'] <= analyzed_data['Monos_Composition']['EG'] 
+                                        and n[0]['Monos_Composition']['HN'] <= analyzed_data['Monos_Composition']['HN'] 
+                                        and n[0]['Monos_Composition']['UA'] <= analyzed_data['Monos_Composition']['UA']):
                                             good_fragments.append(n_n)
                                 else:
-                                    if (n[0]['Monos_Composition']['H'] <= analyzed_data[0][i]['Monos_Composition']['H']
-                                        and n[0]['Monos_Composition']['N'] <= analyzed_data[0][i]['Monos_Composition']['N'] 
-                                        and n[0]['Monos_Composition']['S'] <= analyzed_data[0][i]['Monos_Composition']['S'] 
-                                        and n[0]['Monos_Composition']['F'] <= analyzed_data[0][i]['Monos_Composition']['F'] 
-                                        and n[0]['Monos_Composition']['G'] <= analyzed_data[0][i]['Monos_Composition']['G'] 
-                                        and n[0]['Monos_Composition']['HN'] <= analyzed_data[0][i]['Monos_Composition']['HN'] 
-                                        and n[0]['Monos_Composition']['UA'] <= analyzed_data[0][i]['Monos_Composition']['UA']):
+                                    if (n[0]['Monos_Composition']['H'] <= analyzed_data['Monos_Composition']['H']
+                                        and n[0]['Monos_Composition']['N'] <= analyzed_data['Monos_Composition']['N'] 
+                                        and n[0]['Monos_Composition']['S'] <= analyzed_data['Monos_Composition']['S'] 
+                                        and n[0]['Monos_Composition']['F'] <= analyzed_data['Monos_Composition']['F'] 
+                                        and n[0]['Monos_Composition']['G'] <= analyzed_data['Monos_Composition']['G'] 
+                                        and n[0]['Monos_Composition']['HN'] <= analyzed_data['Monos_Composition']['HN'] 
+                                        and n[0]['Monos_Composition']['UA'] <= analyzed_data['Monos_Composition']['UA']):
                                             good_fragments.append(n_n)
                             if len(good_fragments) == 0:
                                 continue

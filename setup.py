@@ -27,7 +27,7 @@ with open("README.md", "r", encoding="utf-8") as f:
 
 setup(
     name='glycogenius',
-    version='1.1.41',
+    version='1.2.0',
     author='Hector Franco Loponte',
     author_email='hectorfloponte@gmail.com',
     description='GlycoGenius is an all-in-one solution for data analysis of glycomics data.',
@@ -40,10 +40,12 @@ setup(
         'Operating System :: OS Independent',
     ],
     python_requires='>=3.6',
-    install_requires=["pandas==2.1.3", "scipy==1.11.4", "pyteomics==4.6.3",
-                     "dill==0.3.7", "numpy==1.26.4", "lxml==4.9.3",
-                     "openpyxl==3.1.2", "setuptools==72.2.0",
-                     "xlsxwriter==3.2.0"],
+    install_requires=[
+        "pandas", "scipy", "pyteomics",
+        "dill", "numpy==1.26.4", "lxml",
+        "openpyxl", "setuptools",
+        "xlsxwriter"
+    ],
     entry_points={
         'console_scripts': [
             'glycogenius = glycogenius:glycogenius',

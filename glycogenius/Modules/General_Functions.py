@@ -25,12 +25,15 @@ from statistics import stdev, mean
 from scipy.stats import linregress
 from scipy.sparse.linalg import splu
 from scipy import sparse
+import dill
 import numpy
 import sys
 import datetime
 import xlsxwriter
 import zipfile
 import pathlib
+import tempfile
+import shutil
 import os
 
 ##---------------------------------------------------------------------------------------
@@ -54,6 +57,8 @@ monosaccharides = {
 and a tuple containing the full monosaccharide name, its full molecular formula and its
 residue composition in dict form as value.
 '''
+
+default_composition = {"H": 0, "N": 0, "X": 0, "S": 0, "Am": 0, "E": 0, "F": 0, "G": 0, "AmG": 0, "EG": 0, "HN": 0, "UA": 0}
 
 h_mass = mass.calculate_mass(composition={'H' : 1})
 '''The mass of an hydrogen-1 atom. Pre-calculated here to avoid calculating too many
@@ -284,11 +289,11 @@ def make_gg(temp_dir, save_dir, filename):
         Creates filename.gg file, containing files in temp_dir, at the save_dir.
     '''
     files_list = os.listdir(temp_dir)
-    with zipfile.ZipFile(save_dir+filename+".gg", 'w', compression=zipfile.ZIP_DEFLATED) as zipf:
+    with zipfile.ZipFile(os.path.join(save_dir, filename+".gg"), 'w', compression=zipfile.ZIP_DEFLATED) as zipf:
         for file in files_list:
-            zipf.write(temp_dir+"/"+str(file), arcname=file)
+            zipf.write(os.path.join(temp_dir, file), arcname=file)
             
-def open_gg(gg_file, temp_path):
+def open_gg(gg_file, temp_path, file = 'all'):
     '''Unzipts the .gg file to temp_path.
     
     Parameters
@@ -313,8 +318,23 @@ def open_gg(gg_file, temp_path):
         Extracts raw_data files from gg_file to temp_path.
     '''
     with zipfile.ZipFile(gg_file, 'r') as zip_ref:
-        zip_ref.extractall(temp_path)
-    
+        if file == 'all':
+            zip_ref.extractall(temp_path)
+        else:
+            zip_ref.extract(file, temp_path)
+        zip_ref.close()
+        
+def access_chromatogram(file_number, chromatogram_name, temp_folder, reanalysis_path):
+    '''
+    '''
+    if chromatogram_name not in os.listdir(temp_folder):
+        if f'{file_number}_eics' not in os.listdir(temp_folder):
+            open_gg(reanalysis_path, temp_folder, f'{file_number}_eics')
+        open_gg(os.path.join(temp_folder, f'{file_number}_eics'), temp_folder, chromatogram_name)
+    with open(os.path.join(temp_folder, chromatogram_name), 'rb') as f:
+        chromatogram = dill.load(f)
+        f.close()
+    return chromatogram
 
 def calculate_ppm_diff(mz, target):
     '''Calculates the PPM difference between a mz and a target mz.

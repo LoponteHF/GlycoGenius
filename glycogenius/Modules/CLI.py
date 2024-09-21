@@ -27,11 +27,7 @@ import importlib
 import datetime
 import platform
 import os
-
-date = datetime.datetime.now()
-begin_time = str(date)[2:4]+str(date)[5:7]+str(date)[8:10]+"_"+str(date)[11:13]+str(date)[14:16]+str(date)[17:19]
-temp_folder = os.path.join(tempfile.gettempdir(), "gg_"+begin_time)
-os.makedirs(temp_folder, exist_ok=True)
+import dill
 
 def find_most_recent_version(ver1, ver2):
     '''
@@ -699,12 +695,13 @@ def interactive_terminal():
                 if var2 == 'n':
                     continue
                 if var2 == 'y' or var2 == '':
-                    for i_i, i in enumerate(var):
-                        if i == "\\":
-                            var = var[:i_i]+"/"+var[i_i+1:]
-                    if var[-1] != "/":
-                        var = var+"/"
-                    path = var
+                    try:
+                        var = var.strip('"')
+                        var = var.strip("'")
+                        path = pathlib.Path(var)
+                    except:
+                        input("\nWrong Input. Press Enter to try again.\n")
+                        continue
                     break
             if input_order[1] == 1:
                 return input_order, glycans_list, adducts, max_charges, tag_mass, fast_iso, high_res, path, permethylated, reduced, lacto_eesterified, forced, min_sulfation, max_sulfation, min_phosphorylation, max_phosphorylation
@@ -846,7 +843,7 @@ def interactive_terminal():
                 sn = var
                 break
             print("")
-            files = default_path+"Sample Files/"
+            files = os.path.join(default_path, "Sample Files/")
             while True:
                 var = input("Insert the path to the folder containing the\nsample files to be analyzed ( leave blank for\ndefault: "+default_path+"Sample Files/"+"): ")
                 if var == '':
@@ -856,15 +853,16 @@ def interactive_terminal():
                 if var2 == 'n':
                     continue
                 if var2 == 'y' or var2 == '':
-                    for i_i, i in enumerate(var):
-                        if i == "\\":
-                            var = var[:i_i]+"/"+var[i_i+1:]
-                    if var[-1] != "/":
-                        var = var+"/"
-                    files = var
+                    try:
+                        var = var.strip('"')
+                        var = var.strip("'")
+                        files = pathlib.Path(var)
+                    except:
+                        input("\nWrong Input. Press Enter to try again.\n")
+                        continue
                     break
             print("")
-            path = default_path
+            path = pathlib.Path(default_path)
             while True:
                 var = input("Insert the path to save the files produced by\nthe script (leave blank for default:\n"+default_path+"): ")
                 if var == '':
@@ -874,12 +872,13 @@ def interactive_terminal():
                 if var2 == 'n':
                     continue
                 if var2 == 'y' or var2 == '':
-                    for i_i, i in enumerate(var):
-                        if i == "\\":
-                            var = var[:i_i]+"/"+var[i_i+1:]
-                    if var[-1] != "/":
-                        var = var+"/"
-                    path = var
+                    try:
+                        var = var.strip('"')
+                        var = var.strip("'")
+                        path = pathlib.Path(var)
+                    except:
+                        input("\nWrong Input. Press Enter to try again.\n")
+                        continue
                     break
             if input_order[1] == 1:
                 return input_order, glycans_list, adducts, max_charges, tag_mass, fast_iso, high_res, ms2, accuracy_unit, accuracy_value, rt_int, min_isotop, max_ppm, iso_fit, curve_fit, sn, files, path, permethylated, reduced, lacto_eesterified, forced, min_sulfation, max_sulfation, min_phosphorylation, max_phosphorylation
@@ -896,12 +895,13 @@ def interactive_terminal():
             if var2 == 'n':
                 continue
             if var2 == 'y' or var2 == '':
-                for i_i, i in enumerate(var):
-                    if i == "\\":
-                        var = var[:i_i]+"/"+var[i_i+1:]
-                if var[-1] != "/":
-                    var = var+"/"
-                path = var
+                try:
+                    var = var.strip('"')
+                    var = var.strip("'")
+                    path = pathlib.Path(var)
+                except:
+                    input("\nWrong Input. Press Enter to try again.\n")
+                    continue
                 break
         print("")
         max_ppm = 10.0
@@ -980,12 +980,13 @@ def interactive_terminal():
             if var2 == 'n':
                 continue
             if var2 == 'y' or var2 == '':
-                for i_i, i in enumerate(var):
-                    if i == "\\":
-                        var = var[:i_i]+"/"+var[i_i+1:]
-                if var[-1] != "/":
-                    var = var+"/"
-                path = var
+                try:
+                    var = var.strip('"')
+                    var = var.strip("'")
+                    path = pathlib.Path(var)
+                except:
+                    input("\nWrong Input. Press Enter to try again.\n")
+                    continue
                 break
         return input_order, commented, path
         
@@ -1008,6 +1009,10 @@ def CLI():
     functions arguments
         Organized arguments for the various functions used in core module.
     '''
+
+    date = datetime.datetime.now()
+    begin_time = str(date)[2:4]+str(date)[5:7]+str(date)[8:10]+"_"+str(date)[11:13]+str(date)[14:16]+str(date)[17:19]
+    
     custom_glycans_list = [False, []]
     min_max_monos = [0, 0]
     min_max_hex = [0, 0]
@@ -1152,9 +1157,7 @@ def CLI():
             else:
                 min_max_sulfation = (parameters[11], parameters[12])
                 min_max_phosphorylation = (parameters[13], parameters[14])
-            save_path = parameters[7]
-            if save_path[-1] != "/":
-                save_path+= "/"
+            save_path = pathlib.Path(parameters[7])
             only_gen_lib = True
         if parameters[0][0] == 2: #if analyzing
             analyze_ms2 = parameters[7]
@@ -1184,7 +1187,7 @@ def CLI():
             for i in samples_names:
                 print("--> "+i)
             Execution_Functions.print_sep()
-            save_path = parameters[17]
+            save_path = pathlib.Path(parameters[17])
             permethylated = parameters[18]
             reduced = parameters[19]
             lactonized_ethyl_esterified = parameters[20]
@@ -1196,7 +1199,7 @@ def CLI():
                 min_max_sulfation = (parameters[21], parameters[22])
                 min_max_phosphorylation = (parameters[23], parameters[24])
     if parameters[0][0] == 3: #if reanalyzing
-        save_path = parameters[1]
+        save_path = pathlib.Path(parameters[1])
         max_ppm = parameters[2]
         iso_fit_score = parameters[3]
         curve_fit_score = parameters[4]
@@ -1204,54 +1207,46 @@ def CLI():
         reanalysis = (True, True)
     if parameters[0][0] == 4: #if exporting parameters template
         comments = parameters[1]
-        save_path = parameters[2]
+        save_path = pathlib.Path(parameters[2])
         Execution_Functions.generate_cfg_file(save_path, comments)
         
     if save_path != '':
         pathlib.Path(save_path).mkdir(exist_ok = True, parents = True)
         
     if library_path != '':
-        shutil.copy(library_path, os.path.join(temp_folder, 'glycans_library.py'))
-        spec = importlib.util.spec_from_file_location("glycans_library", temp_folder+"/glycans_library.py")
-        lib_module = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(lib_module)
-        try:
-            library_metadata = lib_module.metadata
-        except:
-            library_metadata = []
-        if len(library_metadata) > 0:
-            min_max_monos = library_metadata[0]
-            min_max_hex = library_metadata[1]
-            min_max_hexnac = library_metadata[2]
-            min_max_fuc = library_metadata[3]
-            min_max_sia = library_metadata[4]
-            min_max_ac = library_metadata[5]
-            min_max_gc = library_metadata[6]
-            if type(library_metadata[7]) == bool:
-                forced = 'n_glycans'
-            else:
-                forced = library_metadata[7]
-            max_adducts = library_metadata[8]
-            max_charges = library_metadata[9]
-            tag_mass = library_metadata[10]
-            internal_standard = library_metadata[11]
-            permethylated = library_metadata[12]
-            lactonized_ethyl_esterified = library_metadata[13]
-            reduced = library_metadata[14]
-            fast_iso = library_metadata[15]
-            high_res = library_metadata[16]   
-            if len(library_metadata) > 18:
-                min_max_xyl = library_metadata[18] 
-            if len(library_metadata) > 19:
-                min_max_hn = library_metadata[19]
-                min_max_ua = library_metadata[20]
-                min_max_sulfation = library_metadata[21]
-                min_max_phosphorylation = library_metadata[22]
+        with open(library_path, 'rb') as f:
+            library_data = dill.load(f)
+            f.close()
+        full_library = library_data[0]
+        library_metadata = library_data[1]
+        
+        min_max_monos = library_metadata[0]
+        min_max_hex = library_metadata[1]
+        min_max_hexnac = library_metadata[2]
+        min_max_fuc = library_metadata[3]
+        min_max_sia = library_metadata[4]
+        min_max_ac = library_metadata[5]
+        min_max_gc = library_metadata[6]
+        forced = library_metadata[7]
+        max_adducts = library_metadata[8]
+        max_charges = library_metadata[9]
+        tag_mass = library_metadata[10]
+        internal_standard = library_metadata[11]
+        permethylated = library_metadata[12]
+        lactonized_ethyl_esterified = library_metadata[13]
+        reduced = library_metadata[14]
+        fast_iso = library_metadata[15]
+        high_res = library_metadata[16]
+        min_max_xyl = library_metadata[18]
+        min_max_hn = library_metadata[19]
+        min_max_ua = library_metadata[20]
+        min_max_sulfation = library_metadata[21]
+        min_max_phosphorylation = library_metadata[22]
         
     #args to execution functions:
-    output_filtered_data_args = [curve_fit_score, iso_fit_score, s_to_n, max_ppm, percentage_auc, reanalysis, reanalysis_path, save_path, analyze_ms2[0], analyze_ms2[2], reporter_ions, plot_metaboanalyst, compositions, align_chromatograms, forced, ret_time_interval[2], rt_tolerance_frag, iso_fittings, output_plot_data, multithreaded_analysis, number_cores, 0.0, min_samples]
+    output_filtered_data_args = [curve_fit_score, iso_fit_score, s_to_n, max_ppm, percentage_auc, reanalysis, reanalysis_path, save_path, analyze_ms2[0], analyze_ms2[2], reporter_ions, plot_metaboanalyst, compositions, align_chromatograms, forced, ret_time_interval[2], rt_tolerance_frag, iso_fittings, output_plot_data, multithreaded_analysis, number_cores, 0.0, min_samples, None]
 
-    imp_exp_gen_library_args = [custom_glycans_list, min_max_monos, min_max_hex, min_max_hexnac, min_max_xyl, min_max_sia, min_max_fuc, min_max_ac, min_max_gc, min_max_hn, min_max_ua, forced, max_adducts, adducts_exclusion, max_charges, reducing_end_tag, fast_iso, high_res, imp_exp_library, library_path, exp_lib_name, only_gen_lib, save_path, internal_standard, permethylated, lactonized_ethyl_esterified, reduced, min_max_sulfation, min_max_phosphorylation]
+    imp_exp_gen_library_args = [custom_glycans_list, min_max_monos, min_max_hex, min_max_hexnac, min_max_xyl, min_max_sia, min_max_fuc, min_max_ac, min_max_gc, min_max_hn, min_max_ua, forced, max_adducts, adducts_exclusion, max_charges, reducing_end_tag, fast_iso, high_res, imp_exp_library, library_path, exp_lib_name, only_gen_lib, save_path, internal_standard, permethylated, lactonized_ethyl_esterified, reduced, min_max_sulfation, min_max_phosphorylation, None]
 
     list_of_data_args = [samples_list]
 
@@ -1259,11 +1254,11 @@ def CLI():
 
     index_spectra_from_file_ms2_args = [None, 2, multithreaded_analysis, number_cores]
 
-    analyze_files_args = [None, None, None, None, tolerance, ret_time_interval, min_isotopologue_peaks, min_ppp, max_charges, custom_noise, close_peaks, multithreaded_analysis, number_cores, None]
+    analyze_files_args = [None, None, None, None, tolerance, ret_time_interval, min_isotopologue_peaks, min_ppp, max_charges, custom_noise, close_peaks, multithreaded_analysis, number_cores, None, None]
 
-    analyze_ms2_args = [None, None, None, ret_time_interval, tolerance, min_max_monos, min_max_hex, min_max_hexnac, min_max_xyl,  min_max_sia, min_max_fuc, min_max_ac, min_max_gc, min_max_hn, min_max_ua, max_charges, reducing_end_tag, forced, permethylated, reduced, lactonized_ethyl_esterified, analyze_ms2[1], analyze_ms2[2], ret_time_interval[2], multithreaded_analysis, number_cores]
+    analyze_ms2_args = [None, None, None, ret_time_interval, tolerance, min_max_monos, min_max_hex, min_max_hexnac, min_max_xyl,  min_max_sia, min_max_fuc, min_max_ac, min_max_gc, min_max_hn, min_max_ua, max_charges, reducing_end_tag, forced, permethylated, reduced, lactonized_ethyl_esterified, analyze_ms2[1], analyze_ms2[2], ret_time_interval[2], multithreaded_analysis, number_cores, None, None]
 
-    arrange_raw_data_args = [None, samples_names, analyze_ms2[0], save_path, [(custom_glycans_list, min_max_monos, min_max_hex, min_max_hexnac, min_max_sia, min_max_fuc, min_max_ac, min_max_gc, forced, max_adducts, adducts_exclusion, max_charges, reducing_end_tag, permethylated, reduced, lactonized_ethyl_esterified, fast_iso, high_res, internal_standard, imp_exp_library, exp_lib_name, library_path, only_gen_lib, min_max_xyl, min_max_hn, min_max_ua, min_max_sulfation, min_max_phosphorylation), (multithreaded_analysis, number_cores, analyze_ms2, reporter_ions, tolerance, ret_time_interval, rt_tolerance_frag, min_isotopologue_peaks, min_ppp, close_peaks, align_chromatograms, percentage_auc, max_ppm, iso_fit_score, curve_fit_score, s_to_n, custom_noise, samples_path, save_path, plot_metaboanalyst, compositions, iso_fittings, reanalysis, reanalysis_path, output_plot_data)]]
+    arrange_raw_data_args = [None, samples_names, analyze_ms2[0], save_path, [(custom_glycans_list, min_max_monos, min_max_hex, min_max_hexnac, min_max_sia, min_max_fuc, min_max_ac, min_max_gc, forced, max_adducts, adducts_exclusion, max_charges, reducing_end_tag, permethylated, reduced, lactonized_ethyl_esterified, fast_iso, high_res, internal_standard, imp_exp_library, exp_lib_name, library_path, only_gen_lib, min_max_xyl, min_max_hn, min_max_ua, min_max_sulfation, min_max_phosphorylation), (multithreaded_analysis, number_cores, analyze_ms2, reporter_ions, tolerance, ret_time_interval, rt_tolerance_frag, min_isotopologue_peaks, min_ppp, close_peaks, align_chromatograms, percentage_auc, max_ppm, iso_fit_score, curve_fit_score, s_to_n, custom_noise, samples_path, save_path, plot_metaboanalyst, compositions, iso_fittings, reanalysis, reanalysis_path, output_plot_data)], None, None]
 
     return output_filtered_data_args, imp_exp_gen_library_args, list_of_data_args, index_spectra_from_file_ms1_args, index_spectra_from_file_ms2_args, analyze_files_args, analyze_ms2_args, arrange_raw_data_args, samples_names, reanalysis, analyze_ms2[0]
     
