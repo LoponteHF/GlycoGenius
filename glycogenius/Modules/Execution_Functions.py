@@ -651,10 +651,10 @@ def imp_exp_gen_library(custom_glycans_list,
                         exp_lib_name += word
             counter = 0
             while True:
-                if counter == 0 and os.path.isfile(save_path+exp_lib_name+'.ggl'):
+                if counter == 0 and os.path.isfile(os.path.join(save_path, exp_lib_name+'.ggl')):
                     counter+=1
                     continue
-                elif counter != 0 and os.path.isfile(save_path+exp_lib_name+'('+str(counter)+').ggl'):
+                elif counter != 0 and os.path.isfile(os.path.join(save_path, exp_lib_name+'('+str(counter)+').ggl')):
                     counter+=1
                     continue
                 else:
@@ -1928,7 +1928,7 @@ def create_metaboanalyst_files(plot_metaboanalyst,
     nothing
         Just creates the .csv files.
     '''
-    with open(save_path+begin_time+"_metaboanalyst_data.csv", "w") as f:
+    with open(os.path.join(save_path, begin_time+"_metaboanalyst_data.csv"), "w") as f:
         samples_line = ["Sample"]
         for i_i, i in enumerate(df2["File_Name"]):
             samples_line.append(i)
@@ -1961,7 +1961,7 @@ def create_metaboanalyst_files(plot_metaboanalyst,
                 found_int_std = True
                 break
         if found_int_std:
-            with open(save_path+begin_time+"_metaboanalyst_data_normalized.csv", "a") as g:
+            with open(os.path.join(save_path, begin_time+"_metaboanalyst_data_normalized.csv"), "a") as g:
                 g.write(",".join(samples_line)+"\n")
                 g.write(",".join(groups_line)+"\n")
                 g.close()
@@ -2011,21 +2011,21 @@ def create_metaboanalyst_files(plot_metaboanalyst,
                     glycan_line.append("0.0")
                     continue
             if found_int_std:
-                with open(save_path+begin_time+"_metaboanalyst_data_normalized.csv", "a") as g:
+                with open(os.path.join(save_path, begin_time+"_metaboanalyst_data_normalized.csv"), "a") as g:
                     g.write(",".join(glycan_line_IS)+"\n")
                     g.close()
             f.write(",".join(glycan_line)+"\n")
         f.close()
     if compositions:
         total_glycans_compositions = []
-        with open(save_path+begin_time+"_metaboanalyst_data_compositions.csv", "w") as f:
+        with open(os.path.join(save_path, begin_time+"_metaboanalyst_data_compositions.csv"), "w") as f:
             found_int_std = False
             for i in compositions_dataframes:
                 if "Internal Standard" in i["Glycan"]:
                     found_int_std = True
                     break
             if found_int_std:
-                with open(save_path+begin_time+"_metaboanalyst_data_compositions_normalized.csv", "w") as g:
+                with open(os.path.join(save_path, begin_time+"_metaboanalyst_data_compositions_normalized.csv"), "w") as g:
                     g.write(",".join(samples_line)+"\n")
                     g.write(",".join(groups_line)+"\n")
                     g.close()
@@ -2050,7 +2050,7 @@ def create_metaboanalyst_files(plot_metaboanalyst,
                         glycan_line_IS.append('0.0')
                 f.write(",".join(glycan_line)+"\n")
                 if found_int_std:
-                    with open(save_path+begin_time+"_metaboanalyst_data_compositions_normalized.csv", "a") as g:
+                    with open(os.path.join(save_path, begin_time+"_metaboanalyst_data_compositions_normalized.csv"), "a") as g:
                         g.write(",".join(glycan_line_IS)+"\n")
                         g.close()
             f.close()
@@ -2781,7 +2781,7 @@ def write_iso_to_excel(save_path,
         Creates excel files with the data.
     '''
     try:
-        with ExcelWriter(save_path+begin_time+'_Isotopic_Fits_Sample_'+str(i_i)+'.xlsx') as writer:
+        with ExcelWriter(os.path.join(save_path, begin_time+'_Isotopic_Fits_Sample_'+str(i_i)+'.xlsx')) as writer:
             for j_j, j in enumerate(i): #navigating glycans
                 for k_k, k in enumerate(list(i[j].keys())):
                     while len(i[j][k]) < biggest_len:
@@ -3082,10 +3082,10 @@ def arrange_raw_data(analyzed_data,
                     gg_name += word
         counter = 0
         while True:
-            if counter == 0 and os.path.isfile(save_path+gg_name+'.ggl'):
+            if counter == 0 and os.path.isfile(os.path.join(save_path, gg_name+'.gg')):
                 counter+=1
                 continue
-            elif counter != 0 and os.path.isfile(save_path+gg_name+'('+str(counter)+').ggl'):
+            elif counter != 0 and os.path.isfile(os.path.join(save_path, gg_name+'('+str(counter)+').gg')):
                 counter+=1
                 continue
             else:
