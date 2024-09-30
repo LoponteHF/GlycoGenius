@@ -390,7 +390,7 @@ def config_handler(from_GUI = False, param_file_path = ''):
             
         ms2_analysis = config['analysis_parameters'].getboolean('analyze_ms2')
         if ms2_analysis:
-            analyze_ms2 = (ms2_analysis, config['analysis_parameters'].getboolean('force_fragments_to_glycans'), config['analysis_parameters'].getboolean('unrestricted_fragments'))
+            analyze_ms2 = [ms2_analysis, config['analysis_parameters'].getboolean('force_fragments_to_glycans'), config['analysis_parameters'].getboolean('unrestricted_fragments')]
             if 'ret_time_tolerance_ms2' in config['analysis_parameters']:
                 rt_tolerance_frag = float(config['analysis_parameters']['ret_time_tolerance_ms2'])
         accuracy_unit = config['analysis_parameters']['accuracy_unit']
@@ -403,15 +403,15 @@ def config_handler(from_GUI = False, param_file_path = ''):
             ret_time_interval[2] = float(config['analysis_parameters']['ret_time_tolerance'])
         custom_ppp = config['analysis_parameters'].getboolean('custom_min_points_per_peak')
         if custom_ppp:
-            min_ppp = (config['analysis_parameters'].getboolean('custom_min_points_per_peak'), int(config['analysis_parameters']['number_points_per_peak']))
+            min_ppp = [config['analysis_parameters'].getboolean('custom_min_points_per_peak'), int(config['analysis_parameters']['number_points_per_peak'])]
         limit_peaks = config['analysis_parameters'].getboolean('limit_peaks_picked')
         if limit_peaks:
-            close_peaks = (config['analysis_parameters'].getboolean('limit_peaks_picked'), int(config['analysis_parameters']['max_number_peaks']))
+            close_peaks = [config['analysis_parameters'].getboolean('limit_peaks_picked'), int(config['analysis_parameters']['max_number_peaks'])]
         if 'noise_levels' in config['analysis_parameters']:
             noise_levels = config['analysis_parameters']['noise_levels'].split(",")
             for i_i, i in enumerate(noise_levels):
                 noise_levels[i_i] = int(i.strip())
-            custom_noise = (config['analysis_parameters'].getboolean('custom_noise_level'), noise_levels)
+            custom_noise = [config['analysis_parameters'].getboolean('custom_noise_level'), noise_levels]
         
     #post-analysis for analysis running mode and reanalysis running mode
     if not only_gen_lib:
@@ -426,7 +426,7 @@ def config_handler(from_GUI = False, param_file_path = ''):
         min_samples = int(config['post-analysis/reanalysis']['minimum_samples'])
         ppm_setting = config['post-analysis/reanalysis']['max_ppm_threshold'].split(",")
         if len(ppm_setting) > 1:
-            max_ppm = (float(ppm_setting[0]), float(ppm_setting[1]))
+            max_ppm = [float(ppm_setting[0]), float(ppm_setting[1])]
         else:
             max_ppm = float(config['post-analysis/reanalysis']['max_ppm_threshold'])
         iso_fit_score = float(config['post-analysis/reanalysis']['isotopic_fitting_score_threshold'])
@@ -464,6 +464,6 @@ def config_handler(from_GUI = False, param_file_path = ''):
 
     analyze_ms2_args = [None, None, None, ret_time_interval, tolerance, min_max_monos, min_max_hex, min_max_hexnac, min_max_xyl,  min_max_sia, min_max_fuc, min_max_ac, min_max_gc, min_max_hn, min_max_ua, max_charges, reducing_end_tag, forced, permethylated, reduced, lactonized_ethyl_esterified, analyze_ms2[1], analyze_ms2[2], ret_time_interval[2], multithreaded_analysis, number_cores, None, None]
 
-    arrange_raw_data_args = [None, samples_names, analyze_ms2[0], save_path, [(custom_glycans_list, min_max_monos, min_max_hex, min_max_hexnac, min_max_sia, min_max_fuc, min_max_ac, min_max_gc, forced, max_adducts, adducts_exclusion, max_charges, reducing_end_tag, permethylated, reduced, lactonized_ethyl_esterified, fast_iso, high_res, internal_standard, imp_exp_library, exp_lib_name, library_path, only_gen_lib, min_max_xyl, min_max_hn, min_max_ua, min_max_sulfation, min_max_phosphorylation), (multithreaded_analysis, number_cores, analyze_ms2, reporter_ions, tolerance, ret_time_interval, rt_tolerance_frag, min_isotopologue_peaks, min_ppp, close_peaks, align_chromatograms, percentage_auc, max_ppm, iso_fit_score, curve_fit_score, s_to_n, custom_noise, samples_path, save_path, plot_metaboanalyst, compositions, iso_fittings, reanalysis, reanalysis_path, output_plot_data)], None, None]
+    arrange_raw_data_args = [None, samples_names, analyze_ms2[0], save_path, [[custom_glycans_list, min_max_monos, min_max_hex, min_max_hexnac, min_max_sia, min_max_fuc, min_max_ac, min_max_gc, forced, max_adducts, adducts_exclusion, max_charges, reducing_end_tag, permethylated, reduced, lactonized_ethyl_esterified, fast_iso, high_res, internal_standard, imp_exp_library, exp_lib_name, library_path, only_gen_lib, min_max_xyl, min_max_hn, min_max_ua, min_max_sulfation, min_max_phosphorylation], [multithreaded_analysis, number_cores, analyze_ms2, reporter_ions, tolerance, ret_time_interval, rt_tolerance_frag, min_isotopologue_peaks, min_ppp, close_peaks, align_chromatograms, percentage_auc, max_ppm, iso_fit_score, curve_fit_score, s_to_n, custom_noise, samples_path, save_path, plot_metaboanalyst, compositions, iso_fittings, reanalysis, reanalysis_path, output_plot_data]], None, None]
 
     return output_filtered_data_args, imp_exp_gen_library_args, list_of_data_args, index_spectra_from_file_ms1_args, index_spectra_from_file_ms2_args, analyze_files_args, analyze_ms2_args, arrange_raw_data_args, samples_names, reanalysis, analyze_ms2[0]

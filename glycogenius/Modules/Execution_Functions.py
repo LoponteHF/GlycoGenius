@@ -2799,9 +2799,10 @@ def combine_raw_data_per_sample(sample_no, temp_folder):
     files_list = os.listdir(temp_folder)
     with zipfile.ZipFile(os.path.join(temp_folder, f"{sample_no}_eics"), 'w', compression=zipfile.ZIP_DEFLATED) as zipf:
         for file in files_list:
-            if file[:2] == f"{sample_no}_":
+            if file.split("_")[0] == f"{sample_no}":
                 zipf.write(os.path.join(temp_folder, file), arcname=file)
                 os.remove(os.path.join(temp_folder, file))
+        zipf.close()
 
 def arrange_raw_data(analyzed_data,
                      samples_names,
@@ -2811,7 +2812,8 @@ def arrange_raw_data(analyzed_data,
                      library,
                      temp_folder,
                      file_name = None,
-                     from_GUI = False):
+                     from_GUI = False,
+                     erase_files = True):
     '''Arrange the raw results data into pickled files to be processed by output_filtered_data.
 
     Parameters
@@ -3024,9 +3026,10 @@ def arrange_raw_data(analyzed_data,
                             temp_array.append(int(n))
                         curve_fitting_dataframes[k_k][str(i)+"+"+str(j)+"_"+str(m)+"_Ideal_ints"] = temp_array
         try:
-            os.remove(os.path.join(temp_folder, i))
-            if analyze_ms2:
-                os.remove(os.path.join(temp_folder, 'frag_data_'+i))
+            if erase_files:
+                os.remove(os.path.join(temp_folder, i))
+                if analyze_ms2:
+                    os.remove(os.path.join(temp_folder, 'frag_data_'+i))
         except:
             pass
             
@@ -3095,7 +3098,18 @@ def arrange_raw_data(analyzed_data,
                     gg_name = gg_name
                 break
                 
-    General_Functions.make_gg(temp_folder, save_path, gg_name)
+    General_Functions.make_gg(temp_folder, save_path, gg_name, True)
+    
+    # Clean up temp dir in case of safeguard
+    if not erase_files:
+        for i_i, i in enumerate(samples_names):
+            os.remove(os.path.join(temp_folder, f"{i_i}_eics"))
+        os.remove(os.path.join(temp_folder, 'results'))
+        os.remove(os.path.join(temp_folder, 'eics_list'))
+        os.remove(os.path.join(temp_folder, 'curve_fittings'))
+        os.remove(os.path.join(temp_folder, 'isotopic_fittings'))
+        os.remove(os.path.join(temp_folder, 'metadata'))
+        
     print("Done!")
     if from_GUI:
         time_formatted = str(datetime.datetime.now()).split(" ")[-1].split(".")[0]+" - "
@@ -3442,16 +3456,18 @@ def analyze_files(library,
                 
             results[index] = None
     
-    for i in ambiguities: #sorts ambiguities
-        shutil.copy(os.path.join(temp_folder, ambiguities[i][0]), os.path.join(temp_folder, i))
-        with open(os.path.join(temp_folder, i), 'rb') as f:
-            glycan = dill.load(f)
-            f.close()
-        glycan['Monos_Composition'] = General_Functions.sum_monos(General_Functions.default_composition, General_Functions.form_to_comp(i))
-        with open(os.path.join(temp_folder, i), 'wb') as f:
-            dill.dump(glycan, f)
-            f.close()
-        
+    if len(ambiguities) > 0:
+        time_formatted = str(datetime.datetime.now()).split(" ")[-1].split(".")[0]+" - "
+        print(time_formatted+'Sorting ambiguities...')
+        for i in ambiguities: #sorts ambiguities
+            shutil.copy(os.path.join(temp_folder, ambiguities[i][0]), os.path.join(temp_folder, i))
+            with open(os.path.join(temp_folder, i), 'rb') as f:
+                glycan = dill.load(f)
+                f.close()
+            glycan['Monos_Composition'] = General_Functions.sum_monos(General_Functions.default_composition, General_Functions.form_to_comp(i))
+            with open(os.path.join(temp_folder, i), 'wb') as f:
+                dill.dump(glycan, f)
+                f.close()
     
     if is_result != None:
         time_formatted = str(datetime.datetime.now()).split(" ")[-1].split(".")[0]+" - "

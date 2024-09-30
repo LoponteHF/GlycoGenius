@@ -75,18 +75,23 @@ def main(args=[]):
             analyzed_data = Execution_Functions.analyze_files(*args[5])
             if args[10]:
                 # Safeguard MS1 save in case of crashes during MS2 analysis
-                if datetime.datetime.now()-begin_time > datetime.timedelta(hours=2):
+                if datetime.datetime.now()-begin_time > datetime.timedelta(minutes=1):
                     Execution_Functions.print_sep()
                     time_formatted = str(datetime.datetime.now()).split(" ")[-1].split(".")[0]+" - "   
                     print(time_formatted+"Saving MS1 .gg file as safeguard\nin case of crashes.")
                     temp_args_raw_data = copy.deepcopy(args[7])
                     temp_args_raw_data[0] = analyzed_data
                     temp_args_raw_data[2] = False
-                    temp_args_raw_data[4][1][2][0] = False
-                    if len(temp_args_raw_data) > 5:
-                        temp_args_raw_data[5] = '<date>_<time>_MS1_Analysis_safeguard'
+                    temp_args_raw_data[4][1][2] = [False, False, False]
+                    temp_args_raw_data[5] = library
+                    temp_args_raw_data[6] = temp_folder
+                    if len(temp_args_raw_data) > 7:
+                        temp_args_raw_data[7] = '<date>_<time>_MS1_Analysis_safeguard'
+                        temp_args_raw_data.append(False)
                     else:
                         temp_args_raw_data.append('<date>_<time>_MS1_Analysis_safeguard')
+                        temp_args_raw_data.append(False)
+                        temp_args_raw_data.append(False)
                     Execution_Functions.arrange_raw_data(*temp_args_raw_data)
                 Execution_Functions.print_sep()
                 args[6][0] = ms2_index

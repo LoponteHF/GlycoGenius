@@ -261,7 +261,7 @@ def cleanup_by_average(x, y, th = 2.5):
     # Final equation is used as (y = mx + b)
     return mean, residuals, outlier_indices
     
-def make_gg(temp_dir, save_dir, filename):
+def make_gg(temp_dir, save_dir, filename, ignore_files = False):
     '''Creates a zipped file with extension .gg containing raw_data files.
     
     Parameters
@@ -292,6 +292,7 @@ def make_gg(temp_dir, save_dir, filename):
     with zipfile.ZipFile(os.path.join(save_dir, filename+".gg"), 'w', compression=zipfile.ZIP_DEFLATED) as zipf:
         for file in files_list:
             zipf.write(os.path.join(temp_dir, file), arcname=file)
+        zipf.close()
             
 def open_gg(gg_file, temp_path, file = 'all'):
     '''Unzipts the .gg file to temp_path.
