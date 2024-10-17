@@ -455,7 +455,8 @@ def full_glycans_library(library,
         
         for index, i in enumerate(results):
             result_data = i.result()
-            full_library[result_data[1]] = result_data[0]
+            for index_glycan, glycan in enumerate(result_data[1]):
+                full_library[glycan] = result_data[0][index_glycan]
             results[index] = None
     
     full_library = dict(sorted(full_library.items()))
@@ -478,6 +479,8 @@ def calculate_one_glycan(i,
     '''
     monos_count = sum(i.values())
     number = 1
+    i_formulas = []
+    glycan_infos = []
     if monos_count <= 4 and forced == 'gags':
         number = 2
     for w in range(number):
@@ -503,12 +506,16 @@ def calculate_one_glycan(i,
                     if permethylated:
                         i_atoms = General_Functions.sum_atoms(i_atoms, {'C': 2, 'H': 4})
                         if reduced:
-                            i_atoms = General_Functions.sum_atoms(i_atoms, {'O': 1})
+                            i_atoms = General_Functions.sum_atoms(i_atoms, {'C': 1, 'H': 4})
                     if not permethylated and reduced:
                         i_atoms = General_Functions.sum_atoms(i_atoms, {'H': 2})
                 base_mass = mass.calculate_mass(composition=i_atoms)
-                i_atoms = General_Functions.sum_atoms(i_atoms, {'S': 1*s, 'O': 3*s}) #sum sulfation atoms
-                i_atoms = General_Functions.sum_atoms(i_atoms, {'P': 1*p, 'O': 3*p, 'H': 1*p}) #sum phosphorylation atoms
+                if permethylated:
+                    i_atoms = General_Functions.sum_atoms(i_atoms, {'C': 1*s, 'H': 2*s, 'S': 1*s, 'O': 3*s}) #sum sulfation atoms
+                    i_atoms = General_Functions.sum_atoms(i_atoms, {'C': 1*p, 'P': 1*p, 'O': 3*p, 'H': 3*p}) #sum phosphorylation atoms
+                else:
+                    i_atoms = General_Functions.sum_atoms(i_atoms, {'S': 1*s, 'O': 3*s}) #sum sulfation atoms
+                    i_atoms = General_Functions.sum_atoms(i_atoms, {'P': 1*p, 'O': 3*p, 'H': 1*p}) #sum phosphorylation atoms
                 i_atoms_tag = General_Functions.sum_atoms(i_atoms, tag[0])
                 i_neutral_mass = mass.calculate_mass(composition=i_atoms)
                 i_neutral_tag = i_neutral_mass+tag[1]
@@ -555,7 +562,10 @@ def calculate_one_glycan(i,
                                              carrier_charge = charges)
                     glycan_info['Adducts_mz'][General_Functions.comp_to_formula(j)] = mz
                     
-    return glycan_info, i_formula
+                i_formulas.append(i_formula)
+                glycan_infos.append(glycan_info)
+    
+    return glycan_infos, i_formulas
 
 def include_internal_standard(full_library,
                               tag_mass,

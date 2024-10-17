@@ -35,6 +35,7 @@ import pathlib
 import tempfile
 import shutil
 import os
+import copy
 
 ##---------------------------------------------------------------------------------------
 ##Hard-coded permanent information
@@ -291,6 +292,9 @@ def make_gg(temp_dir, save_dir, filename, ignore_files = False):
     files_list = os.listdir(temp_dir)
     with zipfile.ZipFile(os.path.join(save_dir, filename+".gg"), 'w', compression=zipfile.ZIP_DEFLATED) as zipf:
         for file in files_list:
+            if ignore_files:
+                if file != "metadata" and file != "results" and "_" not in file:
+                    continue
             zipf.write(os.path.join(temp_dir, file), arcname=file)
         zipf.close()
             
@@ -663,25 +667,23 @@ def glycan_to_atoms(glycan_composition, permethylated):
         "O": 6, "N": 0, "H": 12}.
     '''
     atoms = {"C": 0, "O": 0, "N": 0, "H": 0}
+    monosaccharides_local = copy.deepcopy(monosaccharides)
     if permethylated:
-        for i in monosaccharides:
-            if i == 'H':
-                monosaccharides[i][2]['C'] += 3
-                monosaccharides[i][2]['H'] += 6
-            if i == 'N':
-                monosaccharides[i][2]['C'] += 3
-                monosaccharides[i][2]['H'] += 6
+        for i in monosaccharides_local:
+            if i == 'H' or i == 'N':
+                monosaccharides_local[i][2]['C'] += 3
+                monosaccharides_local[i][2]['H'] += 6
             if i == 'F':
-                monosaccharides[i][2]['C'] += 2
-                monosaccharides[i][2]['H'] += 4
+                monosaccharides_local[i][2]['C'] += 2
+                monosaccharides_local[i][2]['H'] += 4
             if i == 'S' or i == 'G':
-                monosaccharides[i][2]['C'] += 5
-                monosaccharides[i][2]['H'] += 10
+                monosaccharides_local[i][2]['C'] += 5
+                monosaccharides_local[i][2]['H'] += 10
     for i in glycan_composition:
         if i == "T":
             continue
         for j in atoms:
-            atoms[j] += monosaccharides[i][2][j]*glycan_composition[i]
+            atoms[j] += monosaccharides_local[i][2][j]*glycan_composition[i]
     return atoms
 
 def count_seq_letters(string):
@@ -895,8 +897,11 @@ def calculate_isotopic_pattern(glycan_atoms,
     isotop_arranged = []
     relative_isotop_pattern = []
     relative_isotop_mass = []
-    for i in isotopologue:
-        isotop_arranged.append({'mz' : mass.calculate_mass(i[0]), 'Ab' : i[1]})
+    try:
+        for i in isotopologue:
+            isotop_arranged.append({'mz' : mass.calculate_mass(i[0]), 'Ab' : i[1]})
+    except Exception:
+        pass
     isotop_arranged = sorted(isotop_arranged, key=lambda x: x['mz'])
     for i_i, i in enumerate(isotop_arranged):
         relative_isotop_pattern.append(i['Ab']/isotop_arranged[0]['Ab'])

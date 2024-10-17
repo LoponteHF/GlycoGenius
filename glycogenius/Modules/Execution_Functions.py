@@ -106,7 +106,7 @@ def generate_cfg_file(path, comments):
     curr_os = platform.system()
     pathlib.Path(path).mkdir(exist_ok = True, parents = True)
     pathlib.Path(os.path.join(path, "Sample Files")).mkdir(exist_ok = True, parents = True)
-    with open(path+'glycogenius_parameters.ini', 'w') as g:
+    with open(os.path.join(path, 'glycogenius_parameters.ini'), 'w') as g:
         with open(os.path.join(glycogenius_path, 'Parameters_Template.py'), 'r') as f:
             for line in f:
                 if "samples_directory =" in line:
@@ -121,7 +121,7 @@ def generate_cfg_file(path, comments):
         f.close()
     g.close()
     if curr_os == "Windows":
-        with open(path+'Run Glycogenius.bat', 'w') as f:
+        with open(os.path.join(path, 'Run Glycogenius.bat'), 'w') as f:
             f.write("@echo off\n")
             f.write("cd %~dp0\n")
             f.write("type .\\glycogenius_parameters.ini | glycogenius")
@@ -1427,7 +1427,7 @@ def make_df1_refactor(df1,
             elif j in samples_per_glycan.keys() and j not in checked_glycans:
                 samples_per_glycan[j] += 1
                 checked_glycans.append(j)
-                
+    
     for i_i, i in enumerate(df1_refactor):
         to_remove = []  
         to_remove_glycan = []          
@@ -1440,6 +1440,8 @@ def make_df1_refactor(df1,
             to_remove_glycan.reverse()
             for j_j, j in enumerate(to_remove):
                 for k in df1_refactor[i_i]:
+                    if k == 'Detected_Fragments':
+                        continue
                     del df1_refactor[i_i][k][j]
                 if analyze_ms2:
                     for k in range(len(fragments_dataframes[i_i]["Glycan"])-1, -1, -1):
@@ -3083,6 +3085,8 @@ def arrange_raw_data(analyzed_data,
                     gg_name += str(time)
                 else:
                     gg_name += word
+        else:
+            gg_name = file_name
         counter = 0
         while True:
             if counter == 0 and os.path.isfile(os.path.join(save_path, gg_name+'.gg')):

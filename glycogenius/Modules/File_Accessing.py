@@ -304,17 +304,17 @@ def eic_from_glycan(files,
                                  adduct_mass,
                                  adduct_charge,
                                  sampling_rates)
-                if len(buffer) > 4*sampling_rates[j_j]:
+                if len(buffer) > max([4*sampling_rates[j_j], 4]):
                     no_rewind = False
                     for l in range(-1, -(4*sampling_rates[j_j])-2, -1):
-                        if buffer[l] == None and l != -(4*sampling_rates[j_j])-1:
+                        if buffer[l] == None and l != -(max([4*sampling_rates[j_j], 4]))-1:
                             no_rewind = True
                             break
-                        if buffer[l] != None and l == -(4*sampling_rates[j_j])-1:
+                        if buffer[l] != None and l == -(max([4*sampling_rates[j_j], 4]))-1:
                             no_rewind = True
                             break
                     if not no_rewind:
-                        for l_l in range(-4*sampling_rates[j_j], -4-len(buffer), -1):
+                        for l_l in range(-max([4*sampling_rates[j_j], 4]), -max([4*sampling_rates[j_j], 4])-len(buffer), -1):
                             if l_l == -len(buffer) or buffer[l_l-1] != None:
                                 break
                             analyze_mz_array(j[thread_numbers[k_k+l_l]]['m/z array'],
@@ -514,7 +514,7 @@ def analyze_mz_array(sliced_mz,
                 
             if not bad:
                 for i in charge_range: #check if it's monoisotopic and correct charge
-                    if (len(buffer) <= round(2*sampling_rates[file_id]) or (len(buffer) > round(2*sampling_rates[file_id]) and buffer[round(-2*sampling_rates[file_id])-1] == None)) and not retest: #only check if it's monoisotopic if at least one of the last 3 RT got nothing...
+                    if (len(buffer) <= round(max([2*sampling_rates[file_id], 2])) or (len(buffer) > round(max([2*sampling_rates[file_id], 2])) and buffer[round(-max([2*sampling_rates[file_id], 2]))-1] == None)) and not retest: #only check if it's monoisotopic if at least one of the last 3 RT got nothing...
                         temp_id = General_Functions.binary_search_with_tolerance(sliced_mz, found_mz-(General_Functions.h_mass/i), 0, mz_id, General_Functions.tolerance_calc(tolerance[0], tolerance[1], found_mz-(General_Functions.h_mass/i)), sliced_int) #check monoisotopic
                         if temp_id != -1 and sliced_int[temp_id] > 0:
                             expected_value = (sliced_mz[temp_id]*i*0.0006)+0.1401 #based on linear regression of the relationship between masses and the second isotopic peak relative intensity of the average of different organic macromolecules
@@ -610,8 +610,8 @@ def analyze_mz_array(sliced_mz,
     # print(f"Buffer before clean-up: {buffer}")
     
     #dynamical clean-up of buffer
-    min_in_a_row = round(4*sampling_rates[file_id])
-    buffer_size = round(10*sampling_rates[file_id])
+    min_in_a_row = round(max([4*sampling_rates[file_id], 4]))
+    buffer_size = round(max([10*sampling_rates[file_id], 10]))
     if filtered:
         in_a_row = 0
         for i_i, i in enumerate(buffer):
