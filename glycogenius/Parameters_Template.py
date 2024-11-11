@@ -148,6 +148,10 @@ min_max_phosphorylation_per_glycan = 0, 0
 ;	Minimum and maximum amount of phosphorylation
 ;	substituents per glycan.
 ;
+lyase_digested = no
+;	If analyzing GAGs, set whether or not Lyase was used
+;	to digeste the polysaccharides.
+;
 fast_iso = yes
 ; 	Allows you to calculate the isotopic distribution
 ;	of glycans based only on carbon isotopes (fast, 

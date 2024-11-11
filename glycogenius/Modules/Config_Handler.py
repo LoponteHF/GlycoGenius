@@ -81,6 +81,7 @@ def config_handler(from_GUI = False, param_file_path = ''):
     lactonized_ethyl_esterified = False
     min_max_sulfation = [0, 0]
     min_max_phosphorylation = [0, 0]
+    lyase_digested = False
     fast_iso = True
     high_res = False
     internal_standard = '0.0'
@@ -210,6 +211,7 @@ def config_handler(from_GUI = False, param_file_path = ''):
         min_max_ua = library_metadata[20]
         min_max_sulfation = library_metadata[21]
         min_max_phosphorylation = library_metadata[22]
+        lyase_digested = library_metadata[23]
                 
     elif library_mode == 'custom_library':
         custom_glycans_list[0] = True
@@ -351,6 +353,9 @@ def config_handler(from_GUI = False, param_file_path = ''):
         
     total_phosphorylation = config['common_library_building_settings']['min_max_phosphorylation_per_glycan'].split(',')
     min_max_phosphorylation = [int(total_phosphorylation[0]), int(total_phosphorylation[1])]
+    
+    if forced == 'gags':
+        lyase_digested = config['common_library_building_settings'].getboolean('lyase_digested')
         
     fast_iso = config['common_library_building_settings'].getboolean('fast_iso')
     high_res = config['common_library_building_settings'].getboolean('high_resolution_isotopic_dist')
@@ -447,12 +452,12 @@ def config_handler(from_GUI = False, param_file_path = ''):
         output_plot_data = config['post-analysis/reanalysis'].getboolean('output_plot_data')
         
     if from_GUI:
-        return (custom_glycans_list, min_max_monos, min_max_hex, min_max_hexnac, min_max_sia, min_max_fuc, min_max_ac, min_max_gc, forced, max_adducts, adducts_exclusion, max_charges, reducing_end_tag, permethylated, reduced, lactonized_ethyl_esterified, fast_iso, high_res, internal_standard, imp_exp_library, exp_lib_name, library_path, only_gen_lib, min_max_xyl, min_max_hn, min_max_ua, min_max_sulfation, min_max_phosphorylation), (multithreaded_analysis, number_cores, analyze_ms2, reporter_ions, tolerance, ret_time_interval, rt_tolerance_frag, min_isotopologue_peaks, min_ppp, close_peaks, align_chromatograms, percentage_auc, max_ppm, iso_fit_score, curve_fit_score, s_to_n, custom_noise, samples_path, save_path, plot_metaboanalyst, compositions, iso_fittings, reanalysis, reanalysis_path, output_plot_data)
+        return (custom_glycans_list, min_max_monos, min_max_hex, min_max_hexnac, min_max_sia, min_max_fuc, min_max_ac, min_max_gc, forced, max_adducts, adducts_exclusion, max_charges, reducing_end_tag, permethylated, reduced, lactonized_ethyl_esterified, fast_iso, high_res, internal_standard, imp_exp_library, exp_lib_name, library_path, only_gen_lib, min_max_xyl, min_max_hn, min_max_ua, min_max_sulfation, min_max_phosphorylation, lyase_digested), (multithreaded_analysis, number_cores, analyze_ms2, reporter_ions, tolerance, ret_time_interval, rt_tolerance_frag, min_isotopologue_peaks, min_ppp, close_peaks, align_chromatograms, percentage_auc, max_ppm, iso_fit_score, curve_fit_score, s_to_n, custom_noise, samples_path, save_path, plot_metaboanalyst, compositions, iso_fittings, reanalysis, reanalysis_path, output_plot_data)
                 
     #args to execution functions:
     output_filtered_data_args = [curve_fit_score, iso_fit_score, s_to_n, max_ppm, percentage_auc, reanalysis, reanalysis_path, save_path, analyze_ms2[0], analyze_ms2[2], reporter_ions, plot_metaboanalyst, compositions, align_chromatograms, forced, ret_time_interval[2], rt_tolerance_frag, iso_fittings, output_plot_data, multithreaded_analysis, number_cores, 0.0, min_samples, None]
 
-    imp_exp_gen_library_args = [custom_glycans_list, min_max_monos, min_max_hex, min_max_hexnac, min_max_xyl, min_max_sia, min_max_fuc, min_max_ac, min_max_gc, min_max_hn, min_max_ua, forced, max_adducts, adducts_exclusion, max_charges, reducing_end_tag, fast_iso, high_res, imp_exp_library, library_path, exp_lib_name, only_gen_lib, save_path, internal_standard, permethylated, lactonized_ethyl_esterified, reduced, min_max_sulfation, min_max_phosphorylation, None]
+    imp_exp_gen_library_args = [custom_glycans_list, min_max_monos, min_max_hex, min_max_hexnac, min_max_xyl, min_max_sia, min_max_fuc, min_max_ac, min_max_gc, min_max_hn, min_max_ua, forced, max_adducts, adducts_exclusion, max_charges, reducing_end_tag, fast_iso, high_res, imp_exp_library, library_path, exp_lib_name, only_gen_lib, save_path, internal_standard, permethylated, lactonized_ethyl_esterified, reduced, min_max_sulfation, min_max_phosphorylation, lyase_digested, None]
 
     list_of_data_args = [samples_list]
 

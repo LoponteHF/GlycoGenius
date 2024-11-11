@@ -888,11 +888,10 @@ def calculate_isotopic_pattern(glycan_atoms,
     '''
     if fast:
         isotopologue = mass.isotopologues(glycan_atoms, report_abundance = True,
-                                          elements_with_isotopes = ["C"],
+                                          elements_with_isotopes = ["C", "P"],
                                           overall_threshold = 1e-4)
     else:
         isotopologue = mass.isotopologues(glycan_atoms, report_abundance = True,
-                                          elements_with_isotopes = ["C", "N", "O", "H", "S", "P", "Na"],
                                           overall_threshold = 1e-4)
     isotop_arranged = []
     relative_isotop_pattern = []
@@ -977,12 +976,30 @@ def gen_adducts_combo(adducts,
         adducts_combo_dict.append(temp_dict)
     to_remove = []
     for i in adducts_combo_dict:
+        charges = 0
+        for atom in i:
+            if atom == "Cl":
+                if j[atom] > 0:
+                    charges -= j[atom]
+                else:
+                    charges += j[atom]
+            if atom == 'Fe':
+                charges += 2*i[atom]
+            else:
+                charges += i[atom]
+        if max_charge > 0 and charges > max_charge:
+            to_remove.append(i)
+            continue
+        elif max_charge < 0 and charges < max_charge:
+            to_remove.append(i)
+            continue
+        if i in exclusions:
+            to_remove.append(i)
+            continue
         for j in i:
             if abs(i[j]) > abs(adducts[j]):
                 to_remove.append(i)
                 break
-        if i in exclusions:
-            to_remove.append(i)
     for i in to_remove:
         adducts_combo_dict.remove(i)
     return adducts_combo_dict

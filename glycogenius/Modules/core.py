@@ -47,7 +47,7 @@ def main(args=[]):
             Execution_Functions.output_filtered_data(*args[0])
 
         else:
-            args[1][29] = temp_folder
+            args[1][30] = temp_folder
             library = Execution_Functions.imp_exp_gen_library(*args[1])
             Execution_Functions.print_sep()
             pre_processing_begin_time = datetime.datetime.now()

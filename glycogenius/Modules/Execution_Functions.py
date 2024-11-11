@@ -357,6 +357,7 @@ def imp_exp_gen_library(custom_glycans_list,
                         reduced,
                         min_max_sulfation,
                         min_max_phosphorylation,
+                        lyase_digested,
                         temp_folder):
     '''Imports, generates and/or exports a glycans library.
 
@@ -526,6 +527,8 @@ def imp_exp_gen_library(custom_glycans_list,
             min_max_ua = library_metadata[20]
             min_max_sulfation = library_metadata[21]
             min_max_phosphorylation = library_metadata[22]
+            if len(library_metadata) > 23:
+                lyase_digested = library_metadata[23]
             print("Done!")
         except:
             print("\n\nGlycan library file not found. Check if the\npath used in 'library_path' is correct or set\n'imp_library' to 'no'.\n")
@@ -597,7 +600,8 @@ def imp_exp_gen_library(custom_glycans_list,
                                                           permethylated,
                                                           reduced,
                                                           min_max_sulfation,
-                                                          min_max_phosphorylation)
+                                                          min_max_phosphorylation,
+                                                          lyase_digested)
         print('Done!')
     else:
         time_formatted = str(datetime.datetime.now()).split(" ")[-1].split(".")[0]+" - "
@@ -626,7 +630,8 @@ def imp_exp_gen_library(custom_glycans_list,
                                                           permethylated,
                                                           reduced,
                                                           min_max_sulfation,
-                                                          min_max_phosphorylation)
+                                                          min_max_phosphorylation,
+                                                          lyase_digested)
         print('Done!')
     if is_custom:
         custom_glycans_list[0] = True
@@ -666,10 +671,11 @@ def imp_exp_gen_library(custom_glycans_list,
         else:
             exp_lib_name = begin_time+'_glycans_lib'
         if not imp_exp_library[0]:
-            metadata = [min_max_monos, min_max_hex, min_max_hexnac, min_max_fuc, min_max_sia, min_max_ac, min_max_gc, forced, max_adducts, max_charges, tag_mass, internal_standard, permethylated, lactonized_ethyl_esterified, reduced, fast_iso, high_res, custom_glycans_list, min_max_xyl, min_max_hn, min_max_ua, min_max_sulfation, min_max_phosphorylation]
-            with open(os.path.join(save_path, exp_lib_name+'.ggl'), 'wb') as f:
-                dill.dump([full_library, metadata], f)
-                f.close()
+            metadata = [min_max_monos, min_max_hex, min_max_hexnac, min_max_fuc, min_max_sia, min_max_ac, min_max_gc, forced, max_adducts, max_charges, tag_mass, internal_standard, permethylated, lactonized_ethyl_esterified, reduced, fast_iso, high_res, custom_glycans_list, min_max_xyl, min_max_hn, min_max_ua, min_max_sulfation, min_max_phosphorylation, lyase_digested]
+            if exp_lib_name+'.ggl' not in os.listdir(save_path):
+                with open(os.path.join(save_path, exp_lib_name+'.ggl'), 'wb') as f:
+                    dill.dump([full_library, metadata], f)
+                    f.close()
         if lactonized_ethyl_esterified:
             df = {'Glycan' : [], 'Hex' : [], 'HexN' : [], 'HexNAc' : [], 'Xylose' : [], 'dHex' : [], 'a2,3-Neu5Ac' : [], 'a2,6-Neu5Ac' : [], 'a2,3-Neu5Gc' : [], 'a2,6-Neu5Gc' : [], 'UroA': [], 'Isotopic Distribution' : [], 'Neutral Mass + Tag' : []}
         else:
@@ -712,22 +718,24 @@ def imp_exp_gen_library(custom_glycans_list,
             file_name = library_path.split("\\")[-1].split("/")[-1].split(".")[-2]
         else:
             file_name = exp_lib_name
-        with ExcelWriter(os.path.join(save_path, file_name+'.xlsx')) as writer:
-            df.to_excel(writer, index = False)
-            General_Functions.autofit_columns_excel(df, writer.sheets['Sheet1'])
-        with open(os.path.join(save_path, file_name+'_skyline_transitions.csv'), 'w') as f:
-            f.write('Precursor Name, Precursor Formula, Precursor Adduct, Precursor Charge\n')
-            for i_i, i in enumerate(full_library):
-                for j_j, j in enumerate(full_library[i]['Adducts_mz']):
-                    adduct_comp = General_Functions.form_to_comp(j)
-                    if len(adduct_comp) > 1 or i == "Internal Standard": #can't seem to make skyline work with mixed adducts, so have this in place for now
-                        continue
-                    adduct = str(adduct_comp[list(adduct_comp.keys())[0]])+str(list(adduct_comp.keys())[0]) #only first adduct
-                    del adduct_comp[list(adduct_comp.keys())[0]]
-                    formula = General_Functions.comp_to_formula(General_Functions.sum_atoms(full_library[i]['Atoms_Glycan+Tag'], adduct_comp))
-                    list_form = [i, str(formula), '[M+'+adduct+']', str(General_Functions.form_to_charge(j))]
-                    f.write(",".join(list_form)+'\n')
-            f.close()
+        if file_name+'.xlsx' not in os.listdir(save_path):
+            with ExcelWriter(os.path.join(save_path, file_name+'.xlsx')) as writer:
+                df.to_excel(writer, index = False)
+                General_Functions.autofit_columns_excel(df, writer.sheets['Sheet1'])
+        if file_name+'_skyline_transitions.csv' not in os.listdir(save_path):
+            with open(os.path.join(save_path, file_name+'_skyline_transitions.csv'), 'w') as f:
+                f.write('Precursor Name, Precursor Formula, Precursor Adduct, Precursor Charge\n')
+                for i_i, i in enumerate(full_library):
+                    for j_j, j in enumerate(full_library[i]['Adducts_mz']):
+                        adduct_comp = General_Functions.form_to_comp(j)
+                        if len(adduct_comp) > 1 or i == "Internal Standard": #can't seem to make skyline work with mixed adducts, so have this in place for now
+                            continue
+                        adduct = str(adduct_comp[list(adduct_comp.keys())[0]])+str(list(adduct_comp.keys())[0]) #only first adduct
+                        del adduct_comp[list(adduct_comp.keys())[0]]
+                        formula = General_Functions.comp_to_formula(General_Functions.sum_atoms(full_library[i]['Atoms_Glycan+Tag'], adduct_comp))
+                        list_form = [i, str(formula), '[M+'+adduct+']', str(General_Functions.form_to_charge(j))]
+                        f.write(",".join(list_form)+'\n')
+                f.close()
         print("Done!")
     if only_gen_lib:
         time_formatted = str(datetime.datetime.now()).split(" ")[-1].split(".")[0]+" - "

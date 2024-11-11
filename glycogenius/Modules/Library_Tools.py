@@ -279,7 +279,7 @@ def generate_glycans_library(min_max_mono,
                 or (i['F'] > 0)):
                 if i not in to_be_removed:
                     to_be_removed.append(i)
-            # else: # This adds a variant of the gag with its linkage domain; can be useful if analyzing digested proteoglycans peptides containing gags
+            # else: # This adds a variant of the gag with its linkage domain; can be useful if analyzing digested peptides containing gags
                 # new_glycan = copy.deepcopy(i)
                 # new_glycan['X'] += 1
                 # new_glycan['H'] += 2
@@ -310,7 +310,8 @@ def full_glycans_library(library,
                          permethylated = False,
                          reduced = False,
                          min_max_sulfation = [0, 0],
-                         min_max_phosphorylation = [0, 0]):
+                         min_max_phosphorylation = [0, 0],
+                         lyase_digested = False):
     '''Uses the generated glycans library and increments it with calculations of its
     mass, neutral mass with tag mass, its isotopic distribution pattern (intensoids) and
     the mz of the chosen adducts combinations.
@@ -411,6 +412,7 @@ def full_glycans_library(library,
     '''
     full_library = {}
     
+    # This codeblock sorts out the tag type and calculates it appropriately
     try:
         tag_mass = float(tag_mass)
     except:
@@ -450,7 +452,8 @@ def full_glycans_library(library,
                                      permethylated,
                                      reduced,
                                      min_max_sulfation,
-                                     min_max_phosphorylation)
+                                     min_max_phosphorylation,
+                                     lyase_digested)
             results.append(result)
         
         for index, i in enumerate(results):
@@ -474,19 +477,17 @@ def calculate_one_glycan(i,
                          permethylated,
                          reduced,
                          min_max_sulfation,
-                         min_max_phosphorylation):
+                         min_max_phosphorylation,
+                         lyase_digested = False):
     '''
     '''
     monos_count = sum(i.values())
-    number = 1
     i_formulas = []
     glycan_infos = []
-    if monos_count <= 4 and forced == 'gags':
-        number = 2
-    for w in range(number):
-        for s in range(min_max_sulfation[0], min_max_sulfation[1]+1):
-            if s > monos_count*3:
-                break
+    for s in range(min_max_sulfation[0], min_max_sulfation[1]+1):
+        if s > monos_count*3:
+            break
+        for sodiums in range(s+1):
             for p in range(min_max_phosphorylation[0], min_max_phosphorylation[1]+1):
                 if p > monos_count*2:
                     break
@@ -497,10 +498,10 @@ def calculate_one_glycan(i,
                     i_formula = f"{i_formula}+{sulfations}"
                 if p > 0:
                     i_formula = f"{i_formula}+{phosphorylations}"
-                if w > 0:
+                if lyase_digested:
                     i_formula = f"{i_formula}-H2O"
                 i_atoms = General_Functions.glycan_to_atoms(i, permethylated)
-                if w == 0:
+                if not lyase_digested:
                     i_atoms = General_Functions.sum_atoms(i_atoms, General_Functions.form_to_comp('H2O'))
                 if tag[1] == 0.0:
                     if permethylated:
@@ -516,6 +517,15 @@ def calculate_one_glycan(i,
                 else:
                     i_atoms = General_Functions.sum_atoms(i_atoms, {'S': 1*s, 'O': 3*s}) #sum sulfation atoms
                     i_atoms = General_Functions.sum_atoms(i_atoms, {'P': 1*p, 'O': 3*p, 'H': 1*p}) #sum phosphorylation atoms
+                
+                if forced == "gags" and sodiums > 0:
+                    i_formula = f"{i_formula}+{sodiums}Na"
+                    i_atoms['H']-= sodiums
+                    if "Na" in i_atoms:
+                        i_atoms["Na"] += sodiums
+                    else:
+                        i_atoms["Na"] = sodiums
+                    
                 i_atoms_tag = General_Functions.sum_atoms(i_atoms, tag[0])
                 i_neutral_mass = mass.calculate_mass(composition=i_atoms)
                 i_neutral_tag = i_neutral_mass+tag[1]
@@ -526,22 +536,21 @@ def calculate_one_glycan(i,
                     for j_j, j in enumerate(i_iso_dist[0]):
                         if j_j == 1:
                             iso_corrected.append(abs(j*1.02)) #default correction
-                            iso_corrected[-1] = iso_corrected[-1]+((((80/base_mass)/2)*iso_corrected[-1])*s)
+                            if s > 0:
+                                iso_corrected[-1] = iso_corrected[-1]*(1+(0.06*s)) #Sulfation correction
                             continue
                         if j_j == 2:
                             iso_corrected.append(abs(j*(10.8*(i_neutral_mass**-0.267)))) #default correction
-                            iso_corrected[-1] = iso_corrected[-1]+(((((80/base_mass)*6)-0.0733)*iso_corrected[-1])*s)
-                            iso_corrected[-1] = iso_corrected[-1]+((((80/base_mass)/2)*iso_corrected[-1])*p)
+                            if s > 0:
+                                iso_corrected[-1] = iso_corrected[-1]*(4*s) #Sulfation correction
                             continue
                         if j_j == 3:
                             iso_corrected.append(abs(j*(122.62*(i_neutral_mass**-0.528)))) #default correction
-                            iso_corrected[-1] = iso_corrected[-1]+(((((80/base_mass)*6)-0.0733)*iso_corrected[-1])*s)
-                            iso_corrected[-1] = iso_corrected[-1]+((((80/base_mass)/2)*iso_corrected[-1])*p)
+                            if s > 0:
+                                iso_corrected[-1] = iso_corrected[-1]*(8*s) #Sulfation correction
                             continue
                         if j_j == 4:
                             iso_corrected.append(abs(j*(2192.6*(i_neutral_mass**-0.833)))) #default correction
-                            iso_corrected[-1] = iso_corrected[-1]+(((((80/base_mass)*6)-0.0733)*iso_corrected[-1])*s)
-                            iso_corrected[-1] = iso_corrected[-1]+((((80/base_mass)/2)*iso_corrected[-1])*p)
                             continue
                         else:
                             iso_corrected.append(j)
@@ -555,7 +564,26 @@ def calculate_one_glycan(i,
                 glycan_info['Isotopic_Distribution_Masses'] = i_iso_dist[1]
                 glycan_info['Adducts_mz'] = {}
                 for j in adducts_combo:
-                    charges = sum(j.values())
+                    charges = 0
+                    for atom in j:
+                        if atom == "Cl":
+                            if j[atom] > 0:
+                                charges -= j[atom]
+                            else:
+                                charges += j[atom]
+                        elif atom == 'Fe':
+                            charges += 2*j[atom]
+                        else:
+                            charges += j[atom]
+                    if charges == 0:
+                        continue
+                    if "A" in j.keys():
+                        j['N'] = j['A']
+                        if 'H' in j.keys():
+                            j['H'] += j['A']*3
+                        else:
+                            j['H'] = j['A']*3
+                        del j['A']
                     mz = mass.calculate_mass(i_atoms_tag,
                                              charge = charges,
                                              charge_carrier = j,
