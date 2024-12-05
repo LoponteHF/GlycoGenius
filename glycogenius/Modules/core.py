@@ -75,7 +75,7 @@ def main(args=[]):
             analyzed_data = Execution_Functions.analyze_files(*args[5])
             if args[10]:
                 # Safeguard MS1 save in case of crashes during MS2 analysis
-                if datetime.datetime.now()-begin_time > datetime.timedelta(minutes=1):
+                if datetime.datetime.now()-begin_time > datetime.timedelta(hours=2):
                     Execution_Functions.print_sep()
                     time_formatted = str(datetime.datetime.now()).split(" ")[-1].split(".")[0]+" - "   
                     print(time_formatted+"Saving MS1 .gg file as safeguard\nin case of crashes.")

@@ -2529,6 +2529,7 @@ def output_filtered_data(curve_fit_score,
                 pass
     
     # Combines adducts of found EICs (deconvolution)
+    print(time_formatted+"Creating data plotting files...", end='', flush=True)
     found_eic_processed_dataframes_simplified = []
     found_eic_processed_dataframes_copy = copy.deepcopy(found_eic_processed_dataframes)
     for i_i, i in enumerate(found_eic_processed_dataframes_copy):
@@ -2549,7 +2550,6 @@ def output_filtered_data(curve_fit_score,
     
     # Print found EICs to excel files
     time_formatted = str(datetime.datetime.now()).split(" ")[-1].split(".")[0]+" - "
-    print(time_formatted+"Creating data plotting files...", end='', flush=True)
     with ExcelWriter(os.path.join(save_path, begin_time+'_Found_Glycans_EICs.xlsx')) as writer:
         df2.to_excel(writer, sheet_name="Index references", index = False)
         General_Functions.autofit_columns_excel(df2, writer.sheets["Index references"])
@@ -4001,19 +4001,18 @@ def analyze_glycan_ms2(ms2_index,
         for j_j, j in enumerate(analyzed_data['Adducts_mz_data']): #goes through each adduct
             adduct_charge = General_Functions.form_to_charge(j)
             fragments_data[j] = {}
-            for k_k, k in enumerate(data): #goes through each file
+            for k_k, k in enumerate(data): # goes through each file
                 fragments_data[j][k_k] = []
-                if len(ms2_index[k_k]) == 0:
+                if len(ms2_index[k_k]) == 0: # if data doesn't have ms2 data, skip
                     continue
-                if len(analyzed_data['Adducts_mz_data'][j][k_k][1]) == 0 and not unrestricted_fragments: #checks if found the adduct
+                if len(analyzed_data['Adducts_mz_data'][j][k_k][1]) == 0 and not unrestricted_fragments: # if not unrestricted fragments and adduct not found in MS1, skip
                     continue
                 for l in ms2_index[k_k]:
-                    if len(k[l]['intensity array']) == 0: #skips spectra without peaks
+                    if k[l]['retentionTime'] < rt_interval[0] or k[l]['retentionTime'] > rt_interval[1]: # skips spectra outside the chosen analysis retention time
                         continue
-                    if unrestricted_fragments:
-                        if k[l]['retentionTime'] < rt_interval[0] or k[l]['retentionTime'] > rt_interval[1]: #unrestricted_fragments checks for glycans not found in MS1 analysis, so it looks through the whole retention time selected
-                            continue
-                    else:
+                    if len(k[l]['intensity array']) == 0: # skips spectra without peaks
+                        continue
+                    if not unrestricted_fragments:
                         if k[l]['retentionTime'] < analyzed_data['Adducts_mz_data'][j][k_k][1][0]['peak_interval'][0] - rt_tolerance or k[l]['retentionTime'] > analyzed_data['Adducts_mz_data'][j][k_k][1][-1]['peak_interval'][1] + rt_tolerance: #skips spectra outside peak interval of peaks found
                             continue       
                     found_matching_mz = False #checks if precursor matches adduct mz
@@ -4023,6 +4022,7 @@ def analyze_glycan_ms2(ms2_index,
                         target_mz = (m+(General_Functions.h_mass*adduct_charge))/abs(adduct_charge)
                         if abs((k[l]['precursorMz'][0]['precursorMz']) - target_mz) <= General_Functions.tolerance_calc(tolerance[0], tolerance[1], target_mz)*5:
                             found_matching_mz = True
+                            break
                     # print(f"{k[l]['retentionTime']} - {k[l]['precursorMz'][0]['precursorMz']} - {found_matching_mz}")
                     if found_matching_mz:
                         found_count = 0

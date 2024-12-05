@@ -776,7 +776,7 @@ def comp_to_formula(composition):
     '''
     formula = ''
     for i in composition:
-        if composition[i] != 0:
+        if composition[i] > 0:
             formula+=i+str(composition[i])
     return formula
 

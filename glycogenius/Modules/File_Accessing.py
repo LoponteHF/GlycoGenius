@@ -497,7 +497,7 @@ def analyze_mz_array(sliced_mz,
     
     if mz_id != -1 and sliced_int[mz_id] >= local_noise*0.5:
         found_mz = sliced_mz[mz_id]
-        charge_range = range(1, abs(max_charges)*2)
+        charge_range = range(1, max(4, abs(adduct_charge)*2))
         intensity = sliced_int[mz_id] #variable to sum the total deisotopotized intensity
         mono_int = sliced_int[mz_id] #variable to sum the total intensity of the monoisotopic peak
         raw_data[glycan_id][file_id][1][ms1_id] = mono_int #unfiltered EIC
@@ -510,6 +510,7 @@ def analyze_mz_array(sliced_mz,
             
             temp_id = General_Functions.binary_search_with_tolerance(sliced_mz, found_mz+(General_Functions.h_mass/abs(adduct_charge)), mz_id, sliced_mz_length, General_Functions.tolerance_calc(tolerance[0], tolerance[1], found_mz+(General_Functions.h_mass/abs(adduct_charge))), sliced_int) #check if second isotopic is actually present or not
             if temp_id == -1:
+                # print(f"{ret_time}: not found")
                 bad = True
                 
             if not bad:
@@ -520,7 +521,7 @@ def analyze_mz_array(sliced_mz,
                             expected_value = (sliced_mz[temp_id]*i*0.0006)+0.1401 #based on linear regression of the relationship between masses and the second isotopic peak relative intensity of the average of different organic macromolecules
                             # print(f"RT: {ret_time}, Check mono, expected value greater than: {expected_value*(1+(margin*2))}, theoretical mass of monoisotopic: {sliced_mz[temp_id]*i}, charges: {i}, second isotopic actual: {mono_int/sliced_int[temp_id]}")
                             if (mono_int/sliced_int[temp_id] < expected_value*(1+(margin*2))):
-                                # print("bad")
+                                # print(f"{ret_time}: not monoisotopic")
                                 bad = True
                                 break
                             # print("ok")                        
@@ -531,7 +532,7 @@ def analyze_mz_array(sliced_mz,
                         expected_value = (target_mz*i*0.0006)+0.1401 #based on linear regression of the relationship between masses and the second isotopic peak relative intensity of the average of different organic macromolecules
                         # print(f"RT: {ret_time}, Check charge, expected value smaller than: {expected_value*(1-margin)}, theoretical mass of monoisotopic: {target_mz*i}, charges: {i}, second isotopic actual: {sliced_int[temp_id]/mono_int}")
                         if (sliced_int[temp_id]/mono_int > expected_value*(1-margin)):
-                            # print("bad")
+                            # print(f"{ret_time}: not correct charge")
                             bad = True
                             break
                         # print("ok")
