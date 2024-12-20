@@ -542,12 +542,12 @@ def calculate_one_glycan(i,
                         if j_j == 2:
                             iso_corrected.append(abs(j*(10.8*(i_neutral_mass**-0.267)))) #default correction
                             if s > 0:
-                                iso_corrected[-1] = iso_corrected[-1]*(4*s) #Sulfation correction
+                                iso_corrected[-1] = iso_corrected[-1]*(1+(0.3*s)) #Sulfation correction
                             continue
                         if j_j == 3:
                             iso_corrected.append(abs(j*(122.62*(i_neutral_mass**-0.528)))) #default correction
                             if s > 0:
-                                iso_corrected[-1] = iso_corrected[-1]*(8*s) #Sulfation correction
+                                iso_corrected[-1] = iso_corrected[-1]*s #Sulfation correction
                             continue
                         if j_j == 4:
                             iso_corrected.append(abs(j*(2192.6*(i_neutral_mass**-0.833)))) #default correction

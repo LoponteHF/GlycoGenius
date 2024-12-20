@@ -521,7 +521,7 @@ def analyze_mz_array(sliced_mz,
                             expected_value = (sliced_mz[temp_id]*i*0.0006)+0.1401 #based on linear regression of the relationship between masses and the second isotopic peak relative intensity of the average of different organic macromolecules
                             # print(f"RT: {ret_time}, Check mono, expected value greater than: {expected_value*(1+(margin*2))}, theoretical mass of monoisotopic: {sliced_mz[temp_id]*i}, charges: {i}, second isotopic actual: {mono_int/sliced_int[temp_id]}")
                             if (mono_int/sliced_int[temp_id] < expected_value*(1+(margin*2))):
-                                # print(f"{ret_time}: not monoisotopic")
+                                # print(f"RT {ret_time}: not monoisotopic")
                                 bad = True
                                 break
                             # print("ok")                        
@@ -532,7 +532,7 @@ def analyze_mz_array(sliced_mz,
                         expected_value = (target_mz*i*0.0006)+0.1401 #based on linear regression of the relationship between masses and the second isotopic peak relative intensity of the average of different organic macromolecules
                         # print(f"RT: {ret_time}, Check charge, expected value smaller than: {expected_value*(1-margin)}, theoretical mass of monoisotopic: {target_mz*i}, charges: {i}, second isotopic actual: {sliced_int[temp_id]/mono_int}")
                         if (sliced_int[temp_id]/mono_int > expected_value*(1-margin)):
-                            # print(f"{ret_time}: not correct charge")
+                            # print(f"RT {ret_time}: not correct charge")
                             bad = True
                             break
                         # print("ok")

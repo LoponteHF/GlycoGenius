@@ -1,6 +1,6 @@
 ![GlycoGenius banner](./banner.png "GlycoGenius")
 
-# GlycoGenius - Glycomics Data Analysis Tool
+# GlycoGenius - The Ultimate Glycomics Data Analysis Tool
 
 GlycoGenius is a python script that aims to be an all-in-one solution for data analysis of N- and O-glycomics full scan or DDA data.
 
@@ -42,6 +42,8 @@ There are two ways to install it:
 ~~~
         cat .\glycogenius_parameters.ini | glycogenius
 ~~~
+
+For detailed information on the different settings, access the [Instructions Manual](https://github.com/LoponteHF/GlycoGenius_GUI/blob/main/GlycoGenius_Instructions_Manual.pdf)
 
 ## Citation
 

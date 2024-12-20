@@ -17,17 +17,65 @@
 # by typing 'glycogenius'. If not, see <https://www.gnu.org/licenses/>.
 
 from setuptools import setup, find_packages
+import sys
+import os
 
+current_version='1.2.7'
+
+def bump_version(version, bump_type):
+    current_version = version
+    major, minor, patch = map(int, current_version.split("."))
+
+    if bump_type == "major":
+        major += 1
+        minor = 0
+        patch = 0
+    elif bump_type == "minor":
+        minor += 1
+        patch = 0
+    elif bump_type == "patch":
+        patch += 1
+    else:
+        return version
+
+    new_version = f"{major}.{minor}.{patch}"
+    return new_version
+
+# Bumps version
+if len(sys.argv) > 1 and 'sdist' not in sys.argv:
+    bump_type = sys.argv[1]
+    if bump_type in ["major", "minor", "patch"]:
+        new_version = bump_version(current_version, bump_type)
+        with open(__file__, "r") as file:
+            lines = file.readlines()
+        with open(__file__, "w") as file:
+            for line in lines:
+                if line.startswith("current_version="):
+                    file.write(f"current_version='{new_version}'\n")
+                else:
+                    file.write(line)
+        print("Version bumped succesfully!")
+        print(f"Former version: {current_version}, New version: {new_version}")
+        os._exit(0)
+
+# Captures the description from the markdown readme
 long_description_from_file = ""
 with open("README.md", "r", encoding="utf-8") as f:
-    for lines in f:
-        if lines[0] != "!":
-            long_description_from_file+= lines
+    for line in f:
+        if line[0] != "!":
+            long_description_from_file+= line
     f.close()
+
+# Captures the requirements from the requirements file
+requirements = []
+with open("requirements.txt", "r") as f:
+    for line in f:
+        if line[0] != "#":
+            requirements.append(line.strip())
 
 setup(
     name='glycogenius',
-    version='1.2.6',
+    version=current_version,
     author='Hector Franco Loponte',
     author_email='hectorfloponte@gmail.com',
     description='GlycoGenius is an all-in-one solution for data analysis of glycomics data.',
@@ -40,12 +88,7 @@ setup(
         'Operating System :: OS Independent',
     ],
     python_requires='>=3.6',
-    install_requires=[
-        "pandas", "scipy", "pyteomics",
-        "dill", "numpy==1.26.4", "lxml",
-        "openpyxl", "setuptools",
-        "xlsxwriter"
-    ],
+    install_requires=requirements,
     entry_points={
         'console_scripts': [
             'glycogenius = glycogenius:glycogenius',

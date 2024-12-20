@@ -1,0 +1,9 @@
+pandas
+scipy
+pyteomics
+dill
+numpy==1.26.4
+lxml
+openpyxl
+setuptools
+xlsxwriter

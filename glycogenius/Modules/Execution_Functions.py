@@ -72,8 +72,8 @@ try:
     version_path = str(pathlib.Path(__file__).parent.parent.parent.resolve())
     with open(version_path+"/Setup.py", "r") as f: #grabs version from setup.py to add to raw_data files
         for lines in f:
-            if lines[:12] == "    version=":
-                version2 = lines[13:-2].strip("'")
+            if lines.startswith("version="):
+                version2 = lines.split("=")[1].strip("'")
 except:
     pass
 version = find_most_recent_version(version1, version2)

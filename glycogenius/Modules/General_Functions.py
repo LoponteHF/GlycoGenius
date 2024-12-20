@@ -45,11 +45,11 @@ monosaccharides = {
     "N": ("N-Acetyl Hexosamine", "C8O6NH15", {"C": 8, "O": 5, "N": 1, "H": 13}, "N"),
     "X": ("Xylose", "C5O5H10", {"C": 5, "O": 4, "N": 0, "H": 8}, "X"),
     "S": ("Acetyl Neuraminic Acid", "C11O9NH19", {"C": 11, "O": 8, "N": 1, "H": 17}, "S"),
-    "Am": ("Lactonized Acetyl Neuraminic Acid alpha2,3 bound", "C11O8N2H20", {"C": 11, "O": 7, "N": 2, "H": 18}, "L"),
+    "Am": ("Amidated Acetyl Neuraminic Acid alpha2,3 bound", "C11O8N2H20", {"C": 11, "O": 7, "N": 2, "H": 18}, "L"),
     "E": ("Ethyl-Esterified Acetyl Neuraminic Acid alpha2,6 bound", "C13O9NH23", {"C": 13, "O": 8, "N": 1, "H": 21}, "E"),
     "F": ("Deoxyhexose", "C6O5H12", {"C": 6, "O": 4, "N": 0, "H": 10}, "F"),
     "G": ("Glycolyl Neuraminic Acid", "C11O10NH19", {"C": 11, "O": 9, "N": 1, "H": 17}, "G"),
-    "AmG": ("Lactonized Glycolyl Neuraminic Acid alpha2,3 bound", "C11O8N2H20", {"C": 11, "O": 8, "N": 2, "H": 18}, "A"),
+    "AmG": ("Amidated Glycolyl Neuraminic Acid alpha2,3 bound", "C11O8N2H20", {"C": 11, "O": 8, "N": 2, "H": 18}, "A"),
     "EG": ("Ethyl-Esterified Glycolyl Neuraminic Acid alpha2,6 bound", "C13O9NH23", {"C": 13, "O": 9, "N": 1, "H": 21}, "R"),
     "HN": ("Hexosamine", "C6O5NH13", {"C": 6, "O": 4, "N": 1, "H": 11}, "M"),
     "UA": ("Uronic Acid", "C6O7H10", {"C": 6, "O": 6, "N": 0, "H": 8}, "U")
