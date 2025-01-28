@@ -417,7 +417,14 @@ def full_glycans_library(library,
         tag_mass = float(tag_mass)
     except:
         if tag_mass.split('-')[0] == 'pep':
-            tag_mass = dict(mass.Composition(sequence = tag_mass.split('-')[-1]))
+            sequence = tag_mass.split('-')[-1]
+            tag_mass = dict(mass.Composition(sequence = sequence))
+            if 'C' in sequence: # Alkylation of cysteines
+                cysteines = sequence.count('C')
+                tag_mass['C'] += 2*cysteines
+                tag_mass['H'] += 3*cysteines
+                tag_mass['O'] += cysteines
+                tag_mass['N'] += cysteines
             tag_mass['H'] -= 2
             tag_mass['O'] -= 1
             
