@@ -2013,12 +2013,12 @@ def create_metaboanalyst_files(plot_metaboanalyst,
                     if "Internal Standard" in j["Glycan"]:
                         glycan_line_IS.append(str(temp_AUC_IS))
                     else:
-                        glycan_line_IS.append("0.0")
+                        glycan_line_IS.append("")
                     glycan_line.append(str(temp_AUC))
                     continue
                 if not found:
-                    glycan_line_IS.append("0.0")
-                    glycan_line.append("0.0")
+                    glycan_line_IS.append("")
+                    glycan_line.append("")
                     continue
             if found_int_std:
                 with open(os.path.join(save_path, begin_time+"_metaboanalyst_data_normalized.csv"), "a") as g:
@@ -2056,8 +2056,8 @@ def create_metaboanalyst_files(plot_metaboanalyst,
                         else:
                             glycan_line_IS.append("0.0")
                     else:
-                        glycan_line.append('0.0')
-                        glycan_line_IS.append('0.0')
+                        glycan_line.append('')
+                        glycan_line_IS.append('')
                 f.write(",".join(glycan_line)+"\n")
                 if found_int_std:
                     with open(os.path.join(save_path, begin_time+"_metaboanalyst_data_compositions_normalized.csv"), "a") as g:
@@ -3837,7 +3837,7 @@ def analyze_ms2(ms2_index,
                 dummy_fragment_data[i][j] = {}
                 for k_k, k in enumerate(data):
                     dummy_fragment_data[i][j][k_k] = []
-            with open(os.path.join(temp_folder, 'frag_data_'+result_data[1]), 'wb') as f:
+            with open(os.path.join(temp_folder, 'frag_data_'+i), 'wb') as f:
                 dill.dump(dummy_fragment_data[i], f)
                 f.close()
             dummy_fragment_data[i] = None
