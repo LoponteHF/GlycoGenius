@@ -19,13 +19,14 @@
 from . import Library_Tools
 from . import General_Functions
 from . import File_Accessing
-from pyteomics import mzxml, mzml, mass, auxiliary
-from itertools import combinations_with_replacement, islice, product
+from pyteomics import mzxml, mzml, mass
+from itertools import islice, product
 from pandas import DataFrame, ExcelWriter
 from numpy import percentile
 from re import split
 from math import inf, isnan
 from statistics import mean, median
+import numpy as np
 import concurrent.futures
 import zipfile
 import time
@@ -33,50 +34,12 @@ import os
 import dill
 import sys
 import datetime
-import traceback
-import pkg_resources
 import platform
 import copy
 import pathlib
-import importlib
 import shutil
 
-def find_most_recent_version(ver1, ver2):
-    '''
-    '''
-    ver1int = [int(x) for x in ver1.split(".")]
-    ver2int = [int(x) for x in ver2.split(".")]
-    if ver1int[0] > ver2int[0]:
-        return ver1
-    elif ver2int[0] > ver1int[0]:
-        return ver2
-    elif ver1int[0] == ver2int[0] and ver1int[1] > ver2int[1]:
-        return ver1
-    elif ver1int[0] == ver2int[0] and ver2int[1] > ver1int[1]:
-        return ver2
-    elif ver1int[0] == ver2int[0] and ver1int[1] == ver2int[1] and ver1int[2] > ver2int[2]:
-        return ver1
-    elif ver1int[0] == ver2int[0] and ver1int[1] == ver2int[1] and ver2int[2] > ver1int[2]:
-        return ver2
-    else:
-        return ver1
-    
-#fetches the version from package info or setup file, depending on use mode
-version1 = "0.0.0"
-version2 = "0.0.0"
-try:
-    version1 = pkg_resources.get_distribution("glycogenius").version
-except:
-    pass
-try:
-    version_path = str(pathlib.Path(__file__).parent.parent.parent.resolve())
-    with open(version_path+"/Setup.py", "r") as f: #grabs version from setup.py to add to raw_data files
-        for lines in f:
-            if lines.startswith("version="):
-                version2 = lines.split("=")[1].strip("'")
-except:
-    pass
-version = find_most_recent_version(version1, version2)
+version = '1.2.11'
 
 ##---------------------------------------------------------------------------------------
 ##Functions to be used for execution and organizing results data
@@ -110,10 +73,11 @@ def generate_cfg_file(path, comments):
         with open(os.path.join(glycogenius_path, 'Parameters_Template.py'), 'r') as f:
             for line in f:
                 if "samples_directory =" in line:
-                    g.write("samples_directory = "+path+"Sample Files/\n")
+                    samples_directory = os.path.join(path, "Sample Files")
+                    g.write(f"samples_directory = {samples_directory}\n")
                     continue
                 if "working_directory =" in line:
-                    g.write("working_directory = "+path+"\n")
+                    g.write(f"working_directory = {path}\n")
                     continue
                 if not comments and line[0] == ';':
                     continue
@@ -296,14 +260,10 @@ def get_indexes(file,
         The file of which the indexes belong to, for further use by the multithreading
         algorithm.
     '''
-    temp_indexes = []
-    for j_j, j in enumerate(file):
-        try:
-            if j['msLevel'] == ms_level:
-                temp_indexes.append(j_j)
-        except:
-            if j['ms level'] == ms_level:
-                temp_indexes.append(j_j)
+    temp_indexes = [
+        j_j for j_j, j in enumerate(file)
+        if ('msLevel' in j and j['msLevel'] == ms_level) or ('ms level' in j and j['ms level'] == ms_level)
+    ]
     return temp_indexes, file_id
 
 def sample_names(samples_list):
@@ -358,7 +318,8 @@ def imp_exp_gen_library(custom_glycans_list,
                         min_max_sulfation,
                         min_max_phosphorylation,
                         lyase_digested,
-                        temp_folder):
+                        temp_folder,
+                        custom_monos = []):
     '''Imports, generates and/or exports a glycans library.
 
     Parameters
@@ -489,10 +450,19 @@ def imp_exp_gen_library(custom_glycans_list,
         neutral mass, neutral mass with tag, isotopic distribution and the mzs of the
         glycans with the desired adducts combination.
     '''
+    monosaccharides = copy.deepcopy(General_Functions.monosaccharides)
+    # Add custom monosaccharides
+    if len(custom_monos) > 0:
+        for cm in custom_monos:
+            if cm['cm_short_code'] not in monosaccharides.keys():
+                monosaccharides[cm['cm_short_code']] = (cm['cm_name'], cm['cm_chem_comp'], General_Functions.sum_atoms({"C": 0, "O": 0, "N": 0, "H": 0}, General_Functions.form_to_comp(cm['cm_chem_comp'])), cm['cm_single_letter_code'])
+                
     date = datetime.datetime.now()
     begin_time = str(date)[2:4]+str(date)[5:7]+str(date)[8:10]+"_"+str(date)[11:13]+str(date)[14:16]+str(date)[17:19]
     date, time = begin_time.split("_")
     is_custom = False
+    
+    # Add here custom monosaccharides to General_Functions.monosaccharides, if they are not there already
     if imp_exp_library[0]:
         time_formatted = str(datetime.datetime.now()).split(" ")[-1].split(".")[0]+" - "
         print(time_formatted+'Importing existing library...', end = '', flush = True)
@@ -529,6 +499,9 @@ def imp_exp_gen_library(custom_glycans_list,
             min_max_phosphorylation = library_metadata[22]
             if len(library_metadata) > 23:
                 lyase_digested = library_metadata[23]
+            if len(library_metadata) > 24:
+                custom_monos = library_metadata[24]
+                
             print("Done!")
         except:
             print("\n\nGlycan library file not found. Check if the\npath used in 'library_path' is correct or set\n'imp_library' to 'no'.\n")
@@ -543,13 +516,14 @@ def imp_exp_gen_library(custom_glycans_list,
                 except KeyboardInterrupt:
                     os._exit(1)
     elif custom_glycans_list[0] and not imp_exp_library[0]:
+        # Here it checks if the monosaccharides inputted in the custom glycans list are valid
         custom_glycans_comp = []
         time_formatted = str(datetime.datetime.now()).split(" ")[-1].split(".")[0]+" - "
         print(time_formatted+'Building glycans library...', end = "", flush = True)
         for i in custom_glycans_list[1]:
             glycan_comp = General_Functions.form_to_comp(i)
             for i in glycan_comp:
-                if i not in General_Functions.monosaccharides:
+                if i not in monosaccharides:
                     print(f"\n\nUnrecognized monosaccharide in glycan list: {i}\nCheck your custom glycans list.\n")
                     if os.isatty(0):
                         input("\nPress Enter to exit.")
@@ -562,10 +536,12 @@ def imp_exp_gen_library(custom_glycans_list,
                         except KeyboardInterrupt:
                             os._exit(1)
             custom_glycans_comp.append(General_Functions.sum_monos(glycan_comp))
+            
+        # Here it dynamically builds the constraints from the custom glycans list. This is important for fragment library building.
         monos = {}
         max_monos = 0
         min_monos = 99
-        for i in General_Functions.monosaccharides:
+        for i in monosaccharides:
             monos[i] = 0
         for i in custom_glycans_comp:
             count_monos = 0
@@ -588,6 +564,8 @@ def imp_exp_gen_library(custom_glycans_list,
         min_max_xyl = (0, (monos['X']+1) if monos['X'] != 0 else 0)
         min_max_hn = (0, (monos['HN']+1) if monos['HN'] != 0 else 0)
         min_max_ua = (0, (monos['UA']+1) if monos['UA'] != 0 else 0)
+        
+        # Build custom library
         full_library = Library_Tools.full_glycans_library(custom_glycans_comp,
                                                           forced,
                                                           max_adducts,
@@ -601,7 +579,8 @@ def imp_exp_gen_library(custom_glycans_list,
                                                           reduced,
                                                           min_max_sulfation,
                                                           min_max_phosphorylation,
-                                                          lyase_digested)
+                                                          lyase_digested,
+                                                          custom_monos)
         print('Done!')
     else:
         time_formatted = str(datetime.datetime.now()).split(" ")[-1].split(".")[0]+" - "
@@ -617,7 +596,8 @@ def imp_exp_gen_library(custom_glycans_list,
                                                                min_max_hn,
                                                                min_max_ua,
                                                                lactonized_ethyl_esterified,
-                                                               forced)
+                                                               forced,
+                                                               custom_monos)
         full_library = Library_Tools.full_glycans_library(monos_library,
                                                           forced,
                                                           max_adducts,
@@ -631,7 +611,8 @@ def imp_exp_gen_library(custom_glycans_list,
                                                           reduced,
                                                           min_max_sulfation,
                                                           min_max_phosphorylation,
-                                                          lyase_digested)
+                                                          lyase_digested,
+                                                          custom_monos)
         print('Done!')
     if is_custom:
         custom_glycans_list[0] = True
@@ -671,38 +652,53 @@ def imp_exp_gen_library(custom_glycans_list,
         else:
             exp_lib_name = begin_time+'_glycans_lib'
         if not imp_exp_library[0]:
-            metadata = [min_max_monos, min_max_hex, min_max_hexnac, min_max_fuc, min_max_sia, min_max_ac, min_max_gc, forced, max_adducts, max_charges, tag_mass, internal_standard, permethylated, lactonized_ethyl_esterified, reduced, fast_iso, high_res, custom_glycans_list, min_max_xyl, min_max_hn, min_max_ua, min_max_sulfation, min_max_phosphorylation, lyase_digested]
+            metadata = [min_max_monos, min_max_hex, min_max_hexnac, min_max_fuc, min_max_sia, min_max_ac, min_max_gc, forced, max_adducts, max_charges, tag_mass, internal_standard, permethylated, lactonized_ethyl_esterified, reduced, fast_iso, high_res, custom_glycans_list, min_max_xyl, min_max_hn, min_max_ua, min_max_sulfation, min_max_phosphorylation, lyase_digested, custom_monos]
             if exp_lib_name+'.ggl' not in os.listdir(save_path):
                 with open(os.path.join(save_path, exp_lib_name+'.ggl'), 'wb') as f:
                     dill.dump([full_library, metadata], f)
                     f.close()
+                    
+        # Here the header of the human-readable library is made
+        df = {'Glycan' : [], 'Hex' : [], 'HexN' : [], 'HexNAc' : [], 'Xylose' : [], 'dHex' : []}
         if lactonized_ethyl_esterified:
-            df = {'Glycan' : [], 'Hex' : [], 'HexN' : [], 'HexNAc' : [], 'Xylose' : [], 'dHex' : [], 'a2,3-Neu5Ac' : [], 'a2,6-Neu5Ac' : [], 'a2,3-Neu5Gc' : [], 'a2,6-Neu5Gc' : [], 'UroA': [], 'Isotopic Distribution' : [], 'Neutral Mass + Tag' : []}
+            df['a2,3-Neu5Ac'] = []
+            df['a2,6-Neu5Ac'] = []
+            df['a2,3-Neu5Gc'] = []
+            df['a2,6-Neu5Gc'] = []
         else:
-            df = {'Glycan' : [], 'Hex' : [], 'HexN' : [], 'HexNAc' : [], 'Xylose' : [], 'dHex' : [], 'Neu5Ac' : [], 'Neu5Gc' : [], 'UroA': [], 'Isotopic Distribution' : [], 'Neutral Mass + Tag' : []}
+            df['Neu5Ac'] = []
+            df['Neu5Gc'] = []
+        df['UroA'] = []
+        
+        if len(custom_monos) > 0:
+            for cm in custom_monos:
+                df[cm['cm_name']] = []
+                
+        df['Isotopic Distribution'] = []
+        df['Neutral Mass + Tag'] = []
+        
+        # Here each glycan is added to the dataframe for human-readable library
         for i_i, i in enumerate(full_library):
+            df['Glycan'].append(i)
+            df['Hex'].append(full_library[i]['Monos_Composition']['H'])
+            df['HexN'].append(full_library[i]['Monos_Composition']['HN'])
+            df['HexNAc'].append(full_library[i]['Monos_Composition']['N'])
+            df['Xylose'].append(full_library[i]['Monos_Composition']['X'])
+            df['dHex'].append(full_library[i]['Monos_Composition']['F'])
             if lactonized_ethyl_esterified:
-                df['Glycan'].append(i)
-                df['Hex'].append(full_library[i]['Monos_Composition']['H'])
-                df['HexN'].append(full_library[i]['Monos_Composition']['HN'])
-                df['HexNAc'].append(full_library[i]['Monos_Composition']['N'])
-                df['Xylose'].append(full_library[i]['Monos_Composition']['X'])
-                df['dHex'].append(full_library[i]['Monos_Composition']['F'])
                 df['a2,3-Neu5Ac'].append(full_library[i]['Monos_Composition']['Am'])
                 df['a2,6-Neu5Ac'].append(full_library[i]['Monos_Composition']['E'])
                 df['a2,3-Neu5Gc'].append(full_library[i]['Monos_Composition']['AmG'])
                 df['a2,6-Neu5Gc'].append(full_library[i]['Monos_Composition']['EG'])
-                df['UroA'].append(full_library[i]['Monos_Composition']['UA'])
             else:
-                df['Glycan'].append(i)
-                df['Hex'].append(full_library[i]['Monos_Composition']['H'])
-                df['HexN'].append(full_library[i]['Monos_Composition']['HN'])
-                df['HexNAc'].append(full_library[i]['Monos_Composition']['N'])
-                df['Xylose'].append(full_library[i]['Monos_Composition']['X'])
-                df['dHex'].append(full_library[i]['Monos_Composition']['F'])
                 df['Neu5Ac'].append(full_library[i]['Monos_Composition']['S'])
                 df['Neu5Gc'].append(full_library[i]['Monos_Composition']['G'])
-                df['UroA'].append(full_library[i]['Monos_Composition']['UA'])
+            df['UroA'].append(full_library[i]['Monos_Composition']['UA'])
+                
+            if len(custom_monos) > 0:
+                for cm in custom_monos:
+                    df[cm['cm_name']].append(full_library[i]['Monos_Composition'][cm['cm_short_code']])
+            
             temp_isotopic = []
             for j in full_library[i]['Isotopic_Distribution']:
                 temp_isotopic.append(float("%.3f" % round(j, 3)))
@@ -713,6 +709,8 @@ def imp_exp_gen_library(custom_glycans_list,
                     df[j] = [float("%.4f" % round(full_library[i]['Adducts_mz'][j], 4))]
                 else:
                     df[j].append(float("%.4f" % round(full_library[i]['Adducts_mz'][j], 4)))
+        
+        # Here it starts to write the library to xlsx
         df = DataFrame(df)
         if imp_exp_library[0]:
             file_name = library_path.split("\\")[-1].split("/")[-1].split(".")[-2]
@@ -722,6 +720,8 @@ def imp_exp_gen_library(custom_glycans_list,
             with ExcelWriter(os.path.join(save_path, file_name+'.xlsx')) as writer:
                 df.to_excel(writer, index = False)
                 General_Functions.autofit_columns_excel(df, writer.sheets['Sheet1'])
+                
+        # Here is the skyline transitions list creation
         if file_name+'_skyline_transitions.csv' not in os.listdir(save_path):
             with open(os.path.join(save_path, file_name+'_skyline_transitions.csv'), 'w') as f:
                 f.write('Precursor Name, Precursor Formula, Precursor Adduct, Precursor Charge\n')
@@ -1191,7 +1191,8 @@ def make_df1_refactor(df1,
                       analyze_ms2,
                       unrestricted_fragments,
                       min_samples,
-                      fragments_dataframes = []):
+                      fragments_dataframes = [],
+                      fill_gaps = (False, 50, 0.2)):
     '''Reorganizes the raw data into a more comprehensible format and filter by the quality thresholds.
 
     Parameters
@@ -1238,11 +1239,17 @@ def make_df1_refactor(df1,
         Dataframe containing fragments information.
     '''
     df1_refactor = []
+    remove_sub_id = []
+    remove_glycan = []
+    remove_adduct = []
     for i_i, i in enumerate(df2["Sample_Number"]): #QCs cutoff
+        remove_sub_id.append([])
+        remove_glycan.append([])
+        remove_adduct.append([])
+        
+        df1_refactor.append({"Glycan" : [], "Adduct" : [], "mz" : [], "RT" : [], "AUC" : [], "PPM" : [], "S/N" : [], "Iso_Fitting_Score" : [], "Curve_Fitting_Score" : []})
         if analyze_ms2:
-            df1_refactor.append({"Glycan" : [], "Adduct" : [], "mz" : [], "RT" : [], "AUC" : [], "PPM" : [], "S/N" : [], "Iso_Fitting_Score" : [], "Curve_Fitting_Score" : [], "Detected_Fragments" : []})
-        else:
-            df1_refactor.append({"Glycan" : [], "Adduct" : [], "mz" : [], "RT" : [], "AUC" : [], "PPM" : [], "S/N" : [], "Iso_Fitting_Score" : [], "Curve_Fitting_Score" : []})
+            df1_refactor[0]["Detected_Fragments"] = []
         for j_j, j in enumerate(df1[i_i]["Adduct"]): 
             temp_rt = df1[i_i]["RT"][j_j]
             temp_auc = df1[i_i]["AUC"][j_j]
@@ -1250,38 +1257,100 @@ def make_df1_refactor(df1,
             temp_sn = df1[i_i]["S/N"][j_j]
             temp_fit = df1[i_i]["Iso_Fitting_Score"][j_j]
             temp_curve = df1[i_i]["Curve_Fitting_Score"][j_j]
+            
             to_remove = []
             to_remove_glycan = []
             to_remove_adduct = []
+            
+            # This pass selects specific glycan+adduct combos to remove if they don't pass the thresholds
             for k_k, k in enumerate(temp_sn):
+                
+                marked_for_removal = False
+                
                 if df1[i_i]["Glycan"][j_j] != "Internal Standard":
-                    if float(k) < sn:
-                        to_remove.append(k_k)
-                        to_remove_glycan.append(df1[i_i]["Glycan"][j_j])
-                        to_remove_adduct.append(j)
-                        continue
-                    if float(temp_fit[k_k]) < iso_fit_score:
-                        to_remove.append(k_k)
-                        to_remove_glycan.append(df1[i_i]["Glycan"][j_j])
-                        to_remove_adduct.append(j)
-                        continue
-                    if float(temp_curve[k_k]) < curve_fit_score:
-                        to_remove.append(k_k)
-                        to_remove_glycan.append(df1[i_i]["Glycan"][j_j])
-                        to_remove_adduct.append(j)
-                        continue
+                    if float(k) < sn and not marked_for_removal:
+                        marked_for_removal = True
+                    if float(temp_fit[k_k]) < iso_fit_score and not marked_for_removal:
+                        marked_for_removal = True
+                    if float(temp_curve[k_k]) < curve_fit_score and not marked_for_removal:
+                        marked_for_removal = True
                     if type(max_ppm) == float:
-                        if abs(float(temp_ppm[k_k])) > max_ppm:
-                            to_remove.append(k_k)
-                            to_remove_glycan.append(df1[i_i]["Glycan"][j_j])
-                            to_remove_adduct.append(j)
-                            continue
+                        if abs(float(temp_ppm[k_k])) > max_ppm and not marked_for_removal:
+                            marked_for_removal = True
                     else:
-                        if float(temp_ppm[k_k]) < max_ppm[0] or float(temp_ppm[k_k]) > max_ppm[1]:
-                            to_remove.append(k_k)
-                            to_remove_glycan.append(df1[i_i]["Glycan"][j_j])
-                            to_remove_adduct.append(j)
+                        if (float(temp_ppm[k_k]) < max_ppm[0] or float(temp_ppm[k_k]) > max_ppm[1]) and not marked_for_removal:
+                            marked_for_removal = True
+                            
+                if marked_for_removal:
+                    
+                    # Check if glycan peak is also bad in other samples to fill gap... must be good in at least half the samples
+                    if fill_gaps[0]:
+                        remove = True
+                        good_count = 0
+                        for sample_index, sample_name in enumerate(df2["Sample_Number"]):
+                            if sample_index == i_i:
+                                continue
+                            good_in_sample = False
+                            for glycan_adduct_index, glycan_adduct in enumerate(df1[sample_index]["Adduct"]):
+                                if df1[sample_index]["Glycan"][glycan_adduct_index] == df1[i_i]["Glycan"][j_j] and glycan_adduct == j:
+                                    
+                                    temp_rt_fill_gap = df1[sample_index]["RT"][glycan_adduct_index]
+                                    temp_auc_fill_gap = df1[sample_index]["AUC"][glycan_adduct_index]
+                                    temp_ppm_fill_gap = df1[sample_index]["PPM"][glycan_adduct_index]
+                                    temp_sn_fill_gap = df1[sample_index]["S/N"][glycan_adduct_index]
+                                    temp_fit_fill_gap = df1[sample_index]["Iso_Fitting_Score"][glycan_adduct_index]
+                                    temp_curve_fill_gap = df1[sample_index]["Curve_Fitting_Score"][glycan_adduct_index]
+                                    
+                                    for score_index, rt in enumerate(temp_rt_fill_gap):
+                                        if abs(rt-temp_rt[k_k]) < fill_gaps[2]:
+                                            peak_good = True
+                                            if float(temp_sn_fill_gap[score_index]) < sn and peak_good:
+                                                peak_good = False
+                                            if float(temp_fit_fill_gap[score_index]) < iso_fit_score and peak_good:
+                                                peak_good = False
+                                            if float(temp_curve_fill_gap[score_index]) < curve_fit_score and peak_good:
+                                                peak_good = False
+                                            if type(max_ppm) == float:
+                                                if abs(float(temp_ppm_fill_gap[score_index])) > max_ppm and peak_good:
+                                                    peak_good = False
+                                            else:
+                                                if (float(temp_ppm_fill_gap[score_index]) < max_ppm[0] or float(temp_ppm_fill_gap[score_index]) > max_ppm[1]) and peak_good:
+                                                    peak_good = False
+                                            if peak_good:
+                                                good_count += 1
+                                                good_in_sample = True
+                                                if good_count >= int(len(df2["Sample_Number"]) * (fill_gaps[1]/100)):
+                                                    remove = False
+                                                break
+                                if not remove or good_in_sample:
+                                    break
+                            if not remove:
+                                break
+                        if not remove:
                             continue
+                            
+                    to_remove.append(k_k)
+                    to_remove_glycan.append(df1[i_i]["Glycan"][j_j])
+                    to_remove_adduct.append(j)
+                    
+            remove_sub_id[i_i].append(to_remove)
+            remove_glycan[i_i].append(to_remove_glycan)
+            remove_adduct[i_i].append(to_remove_adduct)
+            
+    # Here the specific glycans+adduct combos are removed
+    for i_i, i in enumerate(df2["Sample_Number"]):
+        for j_j, j in enumerate(df1[i_i]["Adduct"]): 
+            temp_rt = df1[i_i]["RT"][j_j]
+            temp_auc = df1[i_i]["AUC"][j_j]
+            temp_ppm = df1[i_i]["PPM"][j_j]
+            temp_sn = df1[i_i]["S/N"][j_j]
+            temp_fit = df1[i_i]["Iso_Fitting_Score"][j_j]
+            temp_curve = df1[i_i]["Curve_Fitting_Score"][j_j]
+            
+            to_remove = remove_sub_id[i_i][j_j]
+            to_remove_glycan = remove_glycan[i_i][j_j]
+            to_remove_adduct = remove_adduct[i_i][j_j]
+            
             if len(to_remove) != 0:
                 to_remove.reverse()
                 to_remove_glycan.reverse()
@@ -1320,7 +1389,9 @@ def make_df1_refactor(df1,
                                     del fragments_dataframes[i_i]["RT"][k]
                                     del fragments_dataframes[i_i]["Precursor_mz"][k]
                                     del fragments_dataframes[i_i]["% TIC explained"][k]
-            to_remove = [] #second pass to remove based on % of remained peaks
+                                    
+            # Here specific glycan+adduct combos are selected for removal if they don't meet the minimum peak intensity threshold
+            to_remove = []
             to_remove_glycan = []
             to_remove_adduct = []  
             for k_k, k in enumerate(temp_sn): 
@@ -1334,6 +1405,8 @@ def make_df1_refactor(df1,
                     to_remove_glycan.append(df1[i_i]["Glycan"][j_j])
                     to_remove_adduct.append(j)
                     continue
+                    
+            # Here they are removed
             if len(to_remove) != 0:
                 to_remove.reverse()
                 to_remove_glycan.reverse()
@@ -1360,6 +1433,8 @@ def make_df1_refactor(df1,
                                     del fragments_dataframes[i_i]["RT"][k]
                                     del fragments_dataframes[i_i]["Precursor_mz"][k]
                                     del fragments_dataframes[i_i]["% TIC explained"][k]
+                                    
+            # Filtered data is added back to the dataframe
             df1[i_i]["RT"][j_j] = str(temp_rt)[1:-1]
             df1[i_i]["AUC"][j_j] = str(temp_auc)[1:-1]
             df1[i_i]["PPM"][j_j] = str(temp_ppm)[1:-1]
@@ -1367,6 +1442,7 @@ def make_df1_refactor(df1,
             df1[i_i]["Iso_Fitting_Score"][j_j] = str(temp_fit)[1:-1]
             df1[i_i]["Curve_Fitting_Score"][j_j] = str(temp_curve)[1:-1]
     
+    # Empty glycans+adduct combos (with no remaining peaks) are removed
     to_remove = []
     to_remove_glycan = []
     to_remove_adduct = []
@@ -1411,7 +1487,8 @@ def make_df1_refactor(df1,
                             del fragments_dataframes[j_j]["Precursor_mz"][k]
                             del fragments_dataframes[j_j]["% TIC explained"][k] #QCs cutoff end
                             
-    for i_i, i in enumerate(df1): #final arrangement for standard results print
+    # Creation of the reorganized dataframe, where each peak has an individual line
+    for i_i, i in enumerate(df1):
         for j_j, j in enumerate(df1[i_i]["Adduct"]):
             for k_k, k in enumerate(df1[i_i]["RT"][j_j].split(", ")):
                 if k != "":
@@ -1425,6 +1502,7 @@ def make_df1_refactor(df1,
                     df1_refactor[i_i]["Iso_Fitting_Score"].append(float(df1[i_i]["Iso_Fitting_Score"][j_j].split(", ")[k_k]))
                     df1_refactor[i_i]["Curve_Fitting_Score"].append(float(df1[i_i]["Curve_Fitting_Score"][j_j].split(", ")[k_k])) 
     
+    # Filter glycans that are not found in x number of samples
     samples_per_glycan = {}
     for i_i, i in enumerate(df1_refactor): #remove glycans not found in x number of samples
         checked_glycans = []
@@ -1435,7 +1513,6 @@ def make_df1_refactor(df1,
             elif j in samples_per_glycan.keys() and j not in checked_glycans:
                 samples_per_glycan[j] += 1
                 checked_glycans.append(j)
-    
     for i_i, i in enumerate(df1_refactor):
         to_remove = []  
         to_remove_glycan = []          
@@ -2090,7 +2167,8 @@ def output_filtered_data(curve_fit_score,
                          min_samples,
                          temp_folder,
                          from_GUI = False,
-                         metab_groups = []):
+                         metab_groups = [],
+                         fill_gaps = (False, 50, 0.2)):
     '''This function filters and converts raw results data into human readable
     excel files.
     
@@ -2237,10 +2315,7 @@ def output_filtered_data(curve_fit_score,
         f.close()
     
     #reorganizes and filters the raw data based on the quality thresholds
-    if analyze_ms2:
-        df1_refactor, fragments_dataframes = make_df1_refactor(df1, df2, curve_fit_score, iso_fit_score, sn, max_ppm, percentage_auc, analyze_ms2, unrestricted_fragments, min_samples, fragments_dataframes)
-    else:
-        df1_refactor, fragments_dataframes = make_df1_refactor(df1, df2, curve_fit_score, iso_fit_score, sn, max_ppm, percentage_auc, analyze_ms2, unrestricted_fragments, min_samples)
+    df1_refactor, fragments_dataframes = make_df1_refactor(df1, df2, curve_fit_score, iso_fit_score, sn, max_ppm, percentage_auc, analyze_ms2, unrestricted_fragments, min_samples, fragments_dataframes, fill_gaps)
     
     #filters ms2 data by reporter ions, calculates %TIC of MS2 spectra and reorganizes MS2 data
     if analyze_ms2:
@@ -3072,6 +3147,8 @@ def arrange_raw_data(analyzed_data,
         f.close()
     with open(os.path.join(temp_folder, 'metadata'), 'wb') as f:
         parameters.append(begin_time)
+        parameters[1][17] = str(parameters[1][17])
+        parameters[1][18] = str(parameters[1][18])
         dill.dump(parameters, f)
         f.close()
         
@@ -3183,50 +3260,54 @@ def pre_processing(data,
         A tuple containing the dummy arrays as well as the calculated noise for each sample.
     '''
     try:
-        zeroes_arrays= []
-        inf_arrays = []
+        zeroes_arrays= [0.0]*len(ms1_index[data_id])
+        inf_arrays = [inf]*len(ms1_index[data_id])
+        rt_array_report = [None]*len(ms1_index[data_id])
         threads_arrays = []
         ms1_id = []
-        rt_array_report = []
-        temp_noise = []
-        temp_avg_noise = []
+        temp_noise = [1.0]*len(ms1_index[data_id])
+        temp_avg_noise = [1.0]*len(ms1_index[data_id])
+        list_for_avg = []        
         for j_j, j in enumerate(ms1_index[data_id]):
-            zeroes_arrays.append(0.0)
-            inf_arrays.append(inf)
-            rt_array_report.append(data[j]['retentionTime'])
+            rt_array_report[j_j] = data[j]['retentionTime']
             mz_ints = [data[j]['m/z array'], data[j]['intensity array']]
+            
+            # If custom noise is used...
             if custom_noise[0]:
-                temp_noise.append(custom_noise[1][data_id])
-                temp_avg_noise.append(custom_noise[1][data_id])
+                temp_noise[j_j] = custom_noise[1][data_id]
+                temp_avg_noise[j_j] = custom_noise[1][data_id]
+            
+            # Else it calculates the noise level
             elif data[j]['retentionTime'] >= ret_time_interval[0] and data[j]['retentionTime'] <= ret_time_interval[1]:
                 if len(data[j]['intensity array']) == 0:
-                    temp_noise.append((1.0, 0.0, 0.0))
-                    temp_avg_noise.append(1.0)
-                if len(data[j]['intensity array']) != 0:
+                    temp_noise[j_j] = (1.0, 0.0, 0.0)
+                    temp_avg_noise[j_j] = 1.0
+                else:
                     threads_arrays.append(j)
                     ms1_id.append(j_j)
-                    temp_noise.append(General_Functions.rt_noise_level_parameters_set(mz_ints, "segments"))
-                    temp_avg_noise.append(General_Functions.rt_noise_level_parameters_set(mz_ints, "whole"))
+                    temp_noise_segments = General_Functions.rt_noise_level_parameters_set(mz_ints, "segments")
+                    temp_noise[j_j] = temp_noise_segments
+                    temp_noise_whole = General_Functions.rt_noise_level_parameters_set(mz_ints, "whole")
+                    temp_avg_noise[j_j] = temp_noise_whole
+                    if temp_noise_whole != 1.0:
+                        list_for_avg.append(temp_noise_whole)
+            
+            # Outside the RT range, dummy noise levels
             else:
-                temp_noise.append((1.0, 0.0, 0.0))
-                temp_avg_noise.append(1.0)
-        list_for_avg = []        
-        for i_i, i in enumerate(temp_avg_noise):
-            if i != 1.0:
-                list_for_avg.append(i)
+                temp_noise[j_j] = (1.0, 0.0, 0.0)
+                temp_avg_noise[j_j] = 1.0
+                
         if len(list_for_avg) != 0:
-            avg = sum(list_for_avg)/len(list_for_avg)        
+            avg = np.mean(list_for_avg)      
             for i_i, i in enumerate(temp_avg_noise):
                 if i == 1.0:
                     temp_avg_noise[i_i] = avg
-        else:
-            if not from_GUI:
-                print("WARNING: Data seems denoised. Don't trust S/N\nmeasurements.")
         
         acquisition_interval = rt_array_report[len(rt_array_report)//2]-rt_array_report[(len(rt_array_report)//2)-1]
         sampling_rate = round((1/60)/acquisition_interval)
         
         return zeroes_arrays, inf_arrays, threads_arrays, ms1_id, rt_array_report, temp_noise, temp_avg_noise, data_id, sampling_rate
+        
     except KeyboardInterrupt:
         if not from_GUI:
             print("\n\n----------Execution cancelled by user.----------\n", flush=True)
@@ -3325,11 +3406,11 @@ def analyze_files(library,
     noise = {}
     noise_avg = {}
     rt_array_report = {}
-    zeroes_arrays = []
-    inf_arrays = []
-    threads_arrays = []
-    ms1_id = []
-    sampling_rates = []
+    zeroes_arrays = [[]]*len(data)
+    inf_arrays = [[]]*len(data)
+    threads_arrays = [[]]*len(data)
+    ms1_id = [[]]*len(data)
+    sampling_rates = [1]*len(data)
     
     if not custom_noise[0]:
         time_formatted = str(datetime.datetime.now()).split(" ")[-1].split(".")[0]+" - "
@@ -3354,11 +3435,6 @@ def analyze_files(library,
     
     with concurrent.futures.ProcessPoolExecutor(max_workers = cpu_count if cpu_count < 60 else 60) as executor:
         for i_i, i in enumerate(data):
-            zeroes_arrays.append([])
-            inf_arrays.append([])
-            threads_arrays.append([])
-            ms1_id.append([])
-            sampling_rates.append(1)
             result = executor.submit(pre_processing,
                                      i,
                                      ms1_index,
@@ -3704,7 +3780,8 @@ def analyze_ms2(ms2_index,
                 number_cores,
                 library,
                 temp_folder,
-                from_GUI = False):
+                from_GUI = False,
+                custom_monos = []):
     '''Analyzes the MS2 data in the sample files, outputting the found matches.
     
     Parameters
@@ -3860,7 +3937,8 @@ def analyze_ms2(ms2_index,
                                   permethylated,
                                   reduced,
                                   lactonized_ethyl_esterified,
-                                  forced)
+                                  forced,
+                                  custom_monos)
                                   
     indexed_fragments = {} #index the fragments, arranged by mz, for binary search
     for i_i, i in enumerate(fragments):
@@ -4031,21 +4109,38 @@ def analyze_glycan_ms2(ms2_index,
                         former_peak_intensity = 0
                         former_peak_identified_mz = 0
                         max_int = max(k[l]['intensity array'])
-                        for m_m, m in enumerate(k[l]['m/z array']):
+                        intensity_cutoff = 0
+                        
+                        # Trim extremely large arrays
+                        max_size = 10000
+                        if len(k[l]['intensity array']) > max_size:
+                            # print(f"MS2 array too big. Lenght: {len(k[l]['intensity array'])}. Trimming...")
+                            while np.sum(k[l]['intensity array'] > intensity_cutoff) > max_size:
+                                intensity_cutoff += max_int*0.01
+                            # print(f"No peak with intensity under {intensity_cutoff} will be examined.")
+                            mask = k[l]['intensity array'] > intensity_cutoff
+                            mz_array = k[l]['m/z array'][mask]
+                            int_array = k[l]['intensity array'][mask]
+                        else:
+                            mz_array = k[l]['m/z array']
+                            int_array = k[l]['intensity array']
+                            
+                        for m_m, m in enumerate(mz_array):
                             # print(f"mz: {m}")
                             #this will work as a moving threshold, allowing to ignore minuscule peaks that are between isotopologues
-                            if k[l]['intensity array'][m_m] < former_peak_intensity*0.05:
+                            if int_array[m_m] < former_peak_intensity*0.05:
+                                # print(f"Skipping due to intensity too low.")
                                 continue
                                 
                             if abs(m-(former_peak_mz+General_Functions.h_mass)) < General_Functions.tolerance_calc(tolerance[0], tolerance[1], m) or abs(m-(former_peak_mz+(General_Functions.h_mass/2))) < General_Functions.tolerance_calc(tolerance[0], tolerance[1], m) or abs(m-(former_peak_mz+(General_Functions.h_mass/3))) < General_Functions.tolerance_calc(tolerance[0], tolerance[1], m): #this stack makes it so that fragments are not picked as peaks of the envelope of former peaks. checks for singly, doubly or triply charged fragments only
                                 if abs(m-(former_peak_identified_mz+General_Functions.h_mass)) < General_Functions.tolerance_calc(tolerance[0], tolerance[1], m) or abs(m-(former_peak_identified_mz+(General_Functions.h_mass/2))) < General_Functions.tolerance_calc(tolerance[0], tolerance[1], m) or abs(m-(former_peak_identified_mz+(General_Functions.h_mass/3))) < General_Functions.tolerance_calc(tolerance[0], tolerance[1], m):
                                     former_peak_identified_mz = m
-                                    total-= k[l]['intensity array'][m_m] #this is a way to be more true in regards to the % of ms2 TIC identified
+                                    total-= int_array[m_m] #this is a way to be more true in regards to the % of ms2 TIC identified
                                 former_peak_mz = m
                                 # print(f"Skipped")
                                 continue
                             former_peak_mz = m
-                            former_peak_intensity = k[l]['intensity array'][m_m]
+                            former_peak_intensity = int_array[m_m]
                             
                             fragment_id = General_Functions.binary_search_with_tolerance(fragments_mz_list, m, 0, len(indexed_fragments)-1, General_Functions.tolerance_calc(tolerance[0], tolerance[1], m))
                             if fragment_id == -1:
@@ -4060,26 +4155,15 @@ def analyze_glycan_ms2(ms2_index,
                             
                             good_fragments = []
                             for n_n, n in enumerate(possible_fragments):
-                                if lactonized_ethyl_esterified:
-                                    if (n[0]['Monos_Composition']['H'] <= analyzed_data['Monos_Composition']['H']
-                                        and n[0]['Monos_Composition']['N'] <= analyzed_data['Monos_Composition']['N'] 
-                                        and n[0]['Monos_Composition']['Am'] <= analyzed_data['Monos_Composition']['Am'] 
-                                        and n[0]['Monos_Composition']['E'] <= analyzed_data['Monos_Composition']['E'] 
-                                        and n[0]['Monos_Composition']['F'] <= analyzed_data['Monos_Composition']['F'] 
-                                        and n[0]['Monos_Composition']['AmG'] <= analyzed_data['Monos_Composition']['AmG'] 
-                                        and n[0]['Monos_Composition']['EG'] <= analyzed_data['Monos_Composition']['EG'] 
-                                        and n[0]['Monos_Composition']['HN'] <= analyzed_data['Monos_Composition']['HN'] 
-                                        and n[0]['Monos_Composition']['UA'] <= analyzed_data['Monos_Composition']['UA']):
-                                            good_fragments.append(n_n)
-                                else:
-                                    if (n[0]['Monos_Composition']['H'] <= analyzed_data['Monos_Composition']['H']
-                                        and n[0]['Monos_Composition']['N'] <= analyzed_data['Monos_Composition']['N'] 
-                                        and n[0]['Monos_Composition']['S'] <= analyzed_data['Monos_Composition']['S'] 
-                                        and n[0]['Monos_Composition']['F'] <= analyzed_data['Monos_Composition']['F'] 
-                                        and n[0]['Monos_Composition']['G'] <= analyzed_data['Monos_Composition']['G'] 
-                                        and n[0]['Monos_Composition']['HN'] <= analyzed_data['Monos_Composition']['HN'] 
-                                        and n[0]['Monos_Composition']['UA'] <= analyzed_data['Monos_Composition']['UA']):
-                                            good_fragments.append(n_n)
+                                bad = False
+                                for monosaccharide in n[0]['Monos_Composition']:
+                                    if monosaccharide == 'T':
+                                        continue
+                                    if n[0]['Monos_Composition'][monosaccharide] > analyzed_data['Monos_Composition'][monosaccharide]:
+                                        bad = True
+                                        break
+                                if not bad:
+                                    good_fragments.append(n_n)
                             if len(good_fragments) == 0:
                                 continue
                                 
@@ -4097,8 +4181,8 @@ def analyze_glycan_ms2(ms2_index,
                                 superscript_polarity = superscripts['+'] if adduct_charge_frag > 0 else superscripts['-']
                                 fragment_name_list.append(f"{formula_fragment}[M{adduct_str}]{superscript_polarity}{superscripts[str(abs(adduct_charge_frag))]}")
                             fragment_name = "/".join(fragment_name_list)
-                            fragments_data[j][k_k].append([i, j, fragment_name, m, k[l]['intensity array'][m_m], k[l]['retentionTime'], k[l]['precursorMz'][0]['precursorMz'], total])  
-                            found_count += k[l]['intensity array'][m_m]
+                            fragments_data[j][k_k].append([i, j, fragment_name, m, int_array[m_m], k[l]['retentionTime'], k[l]['precursorMz'][0]['precursorMz'], total])  
+                            found_count += int_array[m_m]
                             
                         for m in fragments_data[j][k_k]:
                             if m[5] == k[l]['retentionTime']:

@@ -19,52 +19,15 @@
 from . import General_Functions
 from . import Execution_Functions
 from .Execution_Functions import print_sep
-import pkg_resources
 import pathlib
 import shutil
 import tempfile
-import importlib
 import datetime
 import platform
 import os
 import dill
 
-def find_most_recent_version(ver1, ver2):
-    '''
-    '''
-    ver1int = [int(x) for x in ver1.split(".")]
-    ver2int = [int(x) for x in ver2.split(".")]
-    if ver1int[0] > ver2int[0]:
-        return ver1
-    elif ver2int[0] > ver1int[0]:
-        return ver2
-    elif ver1int[0] == ver2int[0] and ver1int[1] > ver2int[1]:
-        return ver1
-    elif ver1int[0] == ver2int[0] and ver2int[1] > ver1int[1]:
-        return ver2
-    elif ver1int[0] == ver2int[0] and ver1int[1] == ver2int[1] and ver1int[2] > ver2int[2]:
-        return ver1
-    elif ver1int[0] == ver2int[0] and ver1int[1] == ver2int[1] and ver2int[2] > ver1int[2]:
-        return ver2
-    else:
-        return ver1
-    
-#fetches the version from package info or setup file, depending on use mode
-version1 = "0.0.0"
-version2 = "0.0.0"
-try:
-    version1 = pkg_resources.get_distribution("glycogenius").version
-except:
-    pass
-try:
-    version_path = str(pathlib.Path(__file__).parent.parent.parent.resolve())
-    with open(version_path+"/Setup.py", "r") as f: #grabs version from setup.py to add to raw_data files
-        for lines in f:
-            if lines.startswith("version="):
-                version2 = lines.split("=")[1].strip("'")
-except:
-    pass
-version = find_most_recent_version(version1, version2)
+version = '1.2.11'
 
 forced_structures = ['none', 'n_glycans', 'o_glycans', 'gags']
     
@@ -1024,6 +987,7 @@ def CLI():
     min_max_ac = [0, 0]
     min_max_gc = [0, 0]
     min_max_ua = [0, 0]
+    custom_monosaccharides = []
     forced = 'none'
     max_adducts = {}
     adducts_exclusion = []
@@ -1060,6 +1024,7 @@ def CLI():
     iso_fit_score = 0.9
     curve_fit_score = 0.9
     s_to_n = 3
+    fill_gaps = (False, 50, 0.2)
     custom_noise = [False, []]
     samples_path = ''
     save_path = ''
@@ -1243,11 +1208,15 @@ def CLI():
         min_max_ua = library_metadata[20]
         min_max_sulfation = library_metadata[21]
         min_max_phosphorylation = library_metadata[22]
+        if len(library_metadata) > 23:
+            lyase_digested = library_metadata[23]
+        if len(library_metadata) > 24:
+            custom_monosaccharides = library_metadata[24]
         
     #args to execution functions:
-    output_filtered_data_args = [curve_fit_score, iso_fit_score, s_to_n, max_ppm, percentage_auc, reanalysis, reanalysis_path, save_path, analyze_ms2[0], analyze_ms2[2], reporter_ions, plot_metaboanalyst, compositions, align_chromatograms, forced, ret_time_interval[2], rt_tolerance_frag, iso_fittings, output_plot_data, multithreaded_analysis, number_cores, 0.0, min_samples, None]
+    output_filtered_data_args = [curve_fit_score, iso_fit_score, s_to_n, max_ppm, percentage_auc, reanalysis, reanalysis_path, save_path, analyze_ms2[0], analyze_ms2[2], reporter_ions, plot_metaboanalyst, compositions, align_chromatograms, forced, ret_time_interval[2], rt_tolerance_frag, iso_fittings, output_plot_data, multithreaded_analysis, number_cores, 0.0, min_samples, None, fill_gaps]
 
-    imp_exp_gen_library_args = [custom_glycans_list, min_max_monos, min_max_hex, min_max_hexnac, min_max_xyl, min_max_sia, min_max_fuc, min_max_ac, min_max_gc, min_max_hn, min_max_ua, forced, max_adducts, adducts_exclusion, max_charges, reducing_end_tag, fast_iso, high_res, imp_exp_library, library_path, exp_lib_name, only_gen_lib, save_path, internal_standard, permethylated, lactonized_ethyl_esterified, reduced, min_max_sulfation, min_max_phosphorylation, lyase_digested, None]
+    imp_exp_gen_library_args = [custom_glycans_list, min_max_monos, min_max_hex, min_max_hexnac, min_max_xyl, min_max_sia, min_max_fuc, min_max_ac, min_max_gc, min_max_hn, min_max_ua, forced, max_adducts, adducts_exclusion, max_charges, reducing_end_tag, fast_iso, high_res, imp_exp_library, library_path, exp_lib_name, only_gen_lib, save_path, internal_standard, permethylated, lactonized_ethyl_esterified, reduced, min_max_sulfation, min_max_phosphorylation, lyase_digested, None, custom_monosaccharides]
 
     list_of_data_args = [samples_list]
 
@@ -1257,9 +1226,9 @@ def CLI():
 
     analyze_files_args = [None, None, None, None, tolerance, ret_time_interval, min_isotopologue_peaks, min_ppp, max_charges, custom_noise, close_peaks, multithreaded_analysis, number_cores, None, None]
 
-    analyze_ms2_args = [None, None, None, ret_time_interval, tolerance, min_max_monos, min_max_hex, min_max_hexnac, min_max_xyl,  min_max_sia, min_max_fuc, min_max_ac, min_max_gc, min_max_hn, min_max_ua, max_charges, reducing_end_tag, forced, permethylated, reduced, lactonized_ethyl_esterified, analyze_ms2[1], analyze_ms2[2], ret_time_interval[2], multithreaded_analysis, number_cores, None, None]
+    analyze_ms2_args = [None, None, None, ret_time_interval, tolerance, min_max_monos, min_max_hex, min_max_hexnac, min_max_xyl,  min_max_sia, min_max_fuc, min_max_ac, min_max_gc, min_max_hn, min_max_ua, max_charges, reducing_end_tag, forced, permethylated, reduced, lactonized_ethyl_esterified, analyze_ms2[1], analyze_ms2[2], ret_time_interval[2], multithreaded_analysis, number_cores, None, None, custom_monosaccharides]
 
-    arrange_raw_data_args = [None, samples_names, analyze_ms2[0], save_path, [[custom_glycans_list, min_max_monos, min_max_hex, min_max_hexnac, min_max_sia, min_max_fuc, min_max_ac, min_max_gc, forced, max_adducts, adducts_exclusion, max_charges, reducing_end_tag, permethylated, reduced, lactonized_ethyl_esterified, fast_iso, high_res, internal_standard, imp_exp_library, exp_lib_name, library_path, only_gen_lib, min_max_xyl, min_max_hn, min_max_ua, min_max_sulfation, min_max_phosphorylation], [multithreaded_analysis, number_cores, analyze_ms2, reporter_ions, tolerance, ret_time_interval, rt_tolerance_frag, min_isotopologue_peaks, min_ppp, close_peaks, align_chromatograms, percentage_auc, max_ppm, iso_fit_score, curve_fit_score, s_to_n, custom_noise, samples_path, save_path, plot_metaboanalyst, compositions, iso_fittings, reanalysis, reanalysis_path, output_plot_data]], None, None]
+    arrange_raw_data_args = [None, samples_names, analyze_ms2[0], save_path, [[custom_glycans_list, min_max_monos, min_max_hex, min_max_hexnac, min_max_sia, min_max_fuc, min_max_ac, min_max_gc, forced, max_adducts, adducts_exclusion, max_charges, reducing_end_tag, permethylated, reduced, lactonized_ethyl_esterified, fast_iso, high_res, internal_standard, imp_exp_library, exp_lib_name, library_path, only_gen_lib, min_max_xyl, min_max_hn, min_max_ua, min_max_sulfation, min_max_phosphorylation, custom_monosaccharides], [multithreaded_analysis, number_cores, analyze_ms2, reporter_ions, tolerance, ret_time_interval, rt_tolerance_frag, min_isotopologue_peaks, min_ppp, close_peaks, align_chromatograms, percentage_auc, max_ppm, iso_fit_score, curve_fit_score, s_to_n, custom_noise, samples_path, save_path, plot_metaboanalyst, compositions, iso_fittings, reanalysis, reanalysis_path, output_plot_data]], None, None]
 
     return output_filtered_data_args, imp_exp_gen_library_args, list_of_data_args, index_spectra_from_file_ms1_args, index_spectra_from_file_ms2_args, analyze_files_args, analyze_ms2_args, arrange_raw_data_args, samples_names, reanalysis, analyze_ms2[0]
     

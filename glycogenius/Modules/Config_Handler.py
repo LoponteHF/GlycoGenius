@@ -71,6 +71,7 @@ def config_handler(from_GUI = False, param_file_path = ''):
     min_max_ac = [0, 0]
     min_max_gc = [0, 0]
     min_max_ua = [0, 0]
+    custom_monosaccharides = []
     forced = 'none'
     max_adducts = {}
     adducts_exclusion = []
@@ -107,6 +108,7 @@ def config_handler(from_GUI = False, param_file_path = ''):
     iso_fit_score = 0.9
     curve_fit_score = 0.9
     s_to_n = 3
+    fill_gaps = (False, 50, 0.2)
     custom_noise = [False, []]
     samples_path = ''
     save_path = ''
@@ -211,7 +213,10 @@ def config_handler(from_GUI = False, param_file_path = ''):
         min_max_ua = library_metadata[20]
         min_max_sulfation = library_metadata[21]
         min_max_phosphorylation = library_metadata[22]
-        lyase_digested = library_metadata[23]
+        if len(library_metadata) > 23:
+            lyase_digested = library_metadata[23]
+        if len(library_metadata) > 24:
+            custom_monosaccharides = library_metadata[24]
                 
     elif library_mode == 'custom_library':
         custom_glycans_list[0] = True
@@ -337,6 +342,22 @@ def config_handler(from_GUI = False, param_file_path = ''):
                     time.sleep(3600)
             except KeyboardInterrupt:
                 os._exit(1)
+                
+    custom_monosaccharides_list = config['library_building_modes'].get('custom_monosaccharides', [])
+    if len(custom_monosaccharides_list) > 0:
+        for cm in custom_monosaccharides_list.split("),"):
+            cm = cm.strip().strip("(").strip(")")
+            cm = [element.strip() for element in cm.split(",")]
+            custom_monosaccharides.append({
+                'cm_name' : cm[0], 
+                'cm_short_code' : cm[1],
+                'cm_single_letter_code' : cm[2],
+                'cm_chem_comp' : cm[3],
+                'cm_min' : int(cm[4]),
+                'cm_max' : int(cm[5]),
+                'sialic' : True if cm[6] == 'yes' else False
+                })
+    
     max_adducts = General_Functions.form_to_comp(config['common_library_building_settings']['max_adducts'])
     adducts_exc = config['common_library_building_settings']['adducts_exclusion'].split(",")
     if len(adducts_exc) > 0:
@@ -437,6 +458,16 @@ def config_handler(from_GUI = False, param_file_path = ''):
         iso_fit_score = float(config['post-analysis/reanalysis']['isotopic_fitting_score_threshold'])
         curve_fit_score = float(config['post-analysis/reanalysis']['curve_fitting_score_threshold'])
         s_to_n = float(config['post-analysis/reanalysis']['signal_to_noise_threshold'])
+        
+        fill_gaps_on_off = config['post-analysis/reanalysis'].get('fill_data_gaps', 'no')
+        if fill_gaps_on_off.lower() == 'no' or fill_gaps_on_off.lower() == 'false':
+            fill_gaps_on_off = False
+        else:
+            fill_gaps_on_off = True
+        fill_gaps_percentage = float(config['post-analysis/reanalysis'].get('fill_data_gaps_min_samples', 50))
+        fill_gaps_rt_tol = float(config['post-analysis/reanalysis'].get('fill_data_gaps_rt_tolerance', 0.2))
+        fill_gaps = (fill_gaps_on_off, fill_gaps_percentage, fill_gaps_rt_tol)
+        
         compositions = config['post-analysis/reanalysis'].getboolean('analyze_compositions')
         plot_metaboanalyst_file = config['post-analysis/reanalysis'].getboolean('output_metaboanalyst_file')
         if plot_metaboanalyst_file:
@@ -452,12 +483,12 @@ def config_handler(from_GUI = False, param_file_path = ''):
         output_plot_data = config['post-analysis/reanalysis'].getboolean('output_plot_data')
         
     if from_GUI:
-        return (custom_glycans_list, min_max_monos, min_max_hex, min_max_hexnac, min_max_sia, min_max_fuc, min_max_ac, min_max_gc, forced, max_adducts, adducts_exclusion, max_charges, reducing_end_tag, permethylated, reduced, lactonized_ethyl_esterified, fast_iso, high_res, internal_standard, imp_exp_library, exp_lib_name, library_path, only_gen_lib, min_max_xyl, min_max_hn, min_max_ua, min_max_sulfation, min_max_phosphorylation, lyase_digested), (multithreaded_analysis, number_cores, analyze_ms2, reporter_ions, tolerance, ret_time_interval, rt_tolerance_frag, min_isotopologue_peaks, min_ppp, close_peaks, align_chromatograms, percentage_auc, max_ppm, iso_fit_score, curve_fit_score, s_to_n, custom_noise, samples_path, save_path, plot_metaboanalyst, compositions, iso_fittings, reanalysis, reanalysis_path, output_plot_data)
+        return (custom_glycans_list, min_max_monos, min_max_hex, min_max_hexnac, min_max_sia, min_max_fuc, min_max_ac, min_max_gc, forced, max_adducts, adducts_exclusion, max_charges, reducing_end_tag, permethylated, reduced, lactonized_ethyl_esterified, fast_iso, high_res, internal_standard, imp_exp_library, exp_lib_name, library_path, only_gen_lib, min_max_xyl, min_max_hn, min_max_ua, min_max_sulfation, min_max_phosphorylation, lyase_digested, custom_monosaccharides), (multithreaded_analysis, number_cores, analyze_ms2, reporter_ions, tolerance, ret_time_interval, rt_tolerance_frag, min_isotopologue_peaks, min_ppp, close_peaks, align_chromatograms, percentage_auc, max_ppm, iso_fit_score, curve_fit_score, s_to_n, custom_noise, samples_path, save_path, plot_metaboanalyst, compositions, iso_fittings, reanalysis, reanalysis_path, output_plot_data, fill_gaps)
                 
     #args to execution functions:
-    output_filtered_data_args = [curve_fit_score, iso_fit_score, s_to_n, max_ppm, percentage_auc, reanalysis, reanalysis_path, save_path, analyze_ms2[0], analyze_ms2[2], reporter_ions, plot_metaboanalyst, compositions, align_chromatograms, forced, ret_time_interval[2], rt_tolerance_frag, iso_fittings, output_plot_data, multithreaded_analysis, number_cores, 0.0, min_samples, None]
+    output_filtered_data_args = [curve_fit_score, iso_fit_score, s_to_n, max_ppm, percentage_auc, reanalysis, reanalysis_path, save_path, analyze_ms2[0], analyze_ms2[2], reporter_ions, plot_metaboanalyst, compositions, align_chromatograms, forced, ret_time_interval[2], rt_tolerance_frag, iso_fittings, output_plot_data, multithreaded_analysis, number_cores, 0.0, min_samples, None, fill_gaps]
 
-    imp_exp_gen_library_args = [custom_glycans_list, min_max_monos, min_max_hex, min_max_hexnac, min_max_xyl, min_max_sia, min_max_fuc, min_max_ac, min_max_gc, min_max_hn, min_max_ua, forced, max_adducts, adducts_exclusion, max_charges, reducing_end_tag, fast_iso, high_res, imp_exp_library, library_path, exp_lib_name, only_gen_lib, save_path, internal_standard, permethylated, lactonized_ethyl_esterified, reduced, min_max_sulfation, min_max_phosphorylation, lyase_digested, None]
+    imp_exp_gen_library_args = [custom_glycans_list, min_max_monos, min_max_hex, min_max_hexnac, min_max_xyl, min_max_sia, min_max_fuc, min_max_ac, min_max_gc, min_max_hn, min_max_ua, forced, max_adducts, adducts_exclusion, max_charges, reducing_end_tag, fast_iso, high_res, imp_exp_library, library_path, exp_lib_name, only_gen_lib, save_path, internal_standard, permethylated, lactonized_ethyl_esterified, reduced, min_max_sulfation, min_max_phosphorylation, lyase_digested, None, custom_monosaccharides]
 
     list_of_data_args = [samples_list]
 
@@ -467,8 +498,8 @@ def config_handler(from_GUI = False, param_file_path = ''):
 
     analyze_files_args = [None, None, None, None, tolerance, ret_time_interval, min_isotopologue_peaks, min_ppp, max_charges, custom_noise, close_peaks, multithreaded_analysis, number_cores, None, None]
 
-    analyze_ms2_args = [None, None, None, ret_time_interval, tolerance, min_max_monos, min_max_hex, min_max_hexnac, min_max_xyl,  min_max_sia, min_max_fuc, min_max_ac, min_max_gc, min_max_hn, min_max_ua, max_charges, reducing_end_tag, forced, permethylated, reduced, lactonized_ethyl_esterified, analyze_ms2[1], analyze_ms2[2], ret_time_interval[2], multithreaded_analysis, number_cores, None, None]
+    analyze_ms2_args = [None, None, None, ret_time_interval, tolerance, min_max_monos, min_max_hex, min_max_hexnac, min_max_xyl,  min_max_sia, min_max_fuc, min_max_ac, min_max_gc, min_max_hn, min_max_ua, max_charges, reducing_end_tag, forced, permethylated, reduced, lactonized_ethyl_esterified, analyze_ms2[1], analyze_ms2[2], ret_time_interval[2], multithreaded_analysis, number_cores, None, None, custom_monosaccharides]
 
-    arrange_raw_data_args = [None, samples_names, analyze_ms2[0], save_path, [[custom_glycans_list, min_max_monos, min_max_hex, min_max_hexnac, min_max_sia, min_max_fuc, min_max_ac, min_max_gc, forced, max_adducts, adducts_exclusion, max_charges, reducing_end_tag, permethylated, reduced, lactonized_ethyl_esterified, fast_iso, high_res, internal_standard, imp_exp_library, exp_lib_name, library_path, only_gen_lib, min_max_xyl, min_max_hn, min_max_ua, min_max_sulfation, min_max_phosphorylation], [multithreaded_analysis, number_cores, analyze_ms2, reporter_ions, tolerance, ret_time_interval, rt_tolerance_frag, min_isotopologue_peaks, min_ppp, close_peaks, align_chromatograms, percentage_auc, max_ppm, iso_fit_score, curve_fit_score, s_to_n, custom_noise, samples_path, save_path, plot_metaboanalyst, compositions, iso_fittings, reanalysis, reanalysis_path, output_plot_data]], None, None]
+    arrange_raw_data_args = [None, samples_names, analyze_ms2[0], save_path, [[custom_glycans_list, min_max_monos, min_max_hex, min_max_hexnac, min_max_sia, min_max_fuc, min_max_ac, min_max_gc, forced, max_adducts, adducts_exclusion, max_charges, reducing_end_tag, permethylated, reduced, lactonized_ethyl_esterified, fast_iso, high_res, internal_standard, imp_exp_library, exp_lib_name, library_path, only_gen_lib, min_max_xyl, min_max_hn, min_max_ua, min_max_sulfation, min_max_phosphorylation, custom_monosaccharides], [multithreaded_analysis, number_cores, analyze_ms2, reporter_ions, tolerance, ret_time_interval, rt_tolerance_frag, min_isotopologue_peaks, min_ppp, close_peaks, align_chromatograms, percentage_auc, max_ppm, iso_fit_score, curve_fit_score, s_to_n, custom_noise, samples_path, save_path, plot_metaboanalyst, compositions, iso_fittings, reanalysis, reanalysis_path, output_plot_data]], None, None]
 
     return output_filtered_data_args, imp_exp_gen_library_args, list_of_data_args, index_spectra_from_file_ms1_args, index_spectra_from_file_ms2_args, analyze_files_args, analyze_ms2_args, arrange_raw_data_args, samples_names, reanalysis, analyze_ms2[0]

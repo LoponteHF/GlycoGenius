@@ -88,7 +88,19 @@ neu5gc = 0, 0
 ;	amounts for generating a library.
 ;	-> Only needed in generate_library mode.
 ;
-
+custom_monosaccharides = 
+;	Custom monosaccharides. Entries should be comma-
+;	separated, with each entry in the format:
+;	(Monosaccharide Name, Short-Code, Single-Letter
+;	Code, Chemical Composition, Minimum amount,
+;	Maximum amount, Sialic Acid?)
+;	Short-Code is up to three letters (no numbers), 
+;	Single-Letter code is one letter (no numbers),
+;	Chemical composition is in the format "C9H14O8N1",
+;	meaning even if only one of an atom is present, it
+;	must be made explicit (i.e. N1 for one nitrogen),
+;	and "Sialic Acid" must be filled with 'yes' or 'no'.
+;
 [common_library_building_settings]
 force_class_structure = none
 ; 	Used to force some monosaccharides compositions 
@@ -275,6 +287,18 @@ signal_to_noise_threshold = 3
 ; 	Minimum signal-to-noise ratio to consider a 
 ;	chromatogram peak viable. Can be reapplied on 
 ;	raw data reanalysis.
+;
+fill_data_gaps = no
+fill_data_gaps_min_samples = 50
+fill_data_gaps_rt_tolerance = 0.2
+;	Fills missing values with peaks that were detected, 
+;	but didn't meet the quality thresholds set.
+;	Beware: May produce data with peaks with quality
+;	below the thresholds set.
+;	Input the minimum % of samples at which the glycan
+;	peak must be found in a good state to fill the gaps
+;	and the retention time tolerance for considering 
+;	two different peaks the same elution time.
 ;
 output_compositions_analysis = yes
 ; 	If used, also plots data related to the whole 

@@ -2,22 +2,11 @@
 
 # GlycoGenius - The Ultimate Glycomics Data Analysis Tool
 
-GlycoGenius is a python script that aims to be an all-in-one solution for data analysis of N- and O-glycomics full scan or DDA data.
+GlycoGenius is an open-source program offering an automated workflow for glycomics data analysis, featuring an intuitive graphical interface. 
 
-Glycobiologists analyzing glycans' mass spectrometer data usually rely on several different tools to perform different tasks on different parts of their workflow and, in between the use of all those different tools, there's usually a lot of manual work that has to be done at least for data curating.
+Current software tools are effective in certain aspects of glycomics data analysis but all require significant effort to reach satisfactory qualitative results, often requiring months of manual data curation, revision and integration.
 
-With that in mind, this tool aims to put all the usual workflow for glycomics in a single place.
-
-In order to do that, this tool is able to do several different tasks automatically:
-- Create glycans libraries based on user input, which can be monosaccharides numbers or specific glycans;
-- Automatically identify noise level in samples;
-- Process the spectra data and creates refined extracted ion chromatograms (EICs) for each glycan analyzed;
-- Peak-pick multiple peaks in a single EIC, which allows the identification and possibly quantification of plausible isomers;
-- Provide scorings of isotopic distribution peaks and chromatogram peak curve fitting based on relation and correlation;
-- Identify PPM differences between theoretical mass and identified mz;
-- Calculate signal-to-noise ratio;
-- Identify MS2 glycans' fragments and assign them to its respective precursor;
-- And much more!
+With that in mind, GlycoGenius is tailored to reduce manual workload. It allows for data visualization (using the GUI) and automatically constructs search spaces, identifies, scores, and quantifies glycans, filters results, and annotates fragment spectra of N- and O-glycans, glycosaminoglycans and more.
 
 ## Installation
 
@@ -25,7 +14,7 @@ There are two ways to install it:
 1. Download the latest version of the Graphical User Interface from Releases page on https://github.com/LoponteHF/GlycoGenius_GUI, unzip it and run the executable file (Windows only, for other OS, you can install the GUI from PyPI);
 2. Install from PyPI:
 	1. Install Python from python.org or from your OS package distributor;
-	2. Type "pip install glycogenius" on a terminal
+	2. Type "pip install glycogenius" on a terminal.
 	
 ## Usage
 
@@ -38,12 +27,16 @@ There are two ways to install it:
    - You can analyze directly on the CLI;
    - You can export a parameters file for advanced executions;
 4. If you exported the parameters file, pipeline it to glycogenius after setting it up.
-   - ie. in terminal type:
+   - eg. in terminal type:
 ~~~
         cat .\glycogenius_parameters.ini | glycogenius
 ~~~
 
 For detailed information on the different settings, access the [Instructions Manual](https://github.com/LoponteHF/GlycoGenius_GUI/blob/main/GlycoGenius_Instructions_Manual.pdf)
+
+## Features Development and Suggestions
+
+If you want to suggest a new feature or be aware of what's intended down the road for GlycoGenius, feel free to check our [Trello dashboard](https://trello.com/b/qJU80MXM/glycogenius-dev-dashboard).
 
 ## Citation
 

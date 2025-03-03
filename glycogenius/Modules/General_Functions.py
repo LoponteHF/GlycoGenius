@@ -383,7 +383,7 @@ def tolerance_calc(unit,
         ie. 10 ppm gets converted to 0.01 pw tolerance.
     '''
     if unit == "ppm":
-        return (mz-(-((value*mz)/10**6)+mz))
+        return (value*mz)/(10**6)
     elif unit == "mz":
         return value
     else:
@@ -490,28 +490,29 @@ def rt_noise_level_parameters_set(mz_int, mode):
         the last quarter, as well as the last mz in the spectrum.
     '''
     if mode == "segments":
-        first_quarter_end = int(len(mz_int[1])/4)
+        first_quarter_end = len(mz_int[1])//4
         last_quarter_begin = first_quarter_end*3
         int_list_first_quarter = mz_int[1][:first_quarter_end]
         int_list_last_quarter = mz_int[1][last_quarter_begin:]
-        segments_list = [sorted(int_list_first_quarter), sorted(int_list_last_quarter)]
+        segments_list = [int_list_first_quarter, int_list_last_quarter]
         
     if mode == "whole":
-        segments_list = [sorted(list(mz_int[1]))]
+        segments_list = [mz_int[1]]
     
     noise = []
-    for j_j, j in enumerate(segments_list):
-        if len(j) == 0:
+    for segment in segments_list:
+        if len(segment) == 0:
             noise.append(1.0)
             continue
-        intensity_std = numpy.std(j)
+            
+        intensity_std = numpy.std(segment)
         noise_threshold = 2.0 * intensity_std
-        if (min(j) != 0 and noise_threshold > min(j)*5) or noise_threshold > max(j)*0.5: #this means that the data is denoised already, so it picks really high intensity as possible noise
+        min_val = numpy.min(segment)
+        max_val = numpy.max(segment)
+        
+        if (min_val != 0 and noise_threshold > min_val*5) or noise_threshold > max_val*0.5: #this means that the data is denoised already, so it picks really high intensity as possible noise
             # if mode == "whole": print("picked minimum", min(j), max(j), len(j), noise_threshold) 
-            if min(j) != 0:
-                noise.append(min(j))
-            else:
-                noise.append(1.0)
+            noise.append(min_val if min_val != 0 else 1.0)
         else:
             # if mode == "whole": print("picked 2 std", min(j), max(j), len(j), noise_threshold) 
             noise.append(noise_threshold)
@@ -581,7 +582,7 @@ def normpdf(x, mean, sd):
     num = exp(-(float(x)-float(mean))**2/(2*var))
     return num/denom
 
-def form_to_comp(string, form_type = 'glycan'):
+def form_to_comp(string):
     '''Separates a molecular formula or monosaccharides formula of glycans into a
     dictionary with each atom/monosaccharide as a key and its amount as value.
 
@@ -641,7 +642,7 @@ def form_to_charge(string):
             charge+=comp[i]
     return charge
 
-def glycan_to_atoms(glycan_composition, permethylated):
+def glycan_to_atoms(glycan_composition, permethylated, monos):
     '''Calculates the amounts of atoms based on glycan monosaccharides.
 
     Parameters
@@ -667,7 +668,7 @@ def glycan_to_atoms(glycan_composition, permethylated):
         "O": 6, "N": 0, "H": 12}.
     '''
     atoms = {"C": 0, "O": 0, "N": 0, "H": 0}
-    monosaccharides_local = copy.deepcopy(monosaccharides)
+    monosaccharides_local = monos
     if permethylated:
         for i in monosaccharides_local:
             if i == 'H' or i == 'N':
@@ -740,7 +741,7 @@ def sum_atoms(*compositions):
                 summed_comp[j]+=i[j]
     return summed_comp
 
-def sum_monos(*compositions):
+def sum_monos(*compositions, monos = monosaccharides):
     '''Sums the monosaccharides of two glycan compositions. 'T' stands for TAG, used
     in fragments library calculation.
 
@@ -755,9 +756,11 @@ def sum_monos(*compositions):
     summed_comp : dict
         Dictionary containing the sum of each monosaccharides of the compositions.
     '''
-    summed_comp = {"H": 0, "N": 0, "X": 0, "S": 0, "Am": 0, "E": 0, "F": 0, "G": 0, "AmG": 0, "EG": 0, "T": 0, "HN": 0, "UA": 0}
+    summed_comp = {key : 0 for key in monos}
     for i in compositions:
         for j in i:
+            if j not in summed_comp.keys():
+                summed_comp[j] = 0
             summed_comp[j]+=i[j]
     return summed_comp
 

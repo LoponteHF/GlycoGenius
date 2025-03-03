@@ -34,7 +34,7 @@ import os
 ##Library generating-associated functions (these functions make vast use of the general
 ## functions).
 
-def generate_combinations_with_constraints(characters, length, constraints):
+def generate_combinations_with_constraints(characters, length, constraints, monosaccharides):
     '''
     '''
     def is_valid(counts):
@@ -63,16 +63,10 @@ def generate_combinations_with_constraints(characters, length, constraints):
     # Convert count combinations to strings
     valid_combinations = []
     for counts in valid_count_combinations:
-        if 'L' in counts:
-            counts['Am'] = counts.pop('L')
-        if 'A' in counts:
-            counts['AmG'] = counts.pop('A')
-        if 'R' in counts:
-            counts['EG'] = counts.pop('R')
-        if 'M' in counts:
-            counts['HN'] = counts.pop('M')
-        if 'U' in counts:
-            counts['UA'] = counts.pop('U')
+        for multi_letter, single_letter in monosaccharides.items():
+            single_letter = single_letter[-1]
+            if len(multi_letter) > 1 and single_letter in counts:
+                counts[multi_letter] = counts.pop(single_letter)
         valid_combinations.append(counts)
 
     return valid_combinations
@@ -88,7 +82,8 @@ def generate_glycans_library(min_max_mono,
                              min_max_hn,
                              min_max_ua,
                              lactonized_ethyl_esterified,
-                             forced):
+                             forced,
+                             custom_monos = []):
     '''Generates a list of combinatorial analysis of monosaccharides from the minimum
     amount of monosaccharides to the maximum amount of monosaccharides set, then trims it
     based on the specific monosaccharides criteria inserted.
@@ -163,13 +158,26 @@ def generate_glycans_library(min_max_mono,
         A list containing dictionaries of the monosaccharides compositions of all the
         glycans generated.
     '''
+    monosaccharides = copy.deepcopy(General_Functions.monosaccharides)
+    # Add custom monosaccharides
+    if len(custom_monos) > 0:
+        for cm in custom_monos:
+            monosaccharides[cm['cm_short_code']] = (cm['cm_name'], cm['cm_chem_comp'], General_Functions.sum_atoms({"C": 0, "O": 0, "N": 0, "H": 0}, General_Functions.form_to_comp(cm['cm_chem_comp'])), cm['cm_single_letter_code'])
+    
     glycans = []
-    def_glycan_comp = {"H": 0, "N": 0, "X": 0, "S": 0, "Am": 0, "E": 0, "F": 0, "G": 0, "AmG": 0, "EG": 0, "HN": 0, "UA": 0}
+    def_glycan_comp = {key : 0 for key in monosaccharides}
+    sialics = ['S', 'G', 'Am', 'E', 'AmG', 'EG']
+    
+    # Add sialics from custom monosaccharides
+    if len(custom_monos) > 0:
+        for cm in custom_monos:
+            if cm['sialic']:
+                sialics.append(cm['cm_short_code'])
     
     if lactonized_ethyl_esterified:
-        monos_chars = "HNXLEFARMU" #H = Hexose, N = HexNAc, X = Xylose, L = Amidated Neu5Ac, E = Ethyl-esterified Neu5Ac, F = DeoxyHexose, A = Amidated Neu5Gc, R = Ethyl-esterified Neu5Gc, S = Neu5Ac, G = Neu5Gc, M = Hexosamine, U = Uronic Acids
+        monos_chars = "".join([letter[-1] for letter in monosaccharides.values() if (letter[-1] != "S" and letter[-1] != "G")]) #H = Hexose, N = HexNAc, X = Xylose, L = Amidated Neu5Ac, E = Ethyl-esterified Neu5Ac, F = DeoxyHexose, A = Amidated Neu5Gc, R = Ethyl-esterified Neu5Gc, S = Neu5Ac, G = Neu5Gc, M = Hexosamine, U = Uronic Acids
     else:
-        monos_chars = "HNXSFGMU"
+        monos_chars = "".join([letter[-1] for letter in monosaccharides.values() if (letter[-1] != "R" and letter[-1] != "A" and letter[-1] != "E" and letter[-1] != "L")])
         
     constraints = {'H': (min_max_hex[0], min_max_hex[1]),
                    'N': (min_max_hexnac[0], min_max_hexnac[1]),
@@ -177,6 +185,11 @@ def generate_glycans_library(min_max_mono,
                    'F': (min_max_fuc[0], min_max_fuc[1]),
                    'M': (min_max_hn[0], min_max_hn[1]),
                    'U': (min_max_ua[0], min_max_ua[1])}
+    
+    # Add constraints from custom monosaccharides
+    if len(custom_monos) > 0:
+        for cm in custom_monos:
+            constraints[cm['cm_single_letter_code']] = (cm['cm_min'], cm['cm_max'])
                    
     if lactonized_ethyl_esterified:
         constraints['L'] = (min_max_ac[0], min_max_ac[1])
@@ -196,35 +209,36 @@ def generate_glycans_library(min_max_mono,
             result = executor.submit(generate_combinations_with_constraints,
                                      monos_chars,
                                      i,
-                                     constraints)
+                                     constraints,
+                                     monosaccharides)
             results.append(result)
         
         for index, i in enumerate(results):
             result_data = i.result()
             for j in result_data:
-                glycans.append(General_Functions.sum_monos(def_glycan_comp, j))
+                glycans.append(General_Functions.sum_monos(def_glycan_comp, j, monos = monosaccharides))
             results[index] = None
             
     to_be_removed = []
     for i_i, i in enumerate(glycans):
         if lactonized_ethyl_esterified:
-            if ((i['Am']+i['E']+i['AmG']+i['EG'] < min_max_sialics[0])
-                or (i['Am']+i['E']+i['AmG']+i['EG'] > min_max_sialics[1])
+            if ((sum([i[sialic] for sialic in sialics]) < min_max_sialics[0])
+                or (sum([i[sialic] for sialic in sialics]) > min_max_sialics[1])
                 or (i['Am']+i['E'] < min_max_ac[0]) 
                 or (i['Am']+i['E'] > min_max_ac[1])
                 or (i['AmG']+i['EG'] < min_max_gc[0])
                 or (i['AmG']+i['EG'] > min_max_gc[1])):
                 to_be_removed.append(i)
         else:
-            if ((i['S']+i['G'] < min_max_sialics[0])
-                or (i['S']+i['G'] > min_max_sialics[1])):
+            if ((sum([i[sialic] for sialic in sialics]) < min_max_sialics[0])
+                or (sum([i[sialic] for sialic in sialics]) > min_max_sialics[1])):
                 to_be_removed.append(i)
     if forced == 'n_glycans':
         if lactonized_ethyl_esterified:
             for i_i, i in enumerate(glycans):
-                if ((i['Am']+i['E']+i['AmG']+i['EG'] > (i['N']-2)*2)
+                if ((sum([i[sialic] for sialic in sialics]) > (i['N']-2)*2)
                     or (i['F'] >= i['N']) 
-                    or (i['Am']+i['E']+i['AmG']+i['EG'] > i['H']-2)
+                    or (sum([i[sialic] for sialic in sialics]) > i['H']-2)
                     or (i['H'] < 2) 
                     or (i['N'] < 2)
                     or (i['X'] > 1)
@@ -234,9 +248,9 @@ def generate_glycans_library(min_max_mono,
                         to_be_removed.append(i)
         else:
             for i_i, i in enumerate(glycans):
-                if ((i['S']+i['G'] > (i['N']-2)*2)
+                if ((sum([i[sialic] for sialic in sialics]) > (i['N']-2)*2)
                     or (i['F'] >= i['N']) 
-                    or (i['S']+i['G'] > i['H']-2)
+                    or (sum([i[sialic] for sialic in sialics]) > i['H']-2)
                     or (i['H'] < 2) 
                     or (i['N'] < 2)
                     or (i['X'] > 1)
@@ -248,7 +262,7 @@ def generate_glycans_library(min_max_mono,
     if forced == 'o_glycans':
         if lactonized_ethyl_esterified:
             for i_i, i in enumerate(glycans):
-                if ((i['Am']+i['E']+i['AmG']+i['EG'] > i['N']+i['H'])
+                if ((sum([i[sialic] for sialic in sialics]) > i['N']+i['H'])
                     or (i['H'] > i['N']+1)
                     or (i['N'] > i['H']+3)
                     or (i['X'] > 0)
@@ -258,7 +272,7 @@ def generate_glycans_library(min_max_mono,
                         to_be_removed.append(i)
         else:
             for i_i, i in enumerate(glycans):
-                if ((i['S']+i['G'] > i['N']+i['H'])
+                if ((sum([i[sialic] for sialic in sialics]) > i['N']+i['H'])
                     or (i['F'] > i['N']+i['H'])
                     or (i['H'] > i['N']+1)
                     or (i['N'] > i['H']+3)
@@ -275,7 +289,7 @@ def generate_glycans_library(min_max_mono,
             if ((i['N']+i['HN'] > i['UA']+i['H']+1)
                 or (i['H']+i['UA'] > i['N']+i['HN'])
                 or (i['H'] > 0 and i['UA'] > 0)
-                or (i['S'] + i['G'] + i['AmG']+i['EG']+i['Am']+i['E'] > 0)
+                or (sum([i[sialic] for sialic in sialics]) > 0)
                 or (i['F'] > 0)):
                 if i not in to_be_removed:
                     to_be_removed.append(i)
@@ -296,6 +310,7 @@ def generate_glycans_library(min_max_mono,
                 
     for i in to_be_removed:
         glycans.remove(i)
+        
     return glycans
 
 def full_glycans_library(library,
@@ -311,7 +326,8 @@ def full_glycans_library(library,
                          reduced = False,
                          min_max_sulfation = [0, 0],
                          min_max_phosphorylation = [0, 0],
-                         lyase_digested = False):
+                         lyase_digested = False,
+                         custom_monos = []):
     '''Uses the generated glycans library and increments it with calculations of its
     mass, neutral mass with tag mass, its isotopic distribution pattern (intensoids) and
     the mz of the chosen adducts combinations.
@@ -410,6 +426,13 @@ def full_glycans_library(library,
         neutral mass, neutral mass with tag, isotopic distribution and the mzs of the
         glycans with the desired adducts combination.
     '''
+    monosaccharides = copy.deepcopy(General_Functions.monosaccharides)
+    # Add custom monosaccharides
+    if len(custom_monos) > 0:
+        for cm in custom_monos:
+            if cm['cm_short_code'] not in monosaccharides.keys():
+                monosaccharides[cm['cm_short_code']] = (cm['cm_name'], cm['cm_chem_comp'], General_Functions.sum_atoms({"C": 0, "O": 0, "N": 0, "H": 0}, General_Functions.form_to_comp(cm['cm_chem_comp'])), cm['cm_single_letter_code'])
+                
     full_library = {}
     
     # This codeblock sorts out the tag type and calculates it appropriately
@@ -460,6 +483,7 @@ def full_glycans_library(library,
                                      reduced,
                                      min_max_sulfation,
                                      min_max_phosphorylation,
+                                     monosaccharides,
                                      lyase_digested)
             results.append(result)
         
@@ -485,6 +509,7 @@ def calculate_one_glycan(i,
                          reduced,
                          min_max_sulfation,
                          min_max_phosphorylation,
+                         monosaccharides,
                          lyase_digested = False):
     '''
     '''
@@ -507,7 +532,7 @@ def calculate_one_glycan(i,
                     i_formula = f"{i_formula}+{phosphorylations}"
                 if lyase_digested:
                     i_formula = f"{i_formula}-H2O"
-                i_atoms = General_Functions.glycan_to_atoms(i, permethylated)
+                i_atoms = General_Functions.glycan_to_atoms(i, permethylated, monosaccharides)
                 if not lyase_digested:
                     i_atoms = General_Functions.sum_atoms(i_atoms, General_Functions.form_to_comp('H2O'))
                 if tag[1] == 0.0:
@@ -609,7 +634,8 @@ def include_internal_standard(full_library,
                               internal_standard,
                               permethylated,
                               reduced,
-                              adducts_combo):
+                              adducts_combo,
+                              custom_monos = []):
     '''Processeses the internal standard inputted into workable library dictionary entry, with isotopic distribution and proper applicable modifications.
 
     Parameters
@@ -683,7 +709,13 @@ def include_internal_standard(full_library,
         neutral mass, neutral mass with tag, isotopic distribution and the mzs of the
         glycans with the desired adducts combination.
     '''
-    def_glycan_comp = {"H": 0, "N": 0, "X": 0, "S": 0, "Am": 0, "E": 0, "F": 0, "G": 0, "AmG": 0, "EG": 0, "HN": 0, "UA": 0}
+    monosaccharides = copy.deepcopy(General_Functions.monosaccharides)
+    # Add custom monosaccharides
+    if len(custom_monos) > 0:
+        for cm in custom_monos:
+            monosaccharides[cm['cm_short_code']] = (cm['cm_name'], cm['cm_chem_comp'], General_Functions.sum_atoms({"C": 0, "O": 0, "N": 0, "H": 0}, General_Functions.form_to_comp(cm['cm_chem_comp'])), cm['cm_single_letter_code'])
+                
+    def_glycan_comp = {key : 0 for key in monosaccharides}
     
     i_formula = 'Internal Standard'
     
@@ -711,8 +743,8 @@ def include_internal_standard(full_library,
             i_neutral_mass = mass.calculate_mass(composition=i_atoms)
             i_type = 'atomic_comp'
         else:
-            i_composition = General_Functions.sum_monos(def_glycan_comp, i_composition)
-            i_atoms = General_Functions.glycan_to_atoms(i_composition, permethylated)
+            i_composition = General_Functions.sum_monos(def_glycan_comp, i_composition, monos = monosaccharides)
+            i_atoms = General_Functions.glycan_to_atoms(i_composition, permethylated, monosaccharides)
             i_atoms = General_Functions.sum_atoms(i_atoms, General_Functions.form_to_comp('H2O'))
             i_neutral_mass = mass.calculate_mass(composition=i_atoms)
             i_type = 'glycan'
@@ -756,7 +788,7 @@ def include_internal_standard(full_library,
     if i_type == 'glycan':
         full_library[i_formula]['Monos_Composition'] = i_composition
     else:
-        full_library[i_formula]['Monos_Composition'] = {"H": 0, "N": 0, "X": 0, "S": 0, "Am": 0, "E": 0, "F": 0, "G": 0, "AmG": 0, "EG": 0, "HN": 0, "UA": 0}
+        full_library[i_formula]['Monos_Composition'] = {key : 0 for key in monosaccharides}
     full_library[i_formula]['Neutral_Mass'] = i_neutral_mass
     full_library[i_formula]['Neutral_Mass+Tag'] = i_neutral_tag
     full_library[i_formula]['Isotopic_Distribution'] = iso_corrected
@@ -808,7 +840,8 @@ def fragments_library(min_max_mono,
                       permethylated,
                       reduced,
                       lactonized_ethyl_esterified,
-                      forced):
+                      forced,
+                      custom_monos = []):
     '''Generates a list of combinatorial analysis of monosaccharides from the minimum
     amount of monosaccharides to the maximum amount of monosaccharides set, then uses 
     the generated library and increments it with calculations with a series of information,
@@ -918,15 +951,33 @@ def fragments_library(min_max_mono,
     glycans : list
         A list containing dictionaries with informations about each fragment generated.
     '''
+    monosaccharides = copy.deepcopy(General_Functions.monosaccharides)
+    # Add custom monosaccharides
+    if len(custom_monos) > 0:
+        for cm in custom_monos:
+            if cm['cm_short_code'] not in monosaccharides.keys():
+                monosaccharides[cm['cm_short_code']] = (cm['cm_name'], cm['cm_chem_comp'], General_Functions.sum_atoms({"C": 0, "O": 0, "N": 0, "H": 0}, General_Functions.form_to_comp(cm['cm_chem_comp'])), cm['cm_single_letter_code'])
+                
     time_formatted = str(datetime.datetime.now()).split(" ")[-1].split(".")[0]+" - "
     print(time_formatted+"Building fragments library...", end = "", flush = True)
     glycans = []
-    def_glycan_comp = {"H": 0, "N": 0, "X": 0, "S": 0, "Am": 0, "E": 0, "F": 0, "G": 0, "AmG": 0, "EG": 0, "T" : 0, "HN": 0, "UA": 0}
+    def_glycan_comp = {key : 0 for key in monosaccharides}
+    def_glycan_comp["T"] = 0
+    sialics = ['S', 'G', 'Am', 'E', 'AmG', 'EG']
+    
+    # Add sialics from custom monosaccharides
+    if len(custom_monos) > 0:
+        for cm in custom_monos:
+            if cm['sialic']:
+                sialics.append(cm['cm_short_code'])
     
     if lactonized_ethyl_esterified:
-        monos_chars = "HNXLEFARTMU"
+        monos_chars = "".join([letter[-1] for letter in monosaccharides.values() if (letter[-1] != "S" and letter[-1] != "G")])
     else:
-        monos_chars = "HNXSFGTMU"
+        monos_chars = "".join([letter[-1] for letter in monosaccharides.values() if (letter[-1] != "R" and letter[-1] != "A" and letter[-1] != "E" and letter[-1] != "L")])
+    
+    # Add the reducing end as one possibility
+    monos_chars += "T"
         
     constraints = {'H': (0, min_max_hex[1]),
                    'N': (0, min_max_hexnac[1]),
@@ -935,6 +986,11 @@ def fragments_library(min_max_mono,
                    'T': (0, 1),
                    'M': (0, min_max_hn[1]),
                    'U': (0, min_max_ua[1])}
+    
+    # Add constraints from custom monosaccharides
+    if len(custom_monos) > 0:
+        for cm in custom_monos:
+            constraints[cm['cm_single_letter_code']] = (0, cm['cm_max']+1)
                    
     if lactonized_ethyl_esterified:
         constraints['L'] = (0, min_max_ac[1])
@@ -946,25 +1002,25 @@ def fragments_library(min_max_mono,
         constraints['G'] = (0, min_max_gc[1])
         
     for i in range(1, min_max_mono[1]+2):
-        combinations = generate_combinations_with_constraints(monos_chars, i, constraints)
+        combinations = generate_combinations_with_constraints(monos_chars, i, constraints, monosaccharides)
         for j in combinations:
-            glycans.append(General_Functions.sum_monos(def_glycan_comp, j))
+            glycans.append(General_Functions.sum_monos(def_glycan_comp, j, monos = monosaccharides))
             
     to_be_removed = []
     for i_i, i in enumerate(glycans):
         if lactonized_ethyl_esterified:
             if ((i['T'] == 1 and sum(i.values()) == 1)
-                or (i['Am']+i['E']+i['AmG']+i['EG'] > min_max_sialics[1])
+                or (sum([i[sialic] for sialic in sialics]) > min_max_sialics[1])
                 or (i['Am']+i['E'] > min_max_ac[1])
                 or (i['AmG']+i['EG'] > min_max_gc[1])):
                 to_be_removed.append(i_i)
         else:
             if ((i['T'] == 1 and sum(i.values()) == 1)
-                or (i['S']+i['G'] > min_max_sialics[1])):
+                or (sum([i[sialic] for sialic in sialics]) > min_max_sialics[1])):
                 to_be_removed.append(i_i)
         if forced == 'nglycan' and i_i not in to_be_removed: #some rules and hardcoded exceptions for N-Glycans
             if lactonized_ethyl_esterified:
-                if ((i['T'] == 1 and sum(i.values()) < 8 and i['Am']+i['E']+i['AmG']+i['EG'] > 0)
+                if ((i['T'] == 1 and sum(i.values()) < 8 and sum([i[sialic] for sialic in sialics]) > 0)
                     or (sum(i.values()) < 6 and i['Am']+i['E'] >= 1 and i['N'] > 1)
                     or (i['H'] > 0 and i['T'] == 1 and i['N'] < 2)
                     or (i['H'] == 2 and i['N'] == 1 and i['Am']+i['E'] == 0 and i['F'] == 0 and i['AmG']+i['EG'] == 0 and i['T'] == 1)
@@ -975,7 +1031,7 @@ def fragments_library(min_max_mono,
                     or (i['H'] == 3 and i['N'] == 1 and i['Am']+i['E'] == 0 and i['F'] == 0 and i['AmG']+i['EG'] == 0 and i['T'] == 1)):
                     to_be_removed.append(i_i)
             else:
-                if ((i['T'] == 1 and sum(i.values()) < 8 and i['S']+i['G'] > 0)
+                if ((i['T'] == 1 and sum(i.values()) < 8 and sum([i[sialic] for sialic in sialics]) > 0)
                     or (sum(i.values()) < 6 and i['S'] >= 1 and i['N'] > 1)
                     or (i['H'] > 0 and i['T'] == 1 and i['N'] < 2)
                     or (i['H'] == 2 and i['N'] == 1 and i['S'] == 0 and i['F'] == 0 and i['G'] == 0 and i['T'] == 1)
@@ -1019,7 +1075,7 @@ def fragments_library(min_max_mono,
                 i_formula = General_Functions.comp_to_formula(i)+'+'+str(j)+'H2O'
             else:
                 i_formula = General_Functions.comp_to_formula(i)
-            glycan_atoms = General_Functions.glycan_to_atoms(i, permethylated)
+            glycan_atoms = General_Functions.glycan_to_atoms(i, permethylated, monosaccharides)
             glycan_atoms['H'] += j*2
             glycan_atoms['O'] += j*1
             i_atoms = glycan_atoms
