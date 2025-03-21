@@ -65,7 +65,7 @@ def generate_combinations_with_constraints(characters, length, constraints, mono
     for counts in valid_count_combinations:
         for multi_letter, single_letter in monosaccharides.items():
             single_letter = single_letter[-1]
-            if len(multi_letter) > 1 and single_letter in counts:
+            if single_letter in counts:
                 counts[multi_letter] = counts.pop(single_letter)
         valid_combinations.append(counts)
 
@@ -442,12 +442,14 @@ def full_glycans_library(library,
         if tag_mass.split('-')[0] == 'pep':
             sequence = tag_mass.split('-')[-1]
             tag_mass = dict(mass.Composition(sequence = sequence))
-            if 'C' in sequence: # Alkylation of cysteines
+            
+            if 'C' in sequence: # Alkylation of cysteines by IAA
                 cysteines = sequence.count('C')
                 tag_mass['C'] += 2*cysteines
                 tag_mass['H'] += 3*cysteines
                 tag_mass['O'] += cysteines
                 tag_mass['N'] += cysteines
+                
             tag_mass['H'] -= 2
             tag_mass['O'] -= 1
             
@@ -534,7 +536,7 @@ def calculate_one_glycan(i,
                     i_formula = f"{i_formula}-H2O"
                 i_atoms = General_Functions.glycan_to_atoms(i, permethylated, monosaccharides)
                 if not lyase_digested:
-                    i_atoms = General_Functions.sum_atoms(i_atoms, General_Functions.form_to_comp('H2O'))
+                    i_atoms = General_Functions.sum_atoms(i_atoms, {'H': 2, 'O': 1})
                 if tag[1] == 0.0:
                     if permethylated:
                         i_atoms = General_Functions.sum_atoms(i_atoms, {'C': 2, 'H': 4})
@@ -1083,7 +1085,7 @@ def fragments_library(min_max_mono,
             if i['T'] == 1:
                 if tag[1] == 0.0:
                     if permethylated:
-                        i_atoms = General_Functions.sum_atoms(i_atoms, {'C': 2, 'H': 4})
+                        i_atoms = General_Functions.sum_atoms(i_atoms, {'C': 1, 'H': 2})
                         if reduced:
                             i_atoms = General_Functions.sum_atoms(i_atoms, {'O': 1})
                     if not permethylated and reduced:
@@ -1092,6 +1094,11 @@ def fragments_library(min_max_mono,
                 i_atoms_tag = General_Functions.sum_atoms(i_atoms, tag[0])
             else:
                 i_atoms_tag = i_atoms
+                
+            # Temporary solution to improve annotation of permethylated glycans a little bit
+            if permethylated:
+                if i['S'] > 0:
+                    i_atoms_tag = General_Functions.sum_atoms(i_atoms_tag, {'C': 1, 'H': 2})
                 
             frag_library.append({})
             index = (i_i*3)+j_j

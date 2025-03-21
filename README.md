@@ -32,7 +32,7 @@ There are two ways to install it:
         cat .\glycogenius_parameters.ini | glycogenius
 ~~~
 
-For detailed information on the different settings, access the [Instructions Manual](https://github.com/LoponteHF/GlycoGenius_GUI/blob/main/GlycoGenius_Instructions_Manual.pdf)
+For detailed information on the different settings, access the [Instructions Manual](https://github.com/LoponteHF/GlycoGenius_GUI/blob/main/GlycoGenius_Instructions_Manual.pdf). It will be updated periodically, but less often than the program itself, so some features may be missing in it.
 
 ## Features Development and Suggestions
 
@@ -40,7 +40,7 @@ If you want to suggest a new feature or be aware of what's intended down the roa
 
 ## Citation
 
-> Article for citation currently being finished.
+bioRxiv Preprint: [GlycoGenius: the ultimate high-throughput glycan composition identification tool](https://doi.org/10.1101/2025.03.10.642485)
 
 ## Credits
 

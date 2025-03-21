@@ -27,7 +27,7 @@ import platform
 import os
 import dill
 
-version = '1.2.11'
+version = '1.2.12'
 
 forced_structures = ['none', 'n_glycans', 'o_glycans', 'gags']
     

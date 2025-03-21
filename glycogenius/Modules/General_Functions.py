@@ -59,8 +59,6 @@ and a tuple containing the full monosaccharide name, its full molecular formula 
 residue composition in dict form as value.
 '''
 
-default_composition = {"H": 0, "N": 0, "X": 0, "S": 0, "Am": 0, "E": 0, "F": 0, "G": 0, "AmG": 0, "EG": 0, "HN": 0, "UA": 0}
-
 h_mass = mass.calculate_mass(composition={'H' : 1})
 '''The mass of an hydrogen-1 atom. Pre-calculated here to avoid calculating too many
 times during a run.
@@ -667,56 +665,31 @@ def glycan_to_atoms(glycan_composition, permethylated, monos):
         Returns a dictionary with atoms as keys and amounts as values. ie. {"C": 6,
         "O": 6, "N": 0, "H": 12}.
     '''
-    atoms = {"C": 0, "O": 0, "N": 0, "H": 0}
+    atoms = {key:0 for i in monos for key in monos[i][2].keys()}
     monosaccharides_local = monos
+    
     if permethylated:
         for i in monosaccharides_local:
-            if i == 'H' or i == 'N':
-                monosaccharides_local[i][2]['C'] += 3
-                monosaccharides_local[i][2]['H'] += 6
-            if i == 'F':
+            if i == 'X':
                 monosaccharides_local[i][2]['C'] += 2
                 monosaccharides_local[i][2]['H'] += 4
-            if i == 'S' or i == 'G':
-                monosaccharides_local[i][2]['C'] += 5
-                monosaccharides_local[i][2]['H'] += 10
+            if i == 'HN':
+                monosaccharides_local[i][2]['C'] += 4
+                monosaccharides_local[i][2]['H'] += 8
+            if i == 'UA':
+                monosaccharides_local[i][2]['C'] += 3
+                monosaccharides_local[i][2]['H'] += 6
+            else:
+                oxygens = monosaccharides_local[i][2]['O']
+                carbons = monosaccharides_local[i][2]['C']
+                monosaccharides_local[i][2]['C'] += oxygens-(carbons//3)
+                monosaccharides_local[i][2]['H'] += (oxygens-(carbons//3))*2
     for i in glycan_composition:
         if i == "T":
             continue
         for j in atoms:
-            atoms[j] += monosaccharides_local[i][2][j]*glycan_composition[i]
+            atoms[j] += monosaccharides_local[i][2].get(j, 0)*glycan_composition[i]
     return atoms
-
-def count_seq_letters(string):
-    '''If you make anything with itertools for combinatorial analysis, it will produce a
-    string that's not very human readable. This converts it into a human readable form.
-
-    Parameters
-    ----------
-    string : str
-        A string of atoms or glycans in the form o CCCCCCOOOONH or HHHHHNNNNFSG.
-
-    Returns
-    -------
-    friendly_letters : dict
-        A dictionary containing the count for each letter in the string. ie. CCCCOONH
-        returns {"C": 4, "O": 2, "N": 1, "H": 1}.
-    '''
-    friendly_letters = {}
-    current_letter = ""
-    for i in string:
-        if i != current_letter:
-            current_letter = i
-            count = string.count(i)
-            if i == "L":
-                friendly_letters['Am'] = count
-            if i == "A":
-                friendly_letters['AmG'] = count
-            if i == "R":
-                friendly_letters['EG'] = count
-            else:
-                friendly_letters[i] = count
-    return friendly_letters
 
 def sum_atoms(*compositions):
     '''Sums the atoms of two compositions.
@@ -732,13 +705,10 @@ def sum_atoms(*compositions):
     summed_comp : dict
         Dictionary containing the sum of each atom of the compositions.
     '''
-    summed_comp = {"C": 0, "O": 0, "N": 0, "H": 0}
+    summed_comp = {key:0 for i in compositions for key in i}
     for i in compositions:
         for j in i:
-            if j not in list(summed_comp.keys()):
-                summed_comp[j] = i[j]
-            else:
-                summed_comp[j]+=i[j]
+            summed_comp[j] += i[j]
     return summed_comp
 
 def sum_monos(*compositions, monos = monosaccharides):

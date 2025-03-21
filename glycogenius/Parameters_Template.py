@@ -91,11 +91,9 @@ neu5gc = 0, 0
 custom_monosaccharides = 
 ;	Custom monosaccharides. Entries should be comma-
 ;	separated, with each entry in the format:
-;	(Monosaccharide Name, Short-Code, Single-Letter
-;	Code, Chemical Composition, Minimum amount,
+;	(Monosaccharide Name, Short-Code, Chemical Composition, Minimum amount,
 ;	Maximum amount, Sialic Acid?)
 ;	Short-Code is up to three letters (no numbers), 
-;	Single-Letter code is one letter (no numbers),
 ;	Chemical composition is in the format "C9H14O8N1",
 ;	meaning even if only one of an atom is present, it
 ;	must be made explicit (i.e. N1 for one nitrogen),

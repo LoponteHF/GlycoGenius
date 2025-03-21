@@ -39,7 +39,7 @@ import copy
 import pathlib
 import shutil
 
-version = '1.2.11'
+version = '1.2.12'
 
 ##---------------------------------------------------------------------------------------
 ##Functions to be used for execution and organizing results data
@@ -1249,7 +1249,7 @@ def make_df1_refactor(df1,
         
         df1_refactor.append({"Glycan" : [], "Adduct" : [], "mz" : [], "RT" : [], "AUC" : [], "PPM" : [], "S/N" : [], "Iso_Fitting_Score" : [], "Curve_Fitting_Score" : []})
         if analyze_ms2:
-            df1_refactor[0]["Detected_Fragments"] = []
+            df1_refactor[i_i]["Detected_Fragments"] = []
         for j_j, j in enumerate(df1[i_i]["Adduct"]): 
             temp_rt = df1[i_i]["RT"][j_j]
             temp_auc = df1[i_i]["AUC"][j_j]
@@ -1319,7 +1319,7 @@ def make_df1_refactor(df1,
                                             if peak_good:
                                                 good_count += 1
                                                 good_in_sample = True
-                                                if good_count >= int(len(df2["Sample_Number"]) * (fill_gaps[1]/100)):
+                                                if good_count >= round(len(df2["Sample_Number"]) * (fill_gaps[1]/100)):
                                                     remove = False
                                                 break
                                 if not remove or good_in_sample:
@@ -3552,7 +3552,7 @@ def analyze_files(library,
             with open(os.path.join(temp_folder, i), 'rb') as f:
                 glycan = dill.load(f)
                 f.close()
-            glycan['Monos_Composition'] = General_Functions.sum_monos(General_Functions.default_composition, General_Functions.form_to_comp(i))
+            glycan['Monos_Composition'] = General_Functions.form_to_comp(i)
             with open(os.path.join(temp_folder, i), 'wb') as f:
                 dill.dump(glycan, f)
                 f.close()
