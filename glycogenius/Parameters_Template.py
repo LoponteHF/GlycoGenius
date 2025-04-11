@@ -99,6 +99,7 @@ custom_monosaccharides =
 ;	must be made explicit (i.e. N1 for one nitrogen),
 ;	and "Sialic Acid" must be filled with 'yes' or 'no'.
 ;
+
 [common_library_building_settings]
 force_class_structure = none
 ; 	Used to force some monosaccharides compositions 
@@ -289,6 +290,7 @@ signal_to_noise_threshold = 3
 fill_data_gaps = no
 fill_data_gaps_min_samples = 50
 fill_data_gaps_rt_tolerance = 0.2
+fill_remaining_gaps_with_noise = no
 ;	Fills missing values with peaks that were detected, 
 ;	but didn't meet the quality thresholds set.
 ;	Beware: May produce data with peaks with quality
@@ -303,15 +305,19 @@ output_compositions_analysis = yes
 ;	composition of each identified glycan in the 
 ;	analysis, in addition to the peak-separated data.
 ;
+sample_groups = 
+; 	Type in the path to a .csv file containing the
+;	samples grouping. The structure of the .csv file
+;	is: first line: 'sample,group' (header); rest of
+;	lines: 'sample_name, group_name', where sample_name
+;	is the name of the sample file, without the extension. 
+;
 output_metaboanalyst_file = no
-metaboanalyst_groups = CONTROL, TREATED
 ; 	Here you set up whether or not you want to output 
 ;	a .csv file to be used for plotting data using 
-;	metaboanalyst. If you want that, you must specify 
-;	your sample groups, comma separated. Sample 
-;	groups specified must be present in sample 
-;	filenames for proper identification. If none is 
-;	set, samples are defaulted to "ungrouped". Case sensitive. 
+;	Metaboanalyst. This will use the samples grouping
+;	specified in sample_groups. If none is set, groups
+;	are defaulted to "ungrouped".
 ;
 output_fittings_data = no
 ; 	Allows to output files with the fittings data to 

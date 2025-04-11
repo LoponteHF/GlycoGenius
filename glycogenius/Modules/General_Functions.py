@@ -260,6 +260,57 @@ def cleanup_by_average(x, y, th = 2.5):
     # Final equation is used as (y = mx + b)
     return mean, residuals, outlier_indices
     
+def determine_tag_comp(tag_mass):   
+    '''
+    '''
+    try:
+        tag_mass = float(tag_mass)
+    except:
+        if tag_mass.split('-')[0] == 'pep':
+            tag_mass = dict(mass.Composition(sequence = tag_mass.split('-')[-1]))
+            tag_mass['H'] -= 2
+            tag_mass['O'] -= 1
+            
+    if tag_mass != 0:
+        if type(tag_mass) == float:
+            tag = calculate_comp_from_mass(tag_mass)
+        elif type(tag_mass) != dict:
+            comp_tag = form_to_comp(tag_mass)
+            tag = (comp_tag, mass.calculate_mass(comp_tag))
+        else:
+            comp_tag = tag_mass
+            tag = (comp_tag, mass.calculate_mass(comp_tag))
+    else:
+        tag = ({"C": 0, "O": 0, "N": 0, "H": 0}, 0.0)
+        
+    return tag
+    
+def fix_adduct_determine_charge(adduct):
+    '''A = Ammonium (NH3)
+    '''
+    if type(adduct) == str:
+        adduct = form_to_comp(adduct)
+        
+    charges = 0
+    for atom in adduct:
+        if atom == "Cl":
+            if adduct[atom] > 0:
+                charges -= adduct[atom]
+            else:
+                charges += adduct[atom]
+        elif atom == 'Fe':
+            charges += 2*adduct[atom]
+        else:
+            charges += adduct[atom]
+    if charges == 0:
+        return adduct, charges
+    if "A" in adduct.keys():
+        adduct['N'] = adduct['A']
+        adduct['H'] = adduct.get('H', 0) + adduct['A']*3
+        del adduct['A']
+        
+    return adduct, charges
+    
 def make_gg(temp_dir, save_dir, filename, ignore_files = False):
     '''Creates a zipped file with extension .gg containing raw_data files.
     
@@ -614,32 +665,6 @@ def form_to_comp(string):
         del counts['']
     return counts
 
-def form_to_charge(string):
-    '''Converts adducts formula into raw charge.
-
-    Parameters
-    ----------
-    string : str
-        A string containing adducts formula.
-
-    Uses
-    ----
-    form_to_comp() : dict
-        Separates a molecular formula or monosaccharides formula of glycans into a
-        dictionary with each atom/monosaccharide as a key and its amount as value
-
-    Returns
-    -------
-    charge : int
-        The raw charge of the adduct.
-    '''
-    comp = form_to_comp(string)
-    charge = 0
-    for i in comp:
-        if i != '':
-            charge+=comp[i]
-    return charge
-
 def glycan_to_atoms(glycan_composition, permethylated, monos):
     '''Calculates the amounts of atoms based on glycan monosaccharides.
 
@@ -670,20 +695,11 @@ def glycan_to_atoms(glycan_composition, permethylated, monos):
     
     if permethylated:
         for i in monosaccharides_local:
-            if i == 'X':
-                monosaccharides_local[i][2]['C'] += 2
-                monosaccharides_local[i][2]['H'] += 4
-            if i == 'HN':
-                monosaccharides_local[i][2]['C'] += 4
-                monosaccharides_local[i][2]['H'] += 8
-            if i == 'UA':
-                monosaccharides_local[i][2]['C'] += 3
-                monosaccharides_local[i][2]['H'] += 6
-            else:
-                oxygens = monosaccharides_local[i][2]['O']
-                carbons = monosaccharides_local[i][2]['C']
-                monosaccharides_local[i][2]['C'] += oxygens-(carbons//3)
-                monosaccharides_local[i][2]['H'] += (oxygens-(carbons//3))*2
+            unsaturations = i['C'] - ((i['H']+2)/2) + (i['N']/2) + 1
+            methylations = (i['O']+1) + i['N'] - unsaturations - 2
+            
+            i['C'] += methylations
+            i['H'] += methylations*2
     for i in glycan_composition:
         if i == "T":
             continue
@@ -727,11 +743,13 @@ def sum_monos(*compositions, monos = monosaccharides):
         Dictionary containing the sum of each monosaccharides of the compositions.
     '''
     summed_comp = {key : 0 for key in monos}
+    
     for i in compositions:
         for j in i:
             if j not in summed_comp.keys():
                 summed_comp[j] = 0
             summed_comp[j]+=i[j]
+            
     return summed_comp
 
 def comp_to_formula(composition):
@@ -804,7 +822,11 @@ def calculate_comp_from_mass(tag_mass):
                 combos = combinations_with_replacement('OH', non_carbon_nitrogen_count - n_count)
                 
                 for combo in combos:
-                    seq_readable = count_seq_letters('C' * c_count + 'N' * n_count + ''.join(combo))
+                    seq_readable = {'C' : c_count, 'N' : n_count}
+                    
+                    for letter in combo:
+                        seq_readable[letter] = seq_readable.get(letter, 0) + 1
+                        
                     test_tag_mass = mass.calculate_mass(composition=seq_readable)
                     
                     if abs(test_tag_mass - tag_mass) < abs(closest[1] - tag_mass):
@@ -813,7 +835,7 @@ def calculate_comp_from_mass(tag_mass):
                     # Early stopping if we find a very close match
                     if abs(test_tag_mass - tag_mass) < 1e-3:
                         return closest
-
+                        
     return closest
     
 def calculate_isotopic_pattern(glycan_atoms,

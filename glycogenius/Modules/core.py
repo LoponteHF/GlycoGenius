@@ -73,6 +73,7 @@ def main(args=[]):
             args[5][13] = pre_processing_begin_time
             args[5][14] = temp_folder
             analyzed_data = Execution_Functions.analyze_files(*args[5])
+            noise = [analyzed_data[2], analyzed_data[3]]
             if args[10]:
                 # Safeguard MS1 save in case of crashes during MS2 analysis
                 if datetime.datetime.now()-begin_time > datetime.timedelta(hours=2):
@@ -85,13 +86,10 @@ def main(args=[]):
                     temp_args_raw_data[4][1][2] = [False, False, False]
                     temp_args_raw_data[5] = library
                     temp_args_raw_data[6] = temp_folder
-                    if len(temp_args_raw_data) > 7:
-                        temp_args_raw_data[7] = '<date>_<time>_MS1_Analysis_safeguard'
-                        temp_args_raw_data.append(False)
-                    else:
-                        temp_args_raw_data.append('<date>_<time>_MS1_Analysis_safeguard')
-                        temp_args_raw_data.append(False)
-                        temp_args_raw_data.append(False)
+                    temp_args_raw_data[7] = '<date>_<time>_MS1_Analysis_safeguard'
+                    temp_args_raw_data[8] = False
+                    temp_args_raw_data[9] = False
+                    temp_args_raw_data[10] = noise
                     Execution_Functions.arrange_raw_data(*temp_args_raw_data)
                 Execution_Functions.print_sep()
                 args[6][0] = ms2_index
@@ -104,6 +102,7 @@ def main(args=[]):
             args[7][0] = analyzed_data
             args[7][5] = library
             args[7][6] = temp_folder
+            args[7][10] = noise
             temp_time = Execution_Functions.arrange_raw_data(*args[7])
             Execution_Functions.print_sep()
             args[0][21] = temp_time

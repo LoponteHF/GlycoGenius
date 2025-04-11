@@ -70,16 +70,27 @@ class make_mzxml(object):
     def __getitem__(self,index):
         if type(index) == int:
             pre_data = self.data[index]
+            data_to_return = None
             if pre_data['ms level'] == 2:
                 if float(self.data[-1]['scanList']['scan'][0]['scan start time']) > 300: #300 scan time should allow for the correct evaluation of scan time being in seconds or minutes for every run that lasts between 5 minutes and 5 hours
-                    return {'num': pre_data['id'].split('=')[-1], 'retentionTime': float(pre_data['scanList']['scan'][0]['scan start time'])/60, 'msLevel': pre_data['ms level'], 'm/z array': pre_data['m/z array'], 'intensity array': pre_data['intensity array'], 'precursorMz': [{'precursorMz': pre_data['precursorList']['precursor'][0]['selectedIonList']['selectedIon'][0]['selected ion m/z']}]}
+                    data_to_return = {'num': pre_data['id'].split('=')[-1], 'retentionTime': float(pre_data['scanList']['scan'][0]['scan start time'])/60, 'msLevel': pre_data['ms level'], 'm/z array': pre_data['m/z array'], 'intensity array': pre_data['intensity array']}
                 else:
-                    return {'num': pre_data['id'].split('=')[-1], 'retentionTime': float(pre_data['scanList']['scan'][0]['scan start time']), 'msLevel': pre_data['ms level'], 'm/z array': pre_data['m/z array'], 'intensity array': pre_data['intensity array'], 'precursorMz': [{'precursorMz': pre_data['precursorList']['precursor'][0]['selectedIonList']['selectedIon'][0]['selected ion m/z']}]}
+                    data_to_return = {'num': pre_data['id'].split('=')[-1], 'retentionTime': float(pre_data['scanList']['scan'][0]['scan start time']), 'msLevel': pre_data['ms level'], 'm/z array': pre_data['m/z array'], 'intensity array': pre_data['intensity array']}
+                        
+                # Some MzML have isolation window, some don't
+                if 'isolationWindow' in pre_data['precursorList']['precursor'][0].keys():
+                    data_to_return['precursorMz'] = [{'precursorMz': pre_data['precursorList']['precursor'][0]['isolationWindow']['isolation window target m/z']}]
+                    data_to_return['isolation window lower offset'] = pre_data['precursorList']['precursor'][0]['isolationWindow']['isolation window lower offset']
+                    data_to_return['isolation window upper offset'] = pre_data['precursorList']['precursor'][0]['isolationWindow']['isolation window upper offset']
+                else:
+                    data_to_return['precursorMz'] = [{'precursorMz': pre_data['precursorList']['precursor'][0]['selectedIonList']['selectedIon'][0]['selected ion m/z']}]
             else:
                 if float(self.data[-1]['scanList']['scan'][0]['scan start time']) > 300:
-                    return {'num': pre_data['id'].split('=')[-1], 'retentionTime': float(pre_data['scanList']['scan'][0]['scan start time'])/60, 'msLevel': pre_data['ms level'], 'm/z array': pre_data['m/z array'], 'intensity array': pre_data['intensity array']}
+                    data_to_return = {'num': pre_data['id'].split('=')[-1], 'retentionTime': float(pre_data['scanList']['scan'][0]['scan start time'])/60, 'msLevel': pre_data['ms level'], 'm/z array': pre_data['m/z array'], 'intensity array': pre_data['intensity array']}
                 else:
-                    return {'num': pre_data['id'].split('=')[-1], 'retentionTime': float(pre_data['scanList']['scan'][0]['scan start time']), 'msLevel': pre_data['ms level'], 'm/z array': pre_data['m/z array'], 'intensity array': pre_data['intensity array']}
+                    data_to_return = {'num': pre_data['id'].split('=')[-1], 'retentionTime': float(pre_data['scanList']['scan'][0]['scan start time']), 'msLevel': pre_data['ms level'], 'm/z array': pre_data['m/z array'], 'intensity array': pre_data['intensity array']}
+                    
+            return data_to_return
         else:
             first_index = str(index).split('(')[1].split(', ')[0]
             if first_index != 'None':
@@ -95,9 +106,17 @@ class make_mzxml(object):
             for index in range(first_index, last_index):
                 if self.data[index]['ms level'] == 2:
                     if float(self.data[-1]['scanList']['scan'][0]['scan start time']) > 300:
-                        data.append({'num': self.data[index]['id'].split('=')[-1], 'retentionTime': float(self.data[index]['scanList']['scan'][0]['scan start time'])/60, 'msLevel': self.data[index]['ms level'], 'm/z array': self.data[index]['m/z array'], 'intensity array': self.data[index]['intensity array'], 'precursorMz': [{'precursorMz': self.data[index]['precursorList']['precursor'][0]['isolationWindow']['isolation window target m/z']}]})
+                        data.append({'num': self.data[index]['id'].split('=')[-1], 'retentionTime': float(self.data[index]['scanList']['scan'][0]['scan start time'])/60, 'msLevel': self.data[index]['ms level'], 'm/z array': self.data[index]['m/z array'], 'intensity array': self.data[index]['intensity array']})
                     else:
-                        data.append({'num': self.data[index]['id'].split('=')[-1], 'retentionTime': float(self.data[index]['scanList']['scan'][0]['scan start time']), 'msLevel': self.data[index]['ms level'], 'm/z array': self.data[index]['m/z array'], 'intensity array': self.data[index]['intensity array'], 'precursorMz': [{'precursorMz': self.data[index]['precursorList']['precursor'][0]['isolationWindow']['isolation window target m/z']}]})
+                        data.append({'num': self.data[index]['id'].split('=')[-1], 'retentionTime': float(self.data[index]['scanList']['scan'][0]['scan start time']), 'msLevel': self.data[index]['ms level'], 'm/z array': self.data[index]['m/z array'], 'intensity array': self.data[index]['intensity array']})
+                        
+                    # Some MzML have isolation window, some don't
+                    if 'isolationWindow' in self.data[index]['precursorList']['precursor'][0].keys():
+                        data[-1]['precursorMz'] = [{'precursorMz': self.data[index]['precursorList']['precursor'][0]['isolationWindow']['isolation window target m/z']}]
+                        data[-1]['isolation window lower offset'] = self.data[index]['precursorList']['precursor'][0]['isolationWindow']['isolation window lower offset']
+                        data[-1]['isolation window upper offset'] = self.data[index]['precursorList']['precursor'][0]['isolationWindow']['isolation window upper offset']
+                    else:
+                        data[-1]['precursorMz'] = [{'precursorMz': self.data[index]['precursorList']['precursor'][0]['selectedIonList']['selectedIon'][0]['selected ion m/z']}]
                 else:
                     if float(self.data[-1]['scanList']['scan'][0]['scan start time']) > 300:
                         data.append({'num': self.data[index]['id'].split('=')[-1], 'retentionTime': float(self.data[index]['scanList']['scan'][0]['scan start time'])/60, 'msLevel': self.data[index]['ms level'], 'm/z array': self.data[index]['m/z array'], 'intensity array': self.data[index]['intensity array']})
@@ -263,8 +282,10 @@ def eic_from_glycan(files,
     verbose_info = []
     raw_data = {}
     for i in glycan_info['Adducts_mz']:
-        adduct_mass = mass.calculate_mass(composition=General_Functions.form_to_comp(i))
-        adduct_charge = General_Functions.form_to_charge(i)
+        
+        adduct_comp, adduct_charge = General_Functions.fix_adduct_determine_charge(i)
+        
+        adduct_mass = mass.calculate_mass(composition=adduct_comp)
         ppm_info[i] = {}
         iso_fitting_quality[i] = {}
         data[i] = {}

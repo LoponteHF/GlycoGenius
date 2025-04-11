@@ -20,7 +20,7 @@ from setuptools import setup, find_packages
 import sys
 import os
 
-current_version='1.2.12'
+current_version='1.2.13'
 
 def bump_version(version, bump_type):
     current_version = version
