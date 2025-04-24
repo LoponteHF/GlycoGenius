@@ -78,7 +78,7 @@ class make_mzxml(object):
                     data_to_return = {'num': pre_data['id'].split('=')[-1], 'retentionTime': float(pre_data['scanList']['scan'][0]['scan start time']), 'msLevel': pre_data['ms level'], 'm/z array': pre_data['m/z array'], 'intensity array': pre_data['intensity array']}
                         
                 # Some MzML have isolation window, some don't
-                if 'isolationWindow' in pre_data['precursorList']['precursor'][0].keys():
+                if 'isolationWindow' in pre_data['precursorList']['precursor'][0] and 'isolation window target m/z' in pre_data['precursorList']['precursor'][0]['isolationWindow'] and 'isolation window lower offset' in pre_data['precursorList']['precursor'][0]['isolationWindow'] and 'isolation window upper offset' in pre_data['precursorList']['precursor'][0]['isolationWindow']:
                     data_to_return['precursorMz'] = [{'precursorMz': pre_data['precursorList']['precursor'][0]['isolationWindow']['isolation window target m/z']}]
                     data_to_return['isolation window lower offset'] = pre_data['precursorList']['precursor'][0]['isolationWindow']['isolation window lower offset']
                     data_to_return['isolation window upper offset'] = pre_data['precursorList']['precursor'][0]['isolationWindow']['isolation window upper offset']
@@ -111,7 +111,7 @@ class make_mzxml(object):
                         data.append({'num': self.data[index]['id'].split('=')[-1], 'retentionTime': float(self.data[index]['scanList']['scan'][0]['scan start time']), 'msLevel': self.data[index]['ms level'], 'm/z array': self.data[index]['m/z array'], 'intensity array': self.data[index]['intensity array']})
                         
                     # Some MzML have isolation window, some don't
-                    if 'isolationWindow' in self.data[index]['precursorList']['precursor'][0].keys():
+                    if 'isolationWindow' in pre_data['precursorList']['precursor'][0] and 'isolation window target m/z' in pre_data['precursorList']['precursor'][0]['isolationWindow'] and 'isolation window lower offset' in pre_data['precursorList']['precursor'][0]['isolationWindow'] and 'isolation window upper offset' in pre_data['precursorList']['precursor'][0]['isolationWindow']:
                         data[-1]['precursorMz'] = [{'precursorMz': self.data[index]['precursorList']['precursor'][0]['isolationWindow']['isolation window target m/z']}]
                         data[-1]['isolation window lower offset'] = self.data[index]['precursorList']['precursor'][0]['isolationWindow']['isolation window lower offset']
                         data[-1]['isolation window upper offset'] = self.data[index]['precursorList']['precursor'][0]['isolationWindow']['isolation window upper offset']

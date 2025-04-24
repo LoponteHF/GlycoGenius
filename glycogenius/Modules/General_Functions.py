@@ -591,9 +591,17 @@ def local_noise_calc(noise_specs, x, avg_noise):
     float
         A float containing the local or average noise level.
     '''
+    returned_value = None
+    
     if noise_specs[2] == 0.0 or noise_specs[1] > noise_specs[0]*5 or noise_specs[0] > noise_specs[1]*5:
-        return avg_noise
-    return noise_specs[0] + (((noise_specs[1]-noise_specs[0])/noise_specs[2])*x)
+        returned_value = avg_noise
+    else:
+        returned_value = noise_specs[0] + (((noise_specs[1]-noise_specs[0])/noise_specs[2])*x)
+        
+    if returned_value <= 0 or not returned_value:
+        returned_value = avg_noise
+        
+    return returned_value
     
 def normpdf(x, mean, sd):
     '''Calculates the intensity of a gaussian bell curve at the x-axis point x
@@ -694,12 +702,14 @@ def glycan_to_atoms(glycan_composition, permethylated, monos):
     monosaccharides_local = monos
     
     if permethylated:
-        for i in monosaccharides_local:
-            unsaturations = i['C'] - ((i['H']+2)/2) + (i['N']/2) + 1
-            methylations = (i['O']+1) + i['N'] - unsaturations - 2
+        for mono_name, mono_inf in monosaccharides_local.items():
+            mono_comp = mono_inf[2]
             
-            i['C'] += methylations
-            i['H'] += methylations*2
+            unsaturations = mono_comp['C'] - ((mono_comp['H']+2)/2) + (mono_comp['N']/2) + 1
+            methylations = (mono_comp['O']+1) + mono_comp['N'] - unsaturations - 2
+            
+            mono_comp['C'] += methylations
+            mono_comp['H'] += methylations*2
     for i in glycan_composition:
         if i == "T":
             continue

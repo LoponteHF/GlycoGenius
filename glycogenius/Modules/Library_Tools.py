@@ -534,6 +534,8 @@ def calculate_one_glycan(i,
                     if not permethylated and reduced:
                         i_atoms = General_Functions.sum_atoms(i_atoms, {'H': 2})
                 base_mass = mass.calculate_mass(composition=i_atoms)
+                
+                # Sum the atoms for sulfation and phosphorylation
                 if permethylated:
                     i_atoms = General_Functions.sum_atoms(i_atoms, {'C': 1*s, 'H': 2*s, 'S': 1*s, 'O': 3*s}) #sum sulfation atoms
                     i_atoms = General_Functions.sum_atoms(i_atoms, {'C': 1*p, 'P': 1*p, 'O': 3*p, 'H': 3*p}) #sum phosphorylation atoms
@@ -896,8 +898,8 @@ def calculate_glycan_fragments(glycan,
             fragments_dict[fragment_formula] = temp_fragment
             
     # Generate H2O variants
-    fragments_glycan_formulas_h2o = []
     for fragment in fragments_glycan_formulas:
+        fragments_glycan_formulas_h2o = []
         for water_amount in range(-1, 2, 2):
             new_fragment_name = f"{fragment}{water_amount if water_amount < 0 else '+'+str(water_amount)}H2O"
             fragments_glycan_formulas_h2o.append(new_fragment_name)
@@ -918,11 +920,11 @@ def calculate_glycan_fragments(glycan,
                     
                 fragments_dict[new_fragment_name] = fragment_info
                 
-    fragments_glycan_formulas = fragments_glycan_formulas + fragments_glycan_formulas_h2o
+        fragments_glycan_formulas = fragments_glycan_formulas + fragments_glycan_formulas_h2o
     
     # Special fragments for permethylated glycans
-    fragments_glycan_formulas_permethylated = []
     if permethylated:
+        fragments_glycan_formulas_permethylated = []
         for fragment in fragments_glycan_formulas:
             new_fragment_name = f"{fragment}+CH2"
             fragments_glycan_formulas_h2o.append(new_fragment_name)
@@ -943,6 +945,81 @@ def calculate_glycan_fragments(glycan,
                     
                 fragments_dict[new_fragment_name] = fragment_info
 
-    fragments_glycan_formulas = fragments_glycan_formulas + fragments_glycan_formulas_permethylated
+        fragments_glycan_formulas = fragments_glycan_formulas + fragments_glycan_formulas_permethylated
+    
+    # Check the amount of phosphorylations and sulfations
+    p_amount = 0
+    s_amount = 0 
+    if "(s)" in glycan or "(p)" in glycan:
+        for index_plus, char in enumerate(glycan):
+            if char == '+':
+                for index_func, char_func in enumerate(glycan[index_plus+1:]):
+                    if char_func == '+':
+                        break
+                    if glycan[index_plus+index_func:index_plus+index_func+3] == '(p)':
+                        p_amount = int(glycan[index_plus+1:index_plus+index_func])
+                        break
+                    if glycan[index_plus+index_func:index_plus+index_func+3] == '(s)':
+                        s_amount = int(glycan[index_plus+1:index_plus+index_func])
+                        break
+    
+    # If phosphorylation is present
+    if p_amount > 0:
+        fragments_glycan_formulas_phosphorylated = []
+        for fragment in fragments_glycan_formulas:
+            for phosphor in range(1, min(p_amount, sum(fragments_dict[fragment]['Monos_composition'].values()))+1):
+                new_fragment_name = f"{fragment}+{phosphor}(p)"
+                fragments_glycan_formulas_phosphorylated.append(new_fragment_name)
+                
+                if new_fragment_name not in fragments_dict:
+                    fragment_info = copy.deepcopy(fragments_dict[fragment])
+                    
+                    if permethylated:
+                        fragment_info['Atoms'] = General_Functions.sum_atoms(fragment_info['Atoms'], {'C': 1*phosphor, 'P': 1*phosphor, 'O': 3*phosphor, 'H': 3*phosphor}) #sum phosphorylation atoms
+                    else:
+                        fragment_info['Atoms'] = General_Functions.sum_atoms(fragment_info['Atoms'], {'P': 1*phosphor, 'O': 3*phosphor, 'H': 1*phosphor}) #sum phosphorylation atoms
+                    
+                    for adduct in adduct_combos:
+                        adduct, charges = General_Functions.fix_adduct_determine_charge(adduct)
+                        
+                        mz = mass.calculate_mass(fragment_info['Atoms'],
+                                                 charge = charges,
+                                                 charge_carrier = adduct,
+                                                 carrier_charge = charges)
+                                                 
+                        fragment_info['Adducts_mz'][General_Functions.comp_to_formula(adduct)] = mz
+                        
+                    fragments_dict[new_fragment_name] = fragment_info
+
+        fragments_glycan_formulas = fragments_glycan_formulas + fragments_glycan_formulas_phosphorylated
+    
+    # If sulfation is present
+    if s_amount > 0:
+        fragments_glycan_formulas_sulfated = []
+        for fragment in fragments_glycan_formulas:
+            for sulphur in range(1, min(s_amount, sum(fragments_dict[fragment]['Monos_composition'].values()))+1):
+                new_fragment_name = f"{fragment}+{sulphur}(s)"
+                fragments_glycan_formulas_sulfated.append(new_fragment_name)
+                
+                if new_fragment_name not in fragments_dict:
+                    fragment_info = copy.deepcopy(fragments_dict[fragment])
+                    if permethylated:
+                        fragment_info['Atoms'] = General_Functions.sum_atoms(fragment_info['Atoms'], {'C': 1*sulphur, 'H': 2*sulphur, 'S': 1*sulphur, 'O': 3*sulphur}) #sum sulfation atoms
+                    else:
+                        fragment_info['Atoms'] = General_Functions.sum_atoms(fragment_info['Atoms'], {'S': 1*sulphur, 'O': 3*sulphur}) #sum sulfation atoms
+                    
+                    for adduct in adduct_combos:
+                        adduct, charges = General_Functions.fix_adduct_determine_charge(adduct)
+                        
+                        mz = mass.calculate_mass(fragment_info['Atoms'],
+                                                 charge = charges,
+                                                 charge_carrier = adduct,
+                                                 carrier_charge = charges)
+                                                 
+                        fragment_info['Adducts_mz'][General_Functions.comp_to_formula(adduct)] = mz
+                        
+                    fragments_dict[new_fragment_name] = fragment_info
+
+        fragments_glycan_formulas = fragments_glycan_formulas + fragments_glycan_formulas_sulfated
             
     fragments_dict_per_glycan[glycan] = fragments_glycan_formulas

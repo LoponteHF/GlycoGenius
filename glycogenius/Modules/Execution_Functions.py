@@ -40,7 +40,7 @@ import copy
 import pathlib
 import shutil
 
-version = '1.2.13'
+version = '1.2.14'
 
 ##---------------------------------------------------------------------------------------
 ##Functions to be used for execution and organizing results data
@@ -3329,7 +3329,7 @@ def arrange_raw_data(analyzed_data,
         dill.dump(noise, f)
         del noise
         f.close
-    if analyze_ms2:
+    if analyze_ms2 and len(analyzed_data[3]) > 0:
         with open(os.path.join(temp_folder, 'fragments_library'), 'wb') as f:
             dill.dump(analyzed_data[3], f)
             f.close
@@ -4114,7 +4114,7 @@ def analyze_ms2(ms2_index,
                 dill.dump(dummy_fragment_data[i], f)
                 f.close()
             dummy_fragment_data[i] = None
-        return library, analyzed_data[1], analyzed_data[2]
+        return library, analyzed_data[1], analyzed_data[2], {}, {}
         
     # Otherwise, analyze the MS2 data
     time_formatted = str(datetime.datetime.now()).split(" ")[-1].split(".")[0]+" - "
@@ -4220,6 +4220,7 @@ def analyze_ms2(ms2_index,
             results.append(result)
             
         for index, i in enumerate(results):
+
             result_data = i.result()
             
             for sample, spectra in result_data[2].items():
@@ -4415,15 +4416,15 @@ def analyze_glycan_ms2(ms2_index,
                         
                         tolerance_calculated = General_Functions.tolerance_calc(tolerance[0], tolerance[1], target_mz)*5
                         
-                        if 'isolation window lower offset' not in file[spectrum]:
-                            if abs((file[spectrum]['precursorMz'][0]['precursorMz']) - target_mz) <= tolerance_calculated:
-                                found_matching_mz = True
-                                break
-                        else:
+                        if 'isolation window lower offset' in file[spectrum] and 'isolation window upper offset' in file[spectrum]:
                             lower_boundary = file[spectrum]['precursorMz'][0]['precursorMz'] - file[spectrum]['isolation window lower offset'] - tolerance_calculated
                             upper_boundary = file[spectrum]['precursorMz'][0]['precursorMz'] + file[spectrum]['isolation window upper offset'] + tolerance_calculated
                             
-                            if target_mz > lower_boundary and target_mz < upper_boundary:
+                            if lower_boundary <= target_mz <= upper_boundary:
+                                found_matching_mz = True
+                                break
+                        else:
+                            if abs((file[spectrum]['precursorMz'][0]['precursorMz']) - target_mz) <= tolerance_calculated:
                                 found_matching_mz = True
                                 break
                     
