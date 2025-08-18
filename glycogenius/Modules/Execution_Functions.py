@@ -40,7 +40,7 @@ import copy
 import pathlib
 import shutil
 
-version = '1.2.14'
+version = '1.2.15'
 
 ##---------------------------------------------------------------------------------------
 ##Functions to be used for execution and organizing results data
@@ -2186,56 +2186,58 @@ def create_metaboanalyst_files(plot_metaboanalyst,
         f.write(",".join(samples_line)+"\n")
         f.write(",".join(groups_line)+"\n")
         
-        for i in all_glycans_list:
+        for glycan_rt in all_glycans_list:
             glycan_line = []
             glycan_line_IS = []
-            i_splitted = i.split("_")
-            glycan_line_IS.append(i)
-            glycan_line.append(i)
-            for j_j, j in enumerate(total_dataframes): #moving through samples
+            target_glycan, target_rt = glycan_rt.split("_")
+            glycan_line_IS.append(glycan_rt)
+            glycan_line.append(glycan_rt)
+            for sample_index, sample in enumerate(total_dataframes): #moving through samples
                 found = False
                 temp_AUC = 0
-                for k_k, k in enumerate(j["Glycan"]):
-                    if k == "Internal Standard":
+                for glycan_index, glycan in enumerate(sample["Glycan"]):
+                    if glycan == "Internal Standard":
                         continue
-                    if k == i_splitted[0] and abs(j["RT"][k_k] - float(i_splitted[-1])) <= rt_tolerance:
+                    if glycan == target_glycan and abs(sample["RT"][glycan_index] - float(target_rt)) <= rt_tolerance:
                         found = True
-                        if "Internal Standard" in j["Glycan"]:
-                            if is_areas[j_j] > 0.0:
-                                temp_AUC_IS = j["AUC"][k_k]/is_areas[j_j]
+                        if "Internal Standard" in sample["Glycan"]:
+                            if is_areas[sample_index] > 0.0:
+                                temp_AUC_IS = sample["AUC"][glycan_index]/is_areas[sample_index]
                             else:
                                 temp_AUC_IS = 0.0
-                            temp_AUC+= j["AUC"][k_k]
+                            temp_AUC+= sample["AUC"][glycan_index]
                         else:
-                            temp_AUC += j["AUC"][k_k]
+                            temp_AUC += sample["AUC"][glycan_index]
                 if found:
-                    if "Internal Standard" in j["Glycan"]:
+                    if "Internal Standard" in sample["Glycan"]:
                         glycan_line_IS.append(str(temp_AUC_IS))
                     glycan_line.append(str(temp_AUC))
                     continue
+                    
                 if not found:
                     if fill_gaps_noise_level:
                         local_noise = []
                         
-                        mz_values = glycans_mz[i_splitted[0]]
+                        single_glycan = target_glycan.split("/")[0]
+                        mz_values = glycans_mz[single_glycan]
                                 
-                        for noise_specs in noise_levels[1][j_j]:
+                        for noise_specs in noise_levels[1][sample_index]:
                             noises = []
                             for mz_value in mz_values:
-                                noises.append(General_Functions.local_noise_calc(noise_specs, float(mz_value), noise_levels[0][j_j]))
+                                noises.append(General_Functions.local_noise_calc(noise_specs, float(mz_value), noise_levels[0][sample_index]))
                             local_noise.append(sum(noises)/len(noises))
                         local_noise = sum(local_noise)/len(local_noise)
                         
-                        if "Internal Standard" in j["Glycan"]:
-                            if is_areas[j_j] > 0.0:
-                                glycan_line_IS.append(str(local_noise/is_areas[j_j]))
+                        if "Internal Standard" in sample["Glycan"]:
+                            if is_areas[sample_index] > 0.0:
+                                glycan_line_IS.append(str(local_noise/is_areas[sample_index]))
                         else:
                             glycan_line_IS.append("0.0")
                         glycan_line.append(str(local_noise))
-                        if i_splitted[0] in local_noises_dict.keys():
-                            local_noises_dict[i_splitted[0]].append(local_noise)
+                        if single_glycan in local_noises_dict.keys():
+                            local_noises_dict[single_glycan].append(local_noise)
                         else:
-                            local_noises_dict[i_splitted[0]] = [local_noise]
+                            local_noises_dict[single_glycan] = [local_noise]
                     else:
                         glycan_line_IS.append("")
                         glycan_line.append("")
@@ -2252,8 +2254,8 @@ def create_metaboanalyst_files(plot_metaboanalyst,
         total_glycans_compositions = []
         with open(os.path.join(save_path, begin_time+"_glycan_abundance_table_compositions.csv"), "w") as f:
             found_int_std = False
-            for i in compositions_dataframes:
-                if "Internal Standard" in i["Glycan"]:
+            for sample in compositions_dataframes:
+                if "Internal Standard" in sample["Glycan"]:
                     found_int_std = True
                     break
             if found_int_std:
@@ -2263,26 +2265,27 @@ def create_metaboanalyst_files(plot_metaboanalyst,
                     g.close()
             f.write(",".join(samples_line)+"\n")
             f.write(",".join(groups_line)+"\n")
-            for i_i, i in enumerate(compositions_dataframes):
-                for j_j, j in enumerate(i['Glycan']):
-                    if j not in total_glycans_compositions and j != 'Internal Standard':
-                        total_glycans_compositions.append(j)
+            for sample_index, sample in enumerate(compositions_dataframes):
+                for glycan_index, glycan in enumerate(sample['Glycan']):
+                    if glycan not in total_glycans_compositions and glycan != 'Internal Standard':
+                        total_glycans_compositions.append(glycan)
                         
-            for i_i, i in enumerate(sorted(total_glycans_compositions)):
-                glycan_line = [i]
-                glycan_line_IS = [i]
-                for j_j, j in enumerate(compositions_dataframes):
-                    if i in j['Glycan']:
-                        glycan_line.append(str(j['AUC'][j['Glycan'].index(i)]))
-                        if 'Internal Standard' in j['Glycan']:
-                            glycan_line_IS.append(str(j['AUC'][j['Glycan'].index(i)]/j['AUC'][j['Glycan'].index('Internal Standard')]))
+            for glycan_index, glycan in enumerate(sorted(total_glycans_compositions)):
+                glycan_line = [glycan]
+                glycan_line_IS = [glycan]
+                for sample_index, sample in enumerate(compositions_dataframes):
+                    if glycan in sample['Glycan']:
+                        glycan_line.append(str(sample['AUC'][sample['Glycan'].index(glycan)]))
+                        if 'Internal Standard' in sample['Glycan']:
+                            glycan_line_IS.append(str(sample['AUC'][sample['Glycan'].index(glycan)]/sample['AUC'][sample['Glycan'].index('Internal Standard')]))
                         else:
                             glycan_line_IS.append("0.0")
                     else:
                         if fill_gaps_noise_level:
-                            glycan_line.append(str(sum(local_noises_dict[i])/len(local_noises_dict[i])))
-                            if 'Internal Standard' in j['Glycan']:
-                                glycan_line_IS.append(str((sum(local_noises_dict[i])/len(local_noises_dict[i]))/j['AUC'][j['Glycan'].index('Internal Standard')]))
+                            single_glycan = glycan.split("/")[0]
+                            glycan_line.append(str(sum(local_noises_dict[single_glycan])/len(local_noises_dict[single_glycan])))
+                            if 'Internal Standard' in sample['Glycan']:
+                                glycan_line_IS.append(str((sum(local_noises_dict[single_glycan])/len(local_noises_dict[single_glycan]))/sample['AUC'][sample['Glycan'].index('Internal Standard')]))
                             else:
                                 glycan_line_IS.append("0.0")
                         else:
@@ -2601,23 +2604,19 @@ def output_filtered_data(curve_fit_score,
         df2["Complex %"] = proportion_classes["Complex"]
         
     all_glycans_list = [] #here it makes a list of ALL the glycans found for use in other parts of the data arrangement workflow
-    for i in total_dataframes:
-        for j_j, j in enumerate(i["RT"]):
-            if i["Glycan"][j_j] == "Internal Standard":
+    for sample in total_dataframes:
+        for rt_index, rt in enumerate(sample["RT"]):
+            if sample["Glycan"][rt_index] == "Internal Standard":
                 continue
             found = False
             if len(all_glycans_list) > 0:
-                for k in all_glycans_list:
-                    splitted_glycan = k.split("_")
-                    if i["Glycan"][j_j] == splitted_glycan[0] and abs(j-float(splitted_glycan[-1])) <= rt_tolerance:
+                for glycan_rt in all_glycans_list:
+                    target_glycan, target_rt = glycan_rt.split("_")
+                    if sample["Glycan"][rt_index] == target_glycan and abs(rt-float(target_rt)) <= rt_tolerance:
                         found = True
             if found:
                 continue
-            if len(all_glycans_list) == 0:
-                all_glycans_list.append(i["Glycan"][j_j]+"_"+"%.2f" % j)
-                continue
-            if not found:
-                all_glycans_list.append(i["Glycan"][j_j]+"_"+"%.2f" % j)
+            all_glycans_list.append(f"{sample['Glycan'][rt_index]}_{rt:.2f}")
                 
     if plot_metaboanalyst[0]: #start of metaboanalyst plot
         time_formatted = str(datetime.datetime.now()).split(" ")[-1].split(".")[0]+" - "
@@ -4142,7 +4141,14 @@ def analyze_ms2(ms2_index,
         cpu_count = 1
     
     # Calculate adduct combos
-    adduct_combos = General_Functions.gen_adducts_combo({'H' : 2}, [], max_charges)
+    adducts = list(library[list(library.keys())[0]]['Adducts_mz'].keys())
+    
+    adduct_combos = []
+    for adduct in adducts:
+        adduct, charges = General_Functions.fix_adduct_determine_charge(adduct)
+        if charges > 2:
+            continue
+        adduct_combos.append(adduct)
     
     # Resolve the reducing end tag
     tag = General_Functions.determine_tag_comp(tag_mass)
@@ -4362,6 +4368,7 @@ def analyze_glycan_ms2(ms2_index,
             
             # Go through each file
             for file_index, file in enumerate(data):
+        
                 glycan_fragments_data[adduct][file_index] = []
                 
                 # Just to be sure, check again whether the file has MS2 data
@@ -4500,7 +4507,7 @@ def analyze_glycan_ms2(ms2_index,
                             if not filter_output:
                                 possible_fragments = indexed_fragments[identified_fragment_mz]
                             else:
-                                possible_fragments = [fragment for fragment in indexed_fragments[identified_fragment_mz] if fragment.split("_")[0] in fragments_per_glycan[i]]
+                                possible_fragments = [fragment for fragment in indexed_fragments[identified_fragment_mz] if (fragment.split("_")[0] in fragments_per_glycan[i] and set(General_Functions.fix_adduct_determine_charge(fragment.split("_")[1])[0].keys()).issubset(set(adduct_name.keys())))]
                             
                             # If after filtering, no possible fragments are found, move on to the next peak
                             if len(possible_fragments) == 0:

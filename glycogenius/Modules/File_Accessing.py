@@ -301,6 +301,7 @@ def eic_from_glycan(files,
             
             #checked possibility of parallelization here, too much overhead (over 10 more time to run, even if using 1 core)
             buffer = []
+            buffer_size = max([4*sampling_rates[j_j], 4])
             buffer_good = 0
             for k_k, k in enumerate(thread_numbers):
                 analyze_mz_array(j[k]['m/z array'],
@@ -325,10 +326,10 @@ def eic_from_glycan(files,
                                  adduct_mass,
                                  adduct_charge,
                                  sampling_rates)
-                if len(buffer) > max([4*sampling_rates[j_j], 4]):
+                if len(buffer) > buffer_size:
                     rewind = False
                     found_count = 0
-                    for l in range(-1, -max([(4*sampling_rates[j_j]), 4])-2, -1):
+                    for l in range(-1, -buffer_size-2, -1):
                         if buffer[l] != None:
                             found_count += 1
                         else:

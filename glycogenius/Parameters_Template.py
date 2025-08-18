@@ -206,7 +206,7 @@ unrestricted_fragments = no
 ;
 accuracy_unit = ppm
 ; 	Determines the units of mz tolerance to be used 
-;	by the script. Options: 'ppm' or 'pw'. 
+;	by the script. Options: 'ppm' or 'mz'. 
 ;	'ppm' = Particles per Million, where 10 ppm is 
 ;	around 0.01 mz tolerance at mz 1000, 'mz' = Fixed 
 ;	mz tolerance from centroid, 0.01 mz means it 
