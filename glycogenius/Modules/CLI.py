@@ -27,7 +27,7 @@ import platform
 import os
 import dill
 
-version = '1.2.15'
+version = '1.3.0'
 
 forced_structures = ['none', 'n_glycans', 'o_glycans', 'gags']
     
@@ -161,7 +161,7 @@ def interactive_terminal():
         default_path = home+"/GlycoGenius/"
     while input_order[0] == None:
         print_header()
-        print("1 - Build and output glycans library.\n2 - Analyze sample files\n3 - Reanalyze raw results files with new\n    parameters\n4 - Create template parameters file for command-\n    line execution\n5 - Exit")
+        print("1 - Build and output glycans library.[DISABLED]\n2 - Analyze sample files[DISABLED]\n3 - Reanalyze raw results files with new\n    parameters[DISABLED]\n4 - Create template parameters file for command-\n    line execution\n5 - Exit")
         var = input("Select your option: ")
         if var == 'warranty':
             print("\nDisclaimer of Warranty.\n")
@@ -204,6 +204,9 @@ def interactive_terminal():
             input("\nWrong Input. Press Enter to try again.\n")
             continue
         if var > 0 and var <= 4:
+            if var < 4:
+                input("\nThis option has been temporarily disabled. Please, try another one.")
+                continue
             input_order[0] = var
     print_sep()
     if input_order[0] == 1 or input_order[0] == 2:

@@ -73,8 +73,8 @@ def config_handler(from_GUI = False, param_file_path = ''):
     min_max_ua = [0, 0]
     custom_monosaccharides = []
     forced = 'none'
-    max_adducts = {}
-    adducts_exclusion = []
+    min_max_proton = [0, 0]
+    custom_adducts = []
     max_charges = 0
     reducing_end_tag = 0.0
     permethylated = False
@@ -191,32 +191,34 @@ def config_handler(from_GUI = False, param_file_path = ''):
         full_library = library_data[0]
         library_metadata = library_data[1]
         
-        min_max_monos = library_metadata[0]
-        min_max_hex = library_metadata[1]
-        min_max_hexnac = library_metadata[2]
-        min_max_fuc = library_metadata[3]
-        min_max_sia = library_metadata[4]
-        min_max_ac = library_metadata[5]
-        min_max_gc = library_metadata[6]
-        forced = library_metadata[7]
-        max_adducts = library_metadata[8]
-        max_charges = library_metadata[9]
-        tag_mass = library_metadata[10]
-        internal_standard = library_metadata[11]
-        permethylated = library_metadata[12]
-        lactonized_ethyl_esterified = library_metadata[13]
-        reduced = library_metadata[14]
-        fast_iso = library_metadata[15]
-        high_res = library_metadata[16]
-        min_max_xyl = library_metadata[18]
-        min_max_hn = library_metadata[19]
-        min_max_ua = library_metadata[20]
+        custom_glycans_list[0] = library_metadata.get('custom glycans list', [False, []])[0]
+        if library_metadata.get('custom glycans list', [False, []])[0]:
+            custom_glycans_list[1] = library_metadata.get('custom glycans list', [False, []])[1]
+        min_max_monos = library_metadata.get('min/max monosaccharides', [0, 0])
+        min_max_hex = library_metadata.get('min/max hexoses', [0, 0])
+        min_max_hexnac = library_metadata.get('min/max hexnac', [0, 0])
+        min_max_fuc = library_metadata.get('min/max fucoses', [0, 0])
+        min_max_sia = library_metadata.get('min/max sialic acids', [0, 0])
+        min_max_ac = library_metadata.get('min/max acetyl sialic acids', [0, 0])
+        min_max_gc = library_metadata.get('min/max glycolyl sialic acids', [0, 0])
+        min_max_xyl = library_metadata.get('min/max xyloses', [0, 0])
+        min_max_hn = library_metadata.get('min/max hexosamines', [0, 0])
+        min_max_ua = library_metadata.get('min/max uronic acids', [0, 0])
         min_max_sulfation = library_metadata[21]
         min_max_phosphorylation = library_metadata[22]
-        if len(library_metadata) > 23:
-            lyase_digested = library_metadata[23]
-        if len(library_metadata) > 24:
-            custom_monosaccharides = library_metadata[24]
+        forced = library_metadata.get('glycan class', None)
+        min_max_proton = library_metadata.get('min/max protons', [0, 0])
+        max_charges = library_metadata.get('maximum charges', 3)
+        adduct_combos = library_metadata.get('adduct combos', [])
+        reducing_end_tag = library_metadata.get('reducing end tag', 0.0)
+        internal_standard = library_metadata.get('internal standard', '0.0')
+        permethylated = library_metadata.get('permethylated', False)
+        lactonized_ethyl_esterified = library_metadata.get('lactonized/ethyl esterified', False)
+        reduced = library_metadata.get('reducing end reduced', False)
+        fast_iso = library_metadata.get('fast isotopic pattern calculation', True)
+        high_res = library_metadata.get('high resolution isotopic pattern', False)
+        lyase_digested = library_metadata.get('lyase digested', False)
+        custom_monosaccharides = library_metadata.get('custom monosaccharides', [])
                 
     elif library_mode == 'custom_library':
         custom_glycans_list[0] = True
@@ -371,7 +373,7 @@ def config_handler(from_GUI = False, param_file_path = ''):
             for letter in alphabet:
                 if letter not in single_letters_in_use:
                     single_letter_code = letter
-                    single_letters_in_use.append(single_letter_code)
+                    single_letters_in_use.add(single_letter_code)
                     break
                     
             custom_monosaccharides.append({
@@ -384,11 +386,18 @@ def config_handler(from_GUI = False, param_file_path = ''):
                 'sialic' : True if cm[5] == 'yes' else False
                 })
     
-    max_adducts = General_Functions.form_to_comp(config['common_library_building_settings']['max_adducts'])
-    adducts_exc = config['common_library_building_settings']['adducts_exclusion'].split(",")
-    if len(adducts_exc) > 0:
-        for i in adducts_exc:
-            adducts_exclusion.append(General_Functions.form_to_comp(i.strip()))
+        
+    total_protons = config['common_library_building_settings']['min_max_proton_adducts'].split(',')
+    min_max_proton = [int(total_protons[0]), int(total_protons[1])]
+    
+    # Fill in details to use custom adducts
+    custom_adducts_list = config['common_library_building_settings'].get('custom_adducts', [])
+    if len(custom_adducts_list) > 0:
+        for ca in custom_adducts_list.split("),"):
+            ca = ca.strip().strip("(").strip(")")
+            ca = [element.strip() for element in ca.split(",")]
+            custom_adducts.append(ca)
+    
     max_charges = int(config['common_library_building_settings']['max_charges'])
     reducing_end_tag = config['common_library_building_settings']['reducing_end_tag']
     permethylated = config['common_library_building_settings'].getboolean('permethylated')
@@ -509,24 +518,235 @@ def config_handler(from_GUI = False, param_file_path = ''):
         iso_fittings = config['post-analysis/reanalysis'].getboolean('output_fittings_data')
         output_plot_data = config['post-analysis/reanalysis'].getboolean('output_plot_data')
         
+        
+    
+    analysis_parameters = {
+                            'library settings': {
+                                'min/max monosaccharides': min_max_monos,
+                                'min/max hexoses': min_max_hex,
+                                'min/max hexnac': min_max_hexnac,
+                                'min/max fucoses': min_max_fuc,
+                                'min/max sialic acids': min_max_sia,
+                                'min/max acetyl sialic acids': min_max_ac,
+                                'min/max glycolyl sialic acids': min_max_gc,
+                                'min/max xyloses': min_max_xyl,
+                                'min/max hexosamines': min_max_hn,
+                                'min/max uronic acids': min_max_ua,
+                                'glycan class': forced,
+                                'min/max protons': min_max_proton,
+                                'custom adducts': custom_adducts,
+                                'maximum charges': max_charges,
+                                'import/export library': imp_exp_library,
+                                'library path': library_path,
+                                'exported library name': exp_lib_name,
+                                'only generate library': only_gen_lib,
+                                'reducing end tag': reducing_end_tag,
+                                'internal standard': internal_standard,
+                                'permethylated': permethylated,
+                                'lactonized/ethyl esterified': lactonized_ethyl_esterified,
+                                'reducing end reduced': reduced,
+                                'fast isotopic pattern calculation': fast_iso,
+                                'high resolution isotopic pattern': high_res,
+                                'custom glycans list': custom_glycans_list,
+                                'min/max sulfation': min_max_sulfation,
+                                'min/max phosphorylation': min_max_phosphorylation,
+                                'lyase digested': lyase_digested,
+                                'custom monosaccharides': custom_monosaccharides
+                                },
+                            'analysis settings': {
+                                'multithreaded': multithreaded_analysis,
+                                'number of cpu cores': number_cores,
+                                'analyze ms2': analyze_ms2,
+                                'reporter ions': reporter_ions,
+                                'mass tolerance': tolerance,
+                                'retention time interval': ret_time_interval,
+                                'fragmentation retention time tolerance': rt_tolerance_frag,
+                                'min isotopologue peaks': min_isotopologue_peaks,
+                                'min points per peak': min_ppp,
+                                'only x most intense peaks': close_peaks,
+                                'align chromatograms': align_chromatograms,
+                                'minimum percentage auc threshold': percentage_auc,
+                                'maximum ppm threshold': max_ppm,
+                                'isotopic fitting score threshold': iso_fit_score,
+                                'curve fitting score threshold': curve_fit_score,
+                                'signal to noise ratio threshold': s_to_n,
+                                'custom noise level': custom_noise,
+                                'samples path': samples_path,
+                                'save path': save_path,
+                                'output abundance table': plot_metaboanalyst,
+                                'output composition-separated data': compositions,
+                                'output isotopic fitting data': iso_fittings,
+                                'output chromatogram plotting data': output_plot_data,
+                                'reanalysis': reanalysis,
+                                'reanalysis_path': reanalysis_path,
+                                'fill data gaps': fill_gaps
+                                }
+                            }
+        
     if from_GUI:
-        return (custom_glycans_list, min_max_monos, min_max_hex, min_max_hexnac, min_max_sia, min_max_fuc, min_max_ac, min_max_gc, forced, max_adducts, adducts_exclusion, max_charges, reducing_end_tag, permethylated, reduced, lactonized_ethyl_esterified, fast_iso, high_res, internal_standard, imp_exp_library, exp_lib_name, library_path, only_gen_lib, min_max_xyl, min_max_hn, min_max_ua, min_max_sulfation, min_max_phosphorylation, lyase_digested, custom_monosaccharides), (multithreaded_analysis, number_cores, analyze_ms2, reporter_ions, tolerance, ret_time_interval, rt_tolerance_frag, min_isotopologue_peaks, min_ppp, close_peaks, align_chromatograms, percentage_auc, max_ppm, iso_fit_score, curve_fit_score, s_to_n, custom_noise, samples_path, save_path, plot_metaboanalyst, compositions, iso_fittings, reanalysis, reanalysis_path, output_plot_data, fill_gaps)
+        return analysis_parameters
                 
     #args to execution functions:
-    output_filtered_data_args = [curve_fit_score, iso_fit_score, s_to_n, max_ppm, percentage_auc, reanalysis, reanalysis_path, save_path, analyze_ms2[0], analyze_ms2[2], reporter_ions, plot_metaboanalyst, compositions, align_chromatograms, forced, ret_time_interval[2], rt_tolerance_frag, iso_fittings, output_plot_data, multithreaded_analysis, number_cores, 0.0, min_samples, None, fill_gaps]
+    output_filtered_data_args = {
+                                'curve fitting score threshold': curve_fit_score,
+                                'isotopic fitting score threshold': iso_fit_score,
+                                'signal to noise ratio threshold': s_to_n,
+                                'maximum ppm threshold': max_ppm,
+                                'minimum percentage auc threshold': percentage_auc,
+                                'reanalysis': reanalysis,
+                                'reanalysis_path': reanalysis_path,
+                                'save path': save_path,
+                                'analyze ms2': analyze_ms2[0],
+                                'unrestricted fragments': analyze_ms2[2],
+                                'reporter ions': reporter_ions,
+                                'output abundance table': plot_metaboanalyst,
+                                'output composition-separated data': compositions,
+                                'align chromatograms': align_chromatograms,
+                                'glycan class': forced,
+                                'retention time tolerance': ret_time_interval[2],
+                                'fragmentation retention time tolerance': rt_tolerance_frag,
+                                'output isotopic fitting data': iso_fittings,
+                                'output chromatogram plotting data': output_plot_data,
+                                'multithreaded': multithreaded_analysis,
+                                'number of cpu cores': number_cores,
+                                'analysis done time': None,
+                                'minimum percentage of samples': min_samples,
+                                'sample groups': None,
+                                'temporary folder': None,
+                                'fill data gaps': fill_gaps,
+                                'from GUI': False
+                                }
 
-    imp_exp_gen_library_args = [custom_glycans_list, min_max_monos, min_max_hex, min_max_hexnac, min_max_xyl, min_max_sia, min_max_fuc, min_max_ac, min_max_gc, min_max_hn, min_max_ua, forced, max_adducts, adducts_exclusion, max_charges, reducing_end_tag, fast_iso, high_res, imp_exp_library, library_path, exp_lib_name, only_gen_lib, save_path, internal_standard, permethylated, lactonized_ethyl_esterified, reduced, min_max_sulfation, min_max_phosphorylation, lyase_digested, None, custom_monosaccharides]
+    imp_exp_gen_library_args = {
+                                'custom glycans list': custom_glycans_list,
+                                'min/max monosaccharides': min_max_monos,
+                                'min/max hexoses': min_max_hex,
+                                'min/max hexnac': min_max_hexnac,
+                                'min/max xyloses': min_max_xyl,
+                                'min/max sialic acids': min_max_sia,
+                                'min/max fucoses': min_max_fuc,
+                                'min/max acetyl sialic acids': min_max_ac,
+                                'min/max glycolyl sialic acids': min_max_gc,
+                                'min/max hexosamines': min_max_hn,
+                                'min/max uronic acids': min_max_ua,
+                                'glycan class': forced,
+                                'min/max protons': min_max_proton,
+                                'custom adducts': custom_adducts,
+                                'maximum charges': max_charges,
+                                'reducing end tag': reducing_end_tag,
+                                'fast isotopic pattern calculation': fast_iso,
+                                'high resolution isotopic pattern': high_res,
+                                'import/export library': imp_exp_library,
+                                'library path': library_path,
+                                'exported library name': exp_lib_name,
+                                'only generate library': only_gen_lib,
+                                'save path': save_path,
+                                'internal standard': internal_standard,
+                                'permethylated': permethylated,
+                                'lactonized/ethyl-esterified': lactonized_ethyl_esterified,
+                                'reducing end reduced': reduced,
+                                'min/max sulfation': min_max_sulfation,
+                                'min/max phosphorylation': min_max_phosphorylation,
+                                'lyase digested': lyase_digested,
+                                'temporary folder': None,
+                                'custom monosaccharides': custom_monosaccharides,
+                                'from GUI': False
+                                }
 
-    list_of_data_args = [samples_list]
+    list_of_data_args = {
+                        'samples list': samples_list
+                        }
 
-    index_spectra_from_file_ms1_args = [None, 1, multithreaded_analysis, number_cores]
+    index_spectra_from_file_ms1_args = {
+                                        'raw data': None,
+                                        'ms level': 1,
+                                        'multithreaded': multithreaded_analysis,
+                                        'number of cpu cores': number_cores
+                                        }
+                                        
+    index_spectra_from_file_ms2_args = {
+                                        'raw data': None,
+                                        'ms level': 2,
+                                        'multithreaded': multithreaded_analysis,
+                                        'number of cpu cores': number_cores
+                                        }
 
-    index_spectra_from_file_ms2_args = [None, 2, multithreaded_analysis, number_cores]
+    analyze_files_args = {
+                        'library': None,
+                        'library size': None,
+                        'raw data': None,
+                        'ms1 index': None,
+                        'mass tolerance': tolerance,
+                        'retention time interval': ret_time_interval,
+                        'min isotopologue peaks': min_isotopologue_peaks,
+                        'min points per peak': min_ppp,
+                        'adduct combos': None,
+                        'maximum charges': max_charges,
+                        'custom noise level': custom_noise,
+                        'only x most intense peaks': close_peaks,
+                        'multithreaded': multithreaded_analysis,
+                        'number of cpu cores': number_cores,
+                        'analysis start time': None,
+                        'temporary folder': None,
+                        'from GUI': False
+                        }
 
-    analyze_files_args = [None, None, None, None, tolerance, ret_time_interval, min_isotopologue_peaks, min_ppp, max_charges, custom_noise, close_peaks, multithreaded_analysis, number_cores, None, None]
+    analyze_ms2_args = {
+                        'ms2 index': None,
+                        'raw data': None,
+                        'analyzed data': None,
+                        'retention time interval': ret_time_interval,
+                        'mass tolerance': tolerance,
+                        'min/max monosaccharides': min_max_monos,
+                        'min/max hexoses': min_max_hex,
+                        'min/max hexnac': min_max_hexnac,
+                        'min/max xyloses': min_max_xyl,
+                        'min/max sialic acids': min_max_sia,
+                        'min/max fucoses': min_max_fuc,
+                        'min/max acetyl sialic acids': min_max_ac,
+                        'min/max glycolyl sialic acids': min_max_gc,
+                        'min/max hexosamines': min_max_hn,
+                        'min/max uronic acids': min_max_ua,
+                        'adduct combos': None,
+                        'maximum charges': max_charges,
+                        'reducing end tag': reducing_end_tag,
+                        'glycan class': forced,
+                        'permethylated': permethylated,
+                        'reducing end reduced': reduced,
+                        'lactonized/ethyl-esterified': lactonized_ethyl_esterified,
+                        'assign fragments compatible with precursor': analyze_ms2[1],
+                        'annotate all glycans in library': analyze_ms2[2],
+                        'fragmentation retention time tolerance': ret_time_interval[2],
+                        'multithreaded': multithreaded_analysis,
+                        'number of cpu cores': number_cores,
+                        'library': None,
+                        'temporary folder': None,
+                        'from GUI': False,
+                        'custom monosaccharides': custom_monosaccharides
+                        }
 
-    analyze_ms2_args = [None, None, None, ret_time_interval, tolerance, min_max_monos, min_max_hex, min_max_hexnac, min_max_xyl,  min_max_sia, min_max_fuc, min_max_ac, min_max_gc, min_max_hn, min_max_ua, max_charges, reducing_end_tag, forced, permethylated, reduced, lactonized_ethyl_esterified, analyze_ms2[1], analyze_ms2[2], ret_time_interval[2], multithreaded_analysis, number_cores, None, None, custom_monosaccharides]
+    arrange_raw_data_args = {
+                            'analyzed data': None,
+                            'sample names': samples_names,
+                            'ms2 analyzed': analyze_ms2[0],
+                            'save path': save_path,
+                            'analysis parameters': analysis_parameters,
+                            'adduct combos': None,
+                            'library': None,
+                            'temporary folder': None,
+                            'results file name': None,
+                            'from GUI': False,
+                            'erase files': True,
+                            'calculated noise levels': []
+                            }
 
-    arrange_raw_data_args = [None, samples_names, analyze_ms2[0], save_path, [[custom_glycans_list, min_max_monos, min_max_hex, min_max_hexnac, min_max_sia, min_max_fuc, min_max_ac, min_max_gc, forced, max_adducts, adducts_exclusion, max_charges, reducing_end_tag, permethylated, reduced, lactonized_ethyl_esterified, fast_iso, high_res, internal_standard, imp_exp_library, exp_lib_name, library_path, only_gen_lib, min_max_xyl, min_max_hn, min_max_ua, min_max_sulfation, min_max_phosphorylation, custom_monosaccharides], [multithreaded_analysis, number_cores, analyze_ms2, reporter_ions, tolerance, ret_time_interval, rt_tolerance_frag, min_isotopologue_peaks, min_ppp, close_peaks, align_chromatograms, percentage_auc, max_ppm, iso_fit_score, curve_fit_score, s_to_n, custom_noise, samples_path, save_path, plot_metaboanalyst, compositions, iso_fittings, reanalysis, reanalysis_path, output_plot_data]], None, None, None, False, True, []]
-
-    return output_filtered_data_args, imp_exp_gen_library_args, list_of_data_args, index_spectra_from_file_ms1_args, index_spectra_from_file_ms2_args, analyze_files_args, analyze_ms2_args, arrange_raw_data_args, samples_names, reanalysis, analyze_ms2[0]
+    return {
+            'output_filtered_data_args': output_filtered_data_args, 
+            'imp_exp_gen_library_args': imp_exp_gen_library_args, 
+            'list_of_data_args': list_of_data_args, 
+            'index_spectra_from_file_ms1_args': index_spectra_from_file_ms1_args,
+            'index_spectra_from_file_ms2_args': index_spectra_from_file_ms2_args, 
+            'analyze_files_args': analyze_files_args, 
+            'analyze_ms2_args': analyze_ms2_args, 
+            'arrange_raw_data_args':arrange_raw_data_args
+            }

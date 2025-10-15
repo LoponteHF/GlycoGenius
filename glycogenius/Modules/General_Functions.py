@@ -272,12 +272,14 @@ def determine_tag_comp(tag_mass):
             tag_mass['O'] -= 1
             
     if tag_mass != 0:
-        if type(tag_mass) == float:
+        if type(tag_mass) == float: # If tag is provided as mass
             tag = calculate_comp_from_mass(tag_mass)
-        elif type(tag_mass) != dict:
-            comp_tag = form_to_comp(tag_mass)
+            
+        elif type(tag_mass) != dict: # If tag is provided as atomic formula
+            comp_tag = form_to_comp_atoms(tag_mass)
             tag = (comp_tag, mass.calculate_mass(comp_tag))
-        else:
+            
+        else: # If tag is provided as peptide sequence
             comp_tag = tag_mass
             tag = (comp_tag, mass.calculate_mass(comp_tag))
     else:
@@ -285,31 +287,35 @@ def determine_tag_comp(tag_mass):
         
     return tag
     
-def fix_adduct_determine_charge(adduct):
-    '''A = Ammonium (NH3)
+def determine_adduct_charge(mode, *args):
     '''
-    if type(adduct) == str:
-        adduct = form_to_comp(adduct)
+    '''
+    if mode == 'neutral_mass':
+        glycan_neutral_mass, glycan_adduct_mz, max_charges = args
         
-    charges = 0
-    for atom in adduct:
-        if atom == "Cl":
-            if adduct[atom] > 0:
-                charges -= adduct[atom]
-            else:
-                charges += adduct[atom]
-        elif atom == 'Fe':
-            charges += 2*adduct[atom]
-        else:
-            charges += adduct[atom]
-    if charges == 0:
-        return adduct, charges
-    if "A" in adduct.keys():
-        adduct['N'] = adduct['A']
-        adduct['H'] = adduct.get('H', 0) + adduct['A']*3
-        del adduct['A']
+        # Determine the charges of the adduct combo
+        distance = inf
+        chosen = None
+        for charge in range(1, max_charges+1):
+            if abs(glycan_adduct_mz*charge-glycan_neutral_mass) < distance:
+                distance = abs(glycan_adduct_mz-glycan_neutral_mass)
+                chosen = charge
+                
+        adduct_charge = chosen
         
-    return adduct, charges
+    elif mode == 'isotopic_spacing':
+        isotopic_pattern, = args
+        
+        distance = inf
+        chosen = None
+        for charge in range(1, 10):
+            if abs((isotopic_pattern[1]-isotopic_pattern[0])-h_mass/charge) < distance:
+                distance = abs((isotopic_pattern[1]-isotopic_pattern[0])-h_mass/charge)
+                chosen = charge
+                
+        adduct_charge = chosen
+    
+    return adduct_charge
     
 def make_gg(temp_dir, save_dir, filename, ignore_files = False):
     '''Creates a zipped file with extension .gg containing raw_data files.
@@ -639,7 +645,7 @@ def normpdf(x, mean, sd):
     num = exp(-(float(x)-float(mean))**2/(2*var))
     return num/denom
 
-def form_to_comp(string):
+def form_to_comp_glycans(string):
     '''Separates a molecular formula or monosaccharides formula of glycans into a
     dictionary with each atom/monosaccharide as a key and its amount as value.
 
@@ -672,6 +678,27 @@ def form_to_comp(string):
     if '' in counts:
         del counts['']
     return counts
+    
+def form_to_comp_atoms(string):
+    '''
+    '''
+    comp_dict = {}
+    temp_atom = ''
+    temp_number = ''
+    for char in string:
+        if char.isalpha():
+            if char.isupper():
+                if temp_atom != '':
+                    comp_dict[temp_atom] = int(temp_number) if temp_number != '' else 1
+                temp_atom = char
+                temp_number = ''
+            if char.islower():
+                temp_atom += char
+        elif char.isdigit():
+            temp_number += char
+    comp_dict[temp_atom] = int(temp_number) if temp_number != '' else 1
+            
+    return comp_dict
 
 def glycan_to_atoms(glycan_composition, permethylated, monos):
     '''Calculates the amounts of atoms based on glycan monosaccharides.
@@ -927,8 +954,8 @@ def calculate_isotopic_pattern(glycan_atoms,
         return relative_isotop_pattern_low_res, relative_isotop_mass_low_res
     return relative_isotop_pattern, relative_isotop_mass
 
-def gen_adducts_combo(adducts,
-                      exclusions=[],
+def gen_adducts_combo(min_max_proton,
+                      custom_adducts=[],
                       max_charge=3):
     '''Generates a list of dictionaries with compositions of adducts combinations, based
     on parameters set.
@@ -957,54 +984,54 @@ def gen_adducts_combo(adducts,
     adducts_combo_dict : list
         A list of dictionaries containing the composition of each adducts combination.
     '''
-    adducts_list = []
-    adducts_combo = []
-    adducts_combo_dict = []
-    for i in adducts:
-        adducts_list.append(i)
-    for i in range(1, abs(max_charge)+1):
-        for j in combinations_with_replacement(adducts_list, i):
-            adducts_combo.append(j)
-    for i in adducts_combo:
-        temp_dict = {}
-        for j in i:
-            if j not in temp_dict:
-                if max_charge > 0:
-                    temp_dict[j] = 1
-                else:
-                    temp_dict[j] = -1
-            else:
-                if max_charge > 0:
-                    temp_dict[j]+= 1
-                else:
-                    temp_dict[j]-= 1
-        adducts_combo_dict.append(temp_dict)
-    to_remove = []
-    for i in adducts_combo_dict:
-        charges = 0
-        for atom in i:
-            if atom == "Cl":
-                if j[atom] > 0:
-                    charges -= j[atom]
-                else:
-                    charges += j[atom]
-            if atom == 'Fe':
-                charges += 2*i[atom]
-            else:
-                charges += i[atom]
-        if max_charge > 0 and charges > max_charge:
-            to_remove.append(i)
-            continue
-        elif max_charge < 0 and charges < max_charge:
-            to_remove.append(i)
-            continue
-        if i in exclusions:
-            to_remove.append(i)
-            continue
-        for j in i:
-            if abs(i[j]) > abs(adducts[j]):
-                to_remove.append(i)
-                break
-    for i in to_remove:
-        adducts_combo_dict.remove(i)
-    return adducts_combo_dict
+    # Build the correct data structure to process the adducts
+    if min_max_proton[1] > 0:
+        custom_adducts_dict = {'H': {'min': min_max_proton[0], 'max': min_max_proton[1], 'charges': 1 if max_charge > 0 else -1}}
+    else:
+        custom_adducts_dict = {}
+        
+    for adduct in custom_adducts:
+        custom_adducts_dict[adduct[0]] = {'min': int(adduct[1]), 'max': int(adduct[2]), 'charges': int(adduct[3])}
+    
+    # Initialize the adduct combos list
+    adduct_combos = []
+    
+    # Build the adduct combos
+    for number in range(1, sum([adduct['max'] for adduct in custom_adducts_dict.values()])+1):
+        for adduct_combo in combinations_with_replacement(custom_adducts_dict.keys(), number):
+            # Check the adducts ranges
+            bad = False
+            for adduct, data in custom_adducts_dict.items():
+                adduct_count = adduct_combo.count(adduct)
+                if adduct_count > data['max'] or adduct_count < data['min']:
+                    bad = True
+                    break
+            if bad:
+                continue
+            
+            # Check the adducts charges
+            current_charge = 0
+            for adduct in adduct_combo:
+                current_charge+= custom_adducts_dict[adduct]['charges']
+                    
+            # Ignore adduct combos with wrong charges and zero charges
+            if current_charge == 0 or (current_charge < 0 and max_charge > 0) or (current_charge > 0 and max_charge < 0) or (max_charge > 0 and current_charge > max_charge) or (max_charge < 0 and current_charge < max_charge):
+                bad = True
+                
+            # Skip bad adducts
+            if bad:
+                continue
+            
+            # If not bad, add the adduct to the library
+            adduct_atoms_dict = {}
+            for adduct, number in {item: adduct_combo.count(item) for item in set(adduct_combo)}.items():
+                adduct_comp = form_to_comp_atoms(adduct)
+                for atom, count in adduct_comp.items():
+                    if atom == 'H' and max_charge < 0:
+                        adduct_atoms_dict[atom] = adduct_atoms_dict.get(atom, 0)-(count*number)
+                    else:
+                        adduct_atoms_dict[atom] = adduct_atoms_dict.get(atom, 0)+(count*number)
+                    
+            adduct_combos.append([adduct_atoms_dict, current_charge])
+            
+    return adduct_combos

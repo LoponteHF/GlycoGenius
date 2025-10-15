@@ -162,7 +162,7 @@ def generate_glycans_library(min_max_mono,
     # Add custom monosaccharides
     if len(custom_monos) > 0:
         for cm in custom_monos:
-            monosaccharides[cm['cm_short_code']] = (cm['cm_name'], cm['cm_chem_comp'], General_Functions.sum_atoms({"C": 0, "O": 0, "N": 0, "H": 0}, General_Functions.form_to_comp(cm['cm_chem_comp'])), cm['cm_single_letter_code'])
+            monosaccharides[cm['cm_short_code']] = (cm['cm_name'], cm['cm_chem_comp'], General_Functions.sum_atoms({"C": 0, "O": 0, "N": 0, "H": 0}, General_Functions.form_to_comp_atoms(cm['cm_chem_comp'])), cm['cm_single_letter_code'])
     
     glycans = []
     def_glycan_comp = {key : 0 for key in monosaccharides}
@@ -315,9 +315,7 @@ def generate_glycans_library(min_max_mono,
 
 def full_glycans_library(library,
                          forced,
-                         max_adducts,
-                         adducts_exclusion,
-                         max_charges,
+                         adduct_combos,
                          tag_mass = 0,
                          fast = True,
                          high_res = False,
@@ -431,7 +429,7 @@ def full_glycans_library(library,
     if len(custom_monos) > 0:
         for cm in custom_monos:
             if cm['cm_short_code'] not in monosaccharides.keys():
-                monosaccharides[cm['cm_short_code']] = (cm['cm_name'], cm['cm_chem_comp'], General_Functions.sum_atoms({"C": 0, "O": 0, "N": 0, "H": 0}, General_Functions.form_to_comp(cm['cm_chem_comp'])), cm['cm_single_letter_code'])
+                monosaccharides[cm['cm_short_code']] = (cm['cm_name'], cm['cm_chem_comp'], General_Functions.sum_atoms({"C": 0, "O": 0, "N": 0, "H": 0}, General_Functions.form_to_comp_atoms(cm['cm_chem_comp'])), cm['cm_single_letter_code'])
                 
     full_library = {}
     
@@ -454,8 +452,6 @@ def full_glycans_library(library,
             tag_mass['O'] -= 1
             
     tag = General_Functions.determine_tag_comp(tag_mass)
-        
-    adducts_combo = General_Functions.gen_adducts_combo(max_adducts, adducts_exclusion, max_charges)
     
     results = []
     cpu_number = (os.cpu_count())-2 if os.cpu_count() < 60 else 60
@@ -465,7 +461,7 @@ def full_glycans_library(library,
         for i in library:
             result = executor.submit(calculate_one_glycan,
                                      i,
-                                     adducts_combo,
+                                     adduct_combos,
                                      tag,
                                      forced,
                                      fast,
@@ -487,11 +483,11 @@ def full_glycans_library(library,
     full_library = dict(sorted(full_library.items()))
             
     if internal_standard != '0.0' and internal_standard != 0.0:
-        full_library = include_internal_standard(full_library, tag_mass, fast, high_res, internal_standard, permethylated, reduced, adducts_combo, custom_monos)
+        full_library = include_internal_standard(full_library, tag_mass, fast, high_res, internal_standard, permethylated, reduced, adduct_combos, custom_monos)
     return full_library
     
 def calculate_one_glycan(i,
-                         adducts_combo,
+                         adduct_combos,
                          tag,
                          forced,
                          fast,
@@ -588,14 +584,12 @@ def calculate_one_glycan(i,
                 glycan_info['Isotopic_Distribution'] = iso_corrected
                 glycan_info['Isotopic_Distribution_Masses'] = i_iso_dist[1]
                 glycan_info['Adducts_mz'] = {}
-                for j in adducts_combo:
-                    j, charges = General_Functions.fix_adduct_determine_charge(j)
-                    
+                for adduct, charge in adduct_combos:
                     mz = mass.calculate_mass(i_atoms_tag,
-                                             charge = charges,
-                                             charge_carrier = j,
-                                             carrier_charge = charges)
-                    glycan_info['Adducts_mz'][General_Functions.comp_to_formula(j)] = mz
+                                             charge = charge,
+                                             charge_carrier = adduct,
+                                             carrier_charge = charge)
+                    glycan_info['Adducts_mz'][General_Functions.comp_to_formula(adduct)] = mz
                     
                 i_formulas.append(i_formula)
                 glycan_infos.append(glycan_info)
@@ -609,7 +603,7 @@ def include_internal_standard(full_library,
                               internal_standard,
                               permethylated,
                               reduced,
-                              adducts_combo,
+                              adduct_combos,
                               custom_monos = []):
     '''Processeses the internal standard inputted into workable library dictionary entry, with isotopic distribution and proper applicable modifications.
 
@@ -644,7 +638,7 @@ def include_internal_standard(full_library,
     reduced : boolean
         Whether or not the sample was reduced.
         
-    adducts_combo : list
+    adduct_combos : list
         A list containing the combinations fo adducts generated.
 
     Uses
@@ -689,7 +683,7 @@ def include_internal_standard(full_library,
     # Add custom monosaccharides
     if len(custom_monos) > 0:
         for cm in custom_monos:
-            monosaccharides[cm['cm_short_code']] = (cm['cm_name'], cm['cm_chem_comp'], General_Functions.sum_atoms({"C": 0, "O": 0, "N": 0, "H": 0}, General_Functions.form_to_comp(cm['cm_chem_comp'])), cm['cm_single_letter_code'])
+            monosaccharides[cm['cm_short_code']] = (cm['cm_name'], cm['cm_chem_comp'], General_Functions.sum_atoms({"C": 0, "O": 0, "N": 0, "H": 0}, General_Functions.form_to_comp_atoms(cm['cm_chem_comp'])), cm['cm_single_letter_code'])
                 
     def_glycan_comp = {key : 0 for key in monosaccharides}
     
@@ -699,7 +693,7 @@ def include_internal_standard(full_library,
         if type(tag_mass) == float:
             tag = General_Functions.calculate_comp_from_mass(tag_mass)
         elif type(tag_mass) != dict:
-            comp_tag = General_Functions.form_to_comp(tag_mass)
+            comp_tag = General_Functions.form_to_comp_atoms(tag_mass)
             tag = (comp_tag, mass.calculate_mass(comp_tag))
         else:
             comp_tag = tag_mass
@@ -708,24 +702,23 @@ def include_internal_standard(full_library,
     else:
         tag = ({"C": 0, "O": 0, "N": 0, "H": 0}, 0.0)
         
-    try:
+    try: # If internal standard is provided as mass
         i_neutral_mass = float(internal_standard)
         i_atoms = General_Functions.calculate_comp_from_mass(i_neutral_mass)[0]
         i_type = 'direct_mass'
-    except:
-        i_composition = General_Functions.form_to_comp(internal_standard)
-        
-        if "C" in i_composition.keys():
-            i_atoms = i_composition
-            i_neutral_mass = mass.calculate_mass(composition=i_atoms)
-            i_type = 'atomic_comp'
-            
-        else:
+    except: # If it's not provided as mass
+        if internal_standard.split("-")[0] == 'glycan':
+            i_composition = General_Functions.form_to_comp_glycans(internal_standard.split("-")[1])
             i_composition = General_Functions.sum_monos(def_glycan_comp, i_composition, monos = monosaccharides)
             i_atoms = General_Functions.glycan_to_atoms(i_composition, permethylated, monosaccharides)
-            i_atoms = General_Functions.sum_atoms(i_atoms, General_Functions.form_to_comp('H2O'))
+            i_atoms = General_Functions.sum_atoms(i_atoms, General_Functions.form_to_comp_atoms('H2O'))
             i_neutral_mass = mass.calculate_mass(composition=i_atoms)
             i_type = 'glycan'
+        
+        else:
+            i_atoms = General_Functions.form_to_comp_atoms(internal_standard)
+            i_neutral_mass = mass.calculate_mass(composition=i_atoms)
+            i_type = 'atomic_comp'
             
     if i_type == 'glycan':
         if tag[1] == 0.0:
@@ -773,14 +766,12 @@ def include_internal_standard(full_library,
     full_library[i_formula]['Isotopic_Distribution_Masses'] = i_iso_dist[1]
     
     full_library[i_formula]['Adducts_mz'] = {}
-    for j in adducts_combo:
-        j, charges = General_Functions.fix_adduct_determine_charge(j)
-        
+    for adduct, charge in adduct_combos:
         mz = mass.calculate_mass(i_atoms_tag,
-                                 charge = charges,
-                                 charge_carrier = j,
-                                 carrier_charge = charges)
-        full_library[i_formula]['Adducts_mz'][General_Functions.comp_to_formula(j)] = mz
+                                 charge = charge,
+                                 charge_carrier = adduct,
+                                 carrier_charge = charge)
+        full_library[i_formula]['Adducts_mz'][General_Functions.comp_to_formula(adduct)] = mz
         
     return full_library
 
@@ -803,7 +794,7 @@ def calculate_glycan_fragments(glycan,
     if len(custom_monos) > 0:
         for cm in custom_monos:
             if cm['cm_short_code'] not in monosaccharides.keys():
-                monosaccharides[cm['cm_short_code']] = (cm['cm_name'], cm['cm_chem_comp'], General_Functions.sum_atoms({"C": 0, "O": 0, "N": 0, "H": 0}, General_Functions.form_to_comp(cm['cm_chem_comp'])), cm['cm_single_letter_code'])
+                monosaccharides[cm['cm_short_code']] = (cm['cm_name'], cm['cm_chem_comp'], General_Functions.sum_atoms({"C": 0, "O": 0, "N": 0, "H": 0}, General_Functions.form_to_comp_atoms(cm['cm_chem_comp'])), cm['cm_single_letter_code'])
                 
     fragments_glycan = []
     def_glycan_comp = {key : 0 for key in monosaccharides}
@@ -885,15 +876,13 @@ def calculate_glycan_fragments(glycan,
             temp_fragment['Atoms'] = fragment_atoms
             temp_fragment['Adducts_mz'] = {}
             
-            for adduct in adduct_combos:
-                adduct, charges = General_Functions.fix_adduct_determine_charge(adduct)
-                
+            for adduct, data in adduct_combos.items():
                 mz = mass.calculate_mass(fragment_atoms,
-                                         charge = charges,
-                                         charge_carrier = adduct,
-                                         carrier_charge = charges)
+                                         charge = data['charges'],
+                                         charge_carrier = data['comp'],
+                                         carrier_charge = data['charges'])
                                          
-                temp_fragment['Adducts_mz'][General_Functions.comp_to_formula(adduct)] = mz
+                temp_fragment['Adducts_mz'][adduct] = mz
                 
             fragments_dict[fragment_formula] = temp_fragment
             
@@ -908,15 +897,13 @@ def calculate_glycan_fragments(glycan,
                 fragment_info = copy.deepcopy(fragments_dict[fragment])
                 fragment_info['Atoms'] = General_Functions.sum_atoms(fragment_info['Atoms'], {'O': 1*water_amount, 'H': 2*water_amount})
                 
-                for adduct in adduct_combos:
-                    adduct, charges = General_Functions.fix_adduct_determine_charge(adduct)
-                    
+                for adduct, data in adduct_combos.items():
                     mz = mass.calculate_mass(fragment_info['Atoms'],
-                                             charge = charges,
-                                             charge_carrier = adduct,
-                                             carrier_charge = charges)
+                                             charge = data['charges'],
+                                             charge_carrier = data['comp'],
+                                             carrier_charge = data['charges'])
                                              
-                    fragment_info['Adducts_mz'][General_Functions.comp_to_formula(adduct)] = mz
+                    fragment_info['Adducts_mz'][adduct] = mz
                     
                 fragments_dict[new_fragment_name] = fragment_info
                 
@@ -933,15 +920,13 @@ def calculate_glycan_fragments(glycan,
                 fragment_info = copy.deepcopy(fragments_dict[fragment])
                 fragment_info['Atoms'] = General_Functions.sum_atoms(fragment_info['Atoms'], {'C': 1, 'H': 2})
                 
-                for adduct in adduct_combos:
-                    adduct, charges = General_Functions.fix_adduct_determine_charge(adduct)
-                    
+                for adduct, data in adduct_combos.items():
                     mz = mass.calculate_mass(fragment_info['Atoms'],
-                                             charge = charges,
-                                             charge_carrier = adduct,
-                                             carrier_charge = charges)
+                                             charge = data['charges'],
+                                             charge_carrier = data['comp'],
+                                             carrier_charge = data['charges'])
                                              
-                    fragment_info['Adducts_mz'][General_Functions.comp_to_formula(adduct)] = mz
+                    fragment_info['Adducts_mz'][adduct] = mz
                     
                 fragments_dict[new_fragment_name] = fragment_info
 
@@ -979,15 +964,14 @@ def calculate_glycan_fragments(glycan,
                     else:
                         fragment_info['Atoms'] = General_Functions.sum_atoms(fragment_info['Atoms'], {'P': 1*phosphor, 'O': 3*phosphor, 'H': 1*phosphor}) #sum phosphorylation atoms
                     
-                    for adduct in adduct_combos:
-                        adduct, charges = General_Functions.fix_adduct_determine_charge(adduct)
-                        
+                
+                    for adduct, data in adduct_combos.items():
                         mz = mass.calculate_mass(fragment_info['Atoms'],
-                                                 charge = charges,
-                                                 charge_carrier = adduct,
-                                                 carrier_charge = charges)
+                                                 charge = data['charges'],
+                                                 charge_carrier = data['comp'],
+                                                 carrier_charge = data['charges'])
                                                  
-                        fragment_info['Adducts_mz'][General_Functions.comp_to_formula(adduct)] = mz
+                        fragment_info['Adducts_mz'][adduct] = mz
                         
                     fragments_dict[new_fragment_name] = fragment_info
 
@@ -1008,15 +992,14 @@ def calculate_glycan_fragments(glycan,
                     else:
                         fragment_info['Atoms'] = General_Functions.sum_atoms(fragment_info['Atoms'], {'S': 1*sulphur, 'O': 3*sulphur}) #sum sulfation atoms
                     
-                    for adduct in adduct_combos:
-                        adduct, charges = General_Functions.fix_adduct_determine_charge(adduct)
-                        
+                
+                    for adduct, data in adduct_combos.items():
                         mz = mass.calculate_mass(fragment_info['Atoms'],
-                                                 charge = charges,
-                                                 charge_carrier = adduct,
-                                                 carrier_charge = charges)
+                                                 charge = data['charges'],
+                                                 charge_carrier = data['comp'],
+                                                 carrier_charge = data['charges'])
                                                  
-                        fragment_info['Adducts_mz'][General_Functions.comp_to_formula(adduct)] = mz
+                        fragment_info['Adducts_mz'][adduct] = mz
                         
                     fragments_dict[new_fragment_name] = fragment_info
 

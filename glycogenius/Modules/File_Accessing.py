@@ -158,6 +158,7 @@ def eic_from_glycan(files,
                     min_isotops,
                     noise,
                     avg_noise,
+                    adduct_combos_dict,
                     max_charges,
                     zeroes_arrays,
                     inf_arrays,
@@ -282,10 +283,9 @@ def eic_from_glycan(files,
     verbose_info = []
     raw_data = {}
     for i in glycan_info['Adducts_mz']:
+                
+        adduct_charge = adduct_combos_dict[i]['charges']
         
-        adduct_comp, adduct_charge = General_Functions.fix_adduct_determine_charge(i)
-        
-        adduct_mass = mass.calculate_mass(composition=adduct_comp)
         ppm_info[i] = {}
         iso_fitting_quality[i] = {}
         data[i] = {}
@@ -323,7 +323,6 @@ def eic_from_glycan(files,
                                  j[k]['retentionTime'],
                                  ms1_id[j_j][k_k],
                                  ms1_id[-1],
-                                 adduct_mass,
                                  adduct_charge,
                                  sampling_rates)
                 if len(buffer) > buffer_size:
@@ -359,7 +358,6 @@ def eic_from_glycan(files,
                                              j[thread_numbers[k_k+l_l+1]]['retentionTime'],
                                              ms1_id[j_j][k_k+l_l+1],
                                              ms1_id[-1],
-                                             adduct_mass,
                                              adduct_charge,
                                              sampling_rates,
                                              retest = True,
@@ -388,7 +386,6 @@ def analyze_mz_array(sliced_mz,
                      ret_time,
                      ms1_id,
                      last_ms1_id,
-                     adduct_mass,
                      adduct_charge,
                      sampling_rates,
                      filtered = True,

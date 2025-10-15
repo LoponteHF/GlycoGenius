@@ -91,8 +91,8 @@ neu5gc = 0, 0
 custom_monosaccharides = 
 ;	Custom monosaccharides. Entries should be comma-
 ;	separated, with each entry in the format:
-;	(Monosaccharide Name, Short-Code, Chemical Composition, Minimum amount,
-;	Maximum amount, Sialic Acid?)
+;	(Monosaccharide Name, Short-Code, Chemical Composition, 
+;	Minimum amount, Maximum amount, Sialic Acid?)
 ;	Short-Code is up to three letters (no numbers), 
 ;	Chemical composition is in the format "C9H14O8N1",
 ;	meaning even if only one of an atom is present, it
@@ -111,14 +111,19 @@ force_class_structure = none
 ;	- o_glycans
 ;	- gags
 ;
-max_adducts = H3
-adducts_exclusion = 
-; 	Indicates the desired adducts and their maximum
-;	amount. H3Na1 means a maximum of 3 Hydrogens and
-;	a maximum of 1 Sodium per adduct combination. 
-;	Case sensitive. Doesn't work with complex adducts,
-;	such as NH4. Set adducts in 'adducts_exclusion' to
-;	avoid using specific adducts. Comma separated list.
+min_max_proton_adducts = 1, 3
+custom_adducts = 
+; 	Indicates the number of proton-based charges,
+;	which implies protonation (for positive mode) or
+;	deprotonation (for negative mode).
+;	Additional adducts must be provided comma-separated
+;	with the following format for each adduct:
+;	(Chemical Composition, Minimum amount, Maximum amount,
+;	Amount of charge per adduct).
+;	Chemical composition is in the format "C9H14O8N1",
+;	meaning even if only one of an atom is present, it
+;	must be made explicit (i.e. N1 for one nitrogen)
+; 
 ;
 max_charges = 3
 ; 	Limits the maximum amount of calculated charges
@@ -181,8 +186,9 @@ high_resolution_isotopic_dist = no
 ;
 internal_standard_mass = 0.0
 ; 	If using an internal standard, insert its mass,
-;	chemical formula or glycan formula here for 
+;	chem formula or glycan formula here for 
 ;	GlycoGenius to calculate its area. 
+;	For glycan, add "glycan-" before the glycan formula.
 ;	If a glycan formula is used, reducing end modifications
 ;	and permethylation (if selected) are applied to the 
 ;	internal standard.

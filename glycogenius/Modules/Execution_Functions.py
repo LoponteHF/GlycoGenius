@@ -134,7 +134,7 @@ def samples_path_to_list(path):
             samples_list.append(os.path.join(path, i))
     return samples_list
     
-def list_of_data(samples_list):
+def list_of_data(args_dict):
     '''Detects if a file is mzXML or mzML and processes it into a generator using
     pyteomics.
 
@@ -159,6 +159,9 @@ def list_of_data(samples_list):
     data : list
         A list containing the generator of each file name at each index.
     '''
+    # Grab the args
+    samples_list = args_dict.get('samples list', [])
+    
     data = []
     mzml_possibilities = list(map(''.join, product(*zip("mzml".upper(), "mzml".lower()))))
     mzxml_possibilities = list(map(''.join, product(*zip("mzxml".upper(), "mzxml".lower()))))
@@ -171,10 +174,7 @@ def list_of_data(samples_list):
             data.append(mzml_data)
     return data
 
-def index_spectra_from_file(files,
-                            ms_level,
-                            multithreaded,
-                            number_cores):
+def index_spectra_from_file(args_dict):
     '''Scans the mz(X)ML file and indexes all the MS1 scans, so that you don't have to
     go through the MSn scans as well when doing something only with the MS1.
 
@@ -199,6 +199,12 @@ def index_spectra_from_file(files,
         Returns a dictionary with each key pointing to a file and each key containing a
         list of indexes of the MS1 spectra.
     '''
+    # Grab the args
+    files = args_dict.get('raw data', None)
+    ms_level = args_dict.get('ms level', 1)
+    multithreaded = args_dict.get('multithreaded', True)
+    number_cores = args_dict.get('number of cpu cores', 99)
+    
     indexes = {}
     
     results = []
@@ -295,9 +301,12 @@ def output_extra_library_files(full_library,
                                imp_exp_library,
                                library_path,
                                exp_lib_name,
+                               metadata,
                                save_path):
     '''
     '''
+    adduct_combos_dict = {General_Functions.comp_to_formula(adduct[0]): {'charges': adduct[1], 'comp': adduct[0]} for adduct in metadata['adduct combos']}
+    
     # Here the header of the human-readable library is made
     df = {'Glycan' : [], 'Hex' : [], 'HexN' : [], 'HexNAc' : [], 'Xylose' : [], 'dHex' : []}
     if lactonized_ethyl_esterified:
@@ -343,9 +352,10 @@ def output_extra_library_files(full_library,
         if len(custom_monos) > 0:
             for cm in custom_monos:
                 cm_name = cm['cm_name']
-                if cm_name in df.keys():
-                    cm_name += '-custom'
-                df[cm_name].append(full_library[i]['Monos_Composition'][cm['cm_short_code']])
+                try:
+                    df[cm_name].append(full_library[i]['Monos_Composition'].get(cm['cm_short_code'], 0))
+                except:
+                    df[cm_name+'-custom'].append(full_library[i]['Monos_Composition'].get(cm['cm_short_code'], 0))
         
         temp_isotopic = []
         for j in full_library[i]['Isotopic_Distribution']:
@@ -376,50 +386,20 @@ def output_extra_library_files(full_library,
             for i_i, i in enumerate(full_library):
                 for j_j, j in enumerate(full_library[i]['Adducts_mz']):
                     
-                    adduct_comp, adduct_charge = General_Functions.fix_adduct_determine_charge(j)
+                    adduct_comp = copy.deepcopy(adduct_combos_dict[j]['comp'])
+                    adduct_charge = copy.deepcopy(adduct_combos_dict[j]['charges'])
                     
                     if len(adduct_comp) > 1 or i == "Internal Standard": #can't seem to make skyline work with mixed adducts, so have this in place for now
                         continue
+                    
                     adduct = str(adduct_comp[list(adduct_comp.keys())[0]])+str(list(adduct_comp.keys())[0]) #only first adduct
                     del adduct_comp[list(adduct_comp.keys())[0]]
                     formula = General_Functions.comp_to_formula(General_Functions.sum_atoms(full_library[i]['Atoms_Glycan+Tag'], adduct_comp))
-                    list_form = [i, str(formula), '[M+'+adduct+']', str(adduct_charge)]
+                    list_form = [i, str(formula), '[M+'+j+']', str(adduct_charge)]
                     f.write(",".join(list_form)+'\n')
             f.close()
 
-def imp_exp_gen_library(custom_glycans_list,
-                        min_max_monos,
-                        min_max_hex,
-                        min_max_hexnac,
-                        min_max_xyl,
-                        min_max_sia,
-                        min_max_fuc,
-                        min_max_ac,
-                        min_max_gc,
-                        min_max_hn,
-                        min_max_ua,
-                        forced,
-                        max_adducts,
-                        adducts_exclusion,
-                        max_charges,
-                        tag_mass,
-                        fast_iso,
-                        high_res,
-                        imp_exp_library,
-                        library_path,
-                        exp_lib_name,
-                        only_gen_lib,
-                        save_path,
-                        internal_standard,
-                        permethylated,
-                        lactonized_ethyl_esterified,
-                        reduced,
-                        min_max_sulfation,
-                        min_max_phosphorylation,
-                        lyase_digested,
-                        temp_folder,
-                        custom_monos = [],
-                        from_GUI = False):
+def imp_exp_gen_library(args_dict):
     '''Imports, generates and/or exports a glycans library.
 
     Parameters
@@ -550,19 +530,57 @@ def imp_exp_gen_library(custom_glycans_list,
         neutral mass, neutral mass with tag, isotopic distribution and the mzs of the
         glycans with the desired adducts combination.
     '''
+    # Grab all the args
+    custom_glycans_list = args_dict.get('custom glycans list', [False, []])
+    min_max_monos = args_dict.get('min/max monosaccharides', [0,0])
+    min_max_hex = args_dict.get('min/max hexoses', [0,0])
+    min_max_hexnac = args_dict.get('min/max hexnac', [0,0])
+    min_max_xyl = args_dict.get('min/max xyloses', [0,0])
+    min_max_sia = args_dict.get('min/max sialic acids', [0,0])
+    min_max_fuc = args_dict.get('min/max fucoses', [0,0])
+    min_max_ac = args_dict.get('min/max acetyl sialic acids', [0,0])
+    min_max_gc = args_dict.get('min/max glycolyl sialic acids', [0,0])
+    min_max_hn = args_dict.get('min/max hexosamines', [0,0])
+    min_max_ua = args_dict.get('min/max uronic acids', [0,0])
+    forced = args_dict.get('glycan class', None)
+    min_max_proton = args_dict.get('min/max protons', [1,3])
+    custom_adducts = args_dict.get('custom adducts', [])
+    max_charges = args_dict.get('maximum charges', 3)
+    tag_mass = args_dict.get('reducing end tag', 0.0)
+    fast_iso = args_dict.get('fast isotopic pattern calculation', True)
+    high_res = args_dict.get('high resolution isotopic pattern', False)
+    imp_exp_library = args_dict.get('import/export library', [False, False])
+    library_path = args_dict.get('library path', None)
+    exp_lib_name = args_dict.get('exported library name', None)
+    only_gen_lib = args_dict.get('only generate library', False)
+    save_path = args_dict.get('save path', None)
+    internal_standard = args_dict.get('internal standard', 0.0)
+    permethylated = args_dict.get('permethylated', False)
+    lactonized_ethyl_esterified = args_dict.get('lactonized/ethyl-esterified', False)
+    reduced = args_dict.get('reducing end reduced', False)
+    min_max_sulfation = args_dict.get('min/max sulfation', [0,0])
+    min_max_phosphorylation = args_dict.get('min/max phosphorylation', [0,0])
+    lyase_digested = args_dict.get('lyase digested', False)
+    temp_folder = args_dict.get('temporary folder', None)
+    custom_monos = args_dict.get('custom monosaccharides', [])
+    from_GUI = args_dict.get('from GUI', False)
+    
     monosaccharides = copy.deepcopy(General_Functions.monosaccharides)
     
     # Add custom monosaccharides
     if len(custom_monos) > 0:
         for cm in custom_monos:
             if cm['cm_short_code'] not in monosaccharides.keys():
-                monosaccharides[cm['cm_short_code']] = (cm['cm_name'], cm['cm_chem_comp'], General_Functions.sum_atoms({"C": 0, "O": 0, "N": 0, "H": 0}, General_Functions.form_to_comp(cm['cm_chem_comp'])), cm['cm_single_letter_code'])
+                monosaccharides[cm['cm_short_code']] = (cm['cm_name'], cm['cm_chem_comp'], General_Functions.sum_atoms({"C": 0, "O": 0, "N": 0, "H": 0}, General_Functions.form_to_comp_atoms(cm['cm_chem_comp'])), cm['cm_single_letter_code'])
     
     # Define the start time
     date = datetime.datetime.now()
     begin_time = str(date)[2:4]+str(date)[5:7]+str(date)[8:10]+"_"+str(date)[11:13]+str(date)[14:16]+str(date)[17:19]
     date, time_lib = begin_time.split("_")
     is_custom = False
+    
+    # Generate adduct combos
+    adduct_combos = General_Functions.gen_adducts_combo(min_max_proton, custom_adducts, max_charges)
     
     # If importing a library
     if imp_exp_library[0]:
@@ -574,35 +592,36 @@ def imp_exp_gen_library(custom_glycans_list,
                 f.close()
             full_library = library_data[0]
             library_metadata = library_data[1]
-            if library_metadata[17][0]:
+            
+            # Load data from the metadata
+            if library_metadata.get('custom glycans list', [False, []])[0]:
                 is_custom = True
-                custom_glycans_list[1] = library_metadata[17][1]
-            min_max_monos = library_metadata[0]
-            min_max_hex = library_metadata[1]
-            min_max_hexnac = library_metadata[2]
-            min_max_fuc = library_metadata[3]
-            min_max_sia = library_metadata[4]
-            min_max_ac = library_metadata[5]
-            min_max_gc = library_metadata[6]
-            forced = library_metadata[7]
-            max_adducts = library_metadata[8]
-            max_charges = library_metadata[9]
-            tag_mass = library_metadata[10]
-            internal_standard = library_metadata[11]
-            permethylated = library_metadata[12]
-            lactonized_ethyl_esterified = library_metadata[13]
-            reduced = library_metadata[14]
-            fast_iso = library_metadata[15]
-            high_res = library_metadata[16]
-            min_max_xyl = library_metadata[18]
-            min_max_hn = library_metadata[19]
-            min_max_ua = library_metadata[20]
-            min_max_sulfation = library_metadata[21]
-            min_max_phosphorylation = library_metadata[22]
-            if len(library_metadata) > 23:
-                lyase_digested = library_metadata[23]
-            if len(library_metadata) > 24:
-                custom_monos = library_metadata[24]
+                custom_glycans_list[1] = library_metadata.get('custom glycans list', [False, []])[1]
+            min_max_monos = library_metadata.get('min/max monosaccharides', [0, 0])
+            min_max_hex = library_metadata.get('min/max hexoses', [0, 0])
+            min_max_hexnac = library_metadata.get('min/max hexnac', [0, 0])
+            min_max_fuc = library_metadata.get('min/max fucoses', [0, 0])
+            min_max_sia = library_metadata.get('min/max sialic acids', [0, 0])
+            min_max_ac = library_metadata.get('min/max acetyl sialic acids', [0, 0])
+            min_max_gc = library_metadata.get('min/max glycolyl sialic acids', [0, 0])
+            min_max_xyl = library_metadata.get('min/max xyloses', [0, 0])
+            min_max_hn = library_metadata.get('min/max hexosamines', [0, 0])
+            min_max_ua = library_metadata.get('min/max uronic acids', [0, 0])
+            min_max_sulfation = library_metadata.get('min/max sulfation', [0, 0])
+            min_max_phosphorylation = library_metadata.get('min/max phosphorylation', [0, 0])
+            forced = library_metadata.get('glycan class', None)
+            min_max_proton = library_metadata.get('min/max protons', [0, 0])
+            max_charges = library_metadata.get('maximum charges', 3)
+            adduct_combos = library_metadata.get('adduct combos', [])
+            tag_mass = library_metadata.get('reducing end tag', 0.0)
+            internal_standard = library_metadata.get('internal standard', '0.0')
+            permethylated = library_metadata.get('permethylated', False)
+            lactonized_ethyl_esterified = library_metadata.get('lactonized/ethyl esterified', False)
+            reduced = library_metadata.get('reducing end reduced', False)
+            fast_iso = library_metadata.get('fast isotopic pattern calculation', True)
+            high_res = library_metadata.get('high resolution isotopic pattern', False)
+            lyase_digested = library_metadata.get('lyase digested', False)
+            custom_monos = library_metadata.get('custom monosaccharides', [])
                 
             print("Done!")
         except:
@@ -625,7 +644,7 @@ def imp_exp_gen_library(custom_glycans_list,
         time_formatted = str(datetime.datetime.now()).split(" ")[-1].split(".")[0]+" - "
         print(time_formatted+'Building glycans library...', end = "", flush = True)
         for i in custom_glycans_list[1]:
-            glycan_comp = General_Functions.form_to_comp(i)
+            glycan_comp = General_Functions.form_to_comp_glycans(i)
             for i in glycan_comp:
                 if i not in monosaccharides:
                     print(f"\n\nUnrecognized monosaccharide in glycan list: {i}\nCheck your custom glycans list.\n")
@@ -674,9 +693,7 @@ def imp_exp_gen_library(custom_glycans_list,
         # Build custom library
         full_library = Library_Tools.full_glycans_library(custom_glycans_comp,
                                                           forced,
-                                                          max_adducts,
-                                                          adducts_exclusion,
-                                                          max_charges,
+                                                          adduct_combos,
                                                           tag_mass,
                                                           fast_iso,
                                                           high_res,
@@ -708,9 +725,7 @@ def imp_exp_gen_library(custom_glycans_list,
                                                                custom_monos)
         full_library = Library_Tools.full_glycans_library(monos_library,
                                                           forced,
-                                                          max_adducts,
-                                                          adducts_exclusion,
-                                                          max_charges,
+                                                          adduct_combos,
                                                           tag_mass,
                                                           fast_iso,
                                                           high_res,
@@ -763,13 +778,41 @@ def imp_exp_gen_library(custom_glycans_list,
         else:
             exp_lib_name = begin_time+'_glycans_lib'
         if not imp_exp_library[0]:
-            metadata = [min_max_monos, min_max_hex, min_max_hexnac, min_max_fuc, min_max_sia, min_max_ac, min_max_gc, forced, max_adducts, max_charges, tag_mass, internal_standard, permethylated, lactonized_ethyl_esterified, reduced, fast_iso, high_res, custom_glycans_list, min_max_xyl, min_max_hn, min_max_ua, min_max_sulfation, min_max_phosphorylation, lyase_digested, custom_monos]
+            metadata = {
+                        'min/max monosaccharides': min_max_monos,
+                        'min/max hexoses': min_max_hex,
+                        'min/max hexnac': min_max_hexnac,
+                        'min/max fucoses': min_max_fuc,
+                        'min/max sialic acids': min_max_sia,
+                        'min/max acetyl sialic acids': min_max_ac,
+                        'min/max glycolyl sialic acids': min_max_gc,
+                        'min/max xyloses': min_max_xyl,
+                        'min/max hexosamines': min_max_hn,
+                        'min/max uronic acids': min_max_ua,
+                        'glycan class': forced,
+                        'min/max protons': min_max_proton,
+                        'custom adducts': custom_adducts,
+                        'maximum charges': max_charges,
+                        'adduct combos': adduct_combos,
+                        'reducing end tag': tag_mass,
+                        'internal standard': internal_standard,
+                        'permethylated': permethylated,
+                        'lactonized/ethyl esterified': lactonized_ethyl_esterified,
+                        'reducing end reduced': reduced,
+                        'fast isotopic pattern calculation': fast_iso,
+                        'high resolution isotopic pattern': high_res,
+                        'custom glycans list': custom_glycans_list,
+                        'min/max sulfation': min_max_sulfation,
+                        'min/max phosphorylation': min_max_phosphorylation,
+                        'lyase digested': lyase_digested,
+                        'custom monosaccharides': custom_monos
+                        }
             if exp_lib_name+'.ggl' not in os.listdir(save_path):
                 with open(os.path.join(save_path, exp_lib_name+'.ggl'), 'wb') as f:
                     dill.dump([full_library, metadata], f)
                     f.close()
         if not from_GUI:
-            output_extra_library_files(full_library, lactonized_ethyl_esterified, custom_monos, imp_exp_library, library_path, exp_lib_name, save_path)
+            output_extra_library_files(full_library, lactonized_ethyl_esterified, custom_monos, imp_exp_library, library_path, exp_lib_name, metadata, save_path)
         print("Done!")
     if only_gen_lib:
         time_formatted = str(datetime.datetime.now()).split(" ")[-1].split(".")[0]+" - "
@@ -793,7 +836,7 @@ def imp_exp_gen_library(custom_glycans_list,
                 os._exit(1)
     time_formatted = str(datetime.datetime.now()).split(" ")[-1].split(".")[0]+" - "
     print(time_formatted+'Library length: '+str(len(full_library)))
-    return full_library
+    return full_library, adduct_combos
     
 def align_assignments(df, df_type, multithreaded, number_cores, temp_folder = None, gg_file = None, deltas = None, rt_tol = None, iso_fit_score = 0, curve_fit_score = 0, max_ppm = 0, s_to_n = 0):
     '''Aligns the results obtained from running the whole program and uses
@@ -1966,7 +2009,7 @@ def determine_nglycan_class(total_dataframes,
                 j_list = j.split("/")
                 temp_class = ''
                 for k in j_list:
-                    comp = General_Functions.form_to_comp(k)
+                    comp = General_Functions.form_to_comp_glycans(k)
                     if len(temp_class) > 0:
                         temp_class += '/'
                     if 'N' in comp.keys() and 'H' in comp.keys() and comp['N'] == 2 and comp['H'] <= 3:
@@ -2298,33 +2341,7 @@ def create_metaboanalyst_files(plot_metaboanalyst,
                         g.close()
             f.close()
         
-def output_filtered_data(curve_fit_score,
-                         iso_fit_score,
-                         sn,
-                         max_ppm,
-                         percentage_auc,
-                         reanalysis,
-                         gg_file,
-                         save_path,
-                         analyze_ms2,
-                         unrestricted_fragments,
-                         reporter_ions,
-                         plot_metaboanalyst,
-                         compositions,
-                         align_chromatograms,
-                         forced,
-                         rt_tolerance,
-                         rt_tolerance_frag,
-                         output_isotopic_fittings,
-                         output_plot_data,
-                         multithreaded,
-                         number_cores,
-                         temp_time,
-                         min_samples,
-                         temp_folder,
-                         from_GUI = False,
-                         metab_groups = {},
-                         fill_gaps = (False, 50, 0.2, False)):
+def output_filtered_data(args_dict):
     '''This function filters and converts raw results data into human readable
     excel files.
     
@@ -2432,6 +2449,34 @@ def output_filtered_data(curve_fit_score,
     nothing
         Creates excel files of processed data.
     '''
+    # Grab all the args
+    curve_fit_score = args_dict.get('curve fitting score threshold', 0.0)
+    iso_fit_score = args_dict.get('isotopic fitting score threshold', 0.8)
+    sn = args_dict.get('signal to noise ratio threshold', 3)
+    max_ppm = args_dict.get('maximum ppm threshold', [-10, 10])
+    percentage_auc = args_dict.get('minimum percentage auc threshold', 0.1)
+    reanalysis = args_dict.get('reanalysis', False)
+    gg_file = args_dict.get('reanalysis_path', None)
+    save_path = args_dict.get('save path', None)
+    analyze_ms2 = args_dict.get('analyze ms2', False)
+    unrestricted_fragments = args_dict.get('unrestricted fragments', False)
+    reporter_ions = args_dict.get('reporter ions', [])
+    plot_metaboanalyst = args_dict.get('output abundance table', False)
+    compositions = args_dict.get('output composition-separated data', True)
+    align_chromatograms = args_dict.get('align chromatograms', False)
+    forced = args_dict.get('glycan class', None)
+    rt_tolerance = args_dict.get('retention time tolerance', 0.2)
+    rt_tolerance_frag = args_dict.get('fragmentation retention time tolerance', 1)
+    output_isotopic_fittings = args_dict.get('output isotopic fitting data', False)
+    output_plot_data = args_dict.get('output chromatogram plotting data', False)
+    multithreaded = args_dict.get('multithreaded', True)
+    number_cores = args_dict.get('number of cpu cores', 99)
+    temp_time = args_dict.get('analysis done time', datetime.datetime.now())
+    min_samples = args_dict.get('minimum percentage of samples', 0)
+    temp_folder = args_dict.get('temporary folder', None)
+    from_GUI = args_dict.get('from GUI', False)
+    metab_groups = args_dict.get('sample groups', {})
+    fill_gaps = args_dict.get('fill data gaps', (False, 50, 0.2, False))
     
     # Preparation for arranging the data
     date = datetime.datetime.now() #gets date information
@@ -3067,17 +3112,7 @@ def combine_raw_data_per_sample(sample_no, temp_folder):
                 os.remove(os.path.join(temp_folder, file))
         zipf.close()
 
-def arrange_raw_data(analyzed_data,
-                     samples_names,
-                     analyze_ms2,
-                     save_path,
-                     parameters,
-                     library,
-                     temp_folder,
-                     file_name = None,
-                     from_GUI = False,
-                     erase_files = True,
-                     noise = []):
+def arrange_raw_data(args_dict):
     '''Arrange the raw results data into pickled files to be processed by output_filtered_data.
 
     Parameters
@@ -3118,6 +3153,20 @@ def arrange_raw_data(analyzed_data,
     nothing
         Creates raw_data files.
     '''
+    # Grab args
+    analyzed_data = args_dict.get('analyzed data', None)
+    samples_names = args_dict.get('sample names', [])
+    analyze_ms2 = args_dict.get('ms2 analyzed', False)
+    save_path = args_dict.get('save path', None)
+    parameters = args_dict.get('analysis parameters', {})
+    adduct_combos = args_dict.get('adduct combos', [])
+    library = args_dict.get('library', None)
+    temp_folder = args_dict.get('temporary folder', None)
+    file_name = args_dict.get('results file name', None)
+    from_GUI = args_dict.get('from GUI', False)
+    erase_files = args_dict.get('erase files', True)
+    noise = args_dict.get('calculated noise levels', [])
+    
     date = datetime.datetime.now()
     begin_time = str(date)[2:4]+str(date)[5:7]+str(date)[8:10]+"_"+str(date)[11:13]+str(date)[14:16]+str(date)[17:19]
     date, time = begin_time.split("_")
@@ -3336,9 +3385,10 @@ def arrange_raw_data(analyzed_data,
             dill.dump(analyzed_data[4], f)
             f.close
     with open(os.path.join(temp_folder, 'metadata'), 'wb') as f:
-        parameters.append(begin_time)
-        parameters[1][17] = str(parameters[1][17])
-        parameters[1][18] = str(parameters[1][18])
+        parameters['analysis time'] = begin_time
+        parameters['adduct combos'] = adduct_combos 
+        parameters['analysis settings']['samples path'] = str(parameters['analysis settings']['samples path'])
+        parameters['analysis settings']['save path'] = str(parameters['analysis settings']['save path'])
         dill.dump(parameters, f)
         f.close()
         
@@ -3504,22 +3554,7 @@ def pre_processing(data,
             print("\n\n----------Execution cancelled by user.----------\n", flush=True)
         raise SystemExit(1)
     
-def analyze_files(library,
-                  lib_size,
-                  data,
-                  ms1_index,
-                  tolerance,
-                  ret_time_interval,
-                  min_isotops,
-                  min_ppp,
-                  max_charges,
-                  custom_noise,
-                  close_peaks,
-                  multithreaded,
-                  number_cores,
-                  begin_time,
-                  temp_folder,
-                  from_GUI = False): ##Complete
+def analyze_files(args_dict):
     '''Integrates all the file-accessing associated functions in this script to go
     through the files data, draw and process eic of hypothetical glycans, does 
     peak-picking and calculates AUC of the peaks.
@@ -3593,6 +3628,27 @@ def analyze_files(library,
     noise : dict
         A dictionary containing the noise level for each sample.
     '''
+    # Grab the args
+    library = args_dict.get('library', None)
+    lib_size = args_dict.get('library size', None)
+    data = args_dict.get('raw data', None)
+    ms1_index = args_dict.get('ms1 index', None)
+    tolerance = args_dict.get('mass tolerance', ['mz', 0.01])
+    ret_time_interval = args_dict.get('retention time interval', [0, 999])
+    min_isotops = args_dict.get('min isotopologue peaks', 2)
+    min_ppp = args_dict.get('min points per peak', [False, 0])
+    adduct_combos = args_dict.get('adduct combos', None)
+    max_charges = args_dict.get('maximum charges', 3)
+    custom_noise = args_dict.get('custom noise level', [False, []])
+    close_peaks = args_dict.get('only x most intense peaks', [False, 3])
+    multithreaded = args_dict.get('multithreaded', True)
+    number_cores = args_dict.get('number of cpu cores', 'all')
+    begin_time = args_dict.get('analysis start time', None)
+    temp_folder = args_dict.get('temporary folder', None)
+    from_GUI = args_dict.get('from GUI', False)
+    
+    adduct_combos_dict = {General_Functions.comp_to_formula(adduct[0]): {'charges': adduct[1], 'comp': adduct[0]} for adduct in adduct_combos}
+                  
     mean_sel_peaks = 0.0
     noise = {}
     noise_avg = {}
@@ -3682,6 +3738,7 @@ def analyze_files(library,
                                             ret_time_interval,
                                             min_isotops,
                                             min_ppp,
+                                            adduct_combos_dict,
                                             max_charges,
                                             noise,
                                             noise_avg,
@@ -3705,6 +3762,7 @@ def analyze_files(library,
                                          ret_time_interval,
                                          min_isotops,
                                          min_ppp,
+                                         adduct_combos_dict,
                                          max_charges,
                                          noise,
                                          noise_avg,
@@ -3743,7 +3801,7 @@ def analyze_files(library,
             with open(os.path.join(temp_folder, i), 'rb') as f:
                 glycan = dill.load(f)
                 f.close()
-            glycan['Monos_Composition'] = General_Functions.form_to_comp(i)
+            glycan['Monos_Composition'] = General_Functions.form_to_comp_glycans(i)
             with open(os.path.join(temp_folder, i), 'wb') as f:
                 dill.dump(glycan, f)
                 f.close()
@@ -3768,6 +3826,7 @@ def analyze_glycan(library,
                   ret_time_interval,
                   min_isotops,
                   min_ppp,
+                  adduct_combos_dict,
                   max_charges,
                   noise,
                   noise_avg,
@@ -3897,6 +3956,7 @@ def analyze_glycan(library,
                                                   min_isotops,
                                                   noise,
                                                   noise_avg,
+                                                  adduct_combos_dict,
                                                   max_charges,
                                                   zeroes_arrays,
                                                   inf_arrays,
@@ -3943,36 +4003,7 @@ def analyze_glycan(library,
             print("\n\n----------Execution cancelled by user.----------\n", flush=True)
         raise SystemExit(1)
     
-def analyze_ms2(ms2_index, 
-                data, 
-                analyzed_data, 
-                rt_interval,
-                tolerance,
-                min_max_monos,
-                min_max_hex,
-                min_max_hexnac,
-                min_max_xyl,
-                min_max_sia,
-                min_max_fuc,
-                min_max_ac,
-                min_max_gc,
-                min_max_hn,
-                min_max_ua,
-                max_charges,
-                tag_mass,
-                forced,
-                permethylated,
-                reduced,
-                lactonized_ethyl_esterified,
-                filter_output,
-                unrestricted_fragments,
-                rt_tolerance,
-                multithreaded,
-                number_cores,
-                library,
-                temp_folder,
-                from_GUI = False,
-                custom_monos = []):
+def analyze_ms2(args_dict):
     '''Analyzes the MS2 data in the sample files, outputting the found matches.
     
     Parameters
@@ -4090,6 +4121,41 @@ def analyze_ms2(ms2_index,
     fragments_data : dict
         Dictionary containing the fragments data.
     '''
+    # Grab the args
+    ms2_index = args_dict.get('ms2 index', None) 
+    data = args_dict.get('raw data', None)
+    analyzed_data = args_dict.get('analyzed data', None) 
+    rt_interval = args_dict.get('retention time interval', [0, 999])
+    tolerance = args_dict.get('mass tolerance', ['mz', 0.01])
+    min_max_monos = args_dict.get('min/max monosaccharides', [0,0])
+    min_max_hex = args_dict.get('min/max hexoses', [0,0])
+    min_max_hexnac = args_dict.get('min/max hexnac', [0,0])
+    min_max_xyl = args_dict.get('min/max xyloses', [0,0])
+    min_max_sia = args_dict.get('min/max sialic acids', [0,0])
+    min_max_fuc = args_dict.get('min/max fucoses', [0,0])
+    min_max_ac = args_dict.get('min/max acetyl sialic acids', [0,0])
+    min_max_gc = args_dict.get('min/max glycolyl sialic acids', [0,0])
+    min_max_hn = args_dict.get('min/max hexosamines', [0,0])
+    min_max_ua = args_dict.get('min/max uronic acids', [0,0])
+    adduct_combos = args_dict.get('adduct combos', None)
+    max_charges = args_dict.get('maximum charges', 3)
+    tag_mass = args_dict.get('reducing end tag', 0.0)
+    forced = args_dict.get('glycan class', None)
+    permethylated = args_dict.get('permethylated', False)
+    reduced = args_dict.get('reducing end reduced', False)
+    lactonized_ethyl_esterified = args_dict.get('lactonized/ethyl-esterified', False)
+    filter_output = args_dict.get('assign fragments compatible with precursor', True)
+    unrestricted_fragments = args_dict.get('annotate all glycans in library', False)
+    rt_tolerance = args_dict.get('fragmentation retention time tolerance', 0.2)
+    multithreaded = args_dict.get('multithreaded', True)
+    number_cores = args_dict.get('number of cpu cores', 'all')
+    library = args_dict.get('library', None)
+    temp_folder = args_dict.get('temporary folder', None)
+    from_GUI = args_dict.get('from GUI', False)
+    custom_monos = args_dict.get('custom monosaccharides', [])
+    
+    adduct_combos_dict = {General_Functions.comp_to_formula(adduct[0]): {'charges': adduct[1], 'comp': adduct[0]} for adduct in adduct_combos}
+                
     begin_time = datetime.datetime.now()
     
     # Check if any spectra file has MS2 data
@@ -4140,16 +4206,6 @@ def analyze_ms2(ms2_index,
     else:
         cpu_count = 1
     
-    # Calculate adduct combos
-    adducts = list(library[list(library.keys())[0]]['Adducts_mz'].keys())
-    
-    adduct_combos = []
-    for adduct in adducts:
-        adduct, charges = General_Functions.fix_adduct_determine_charge(adduct)
-        if charges > 2:
-            continue
-        adduct_combos.append(adduct)
-    
     # Resolve the reducing end tag
     tag = General_Functions.determine_tag_comp(tag_mass)
     
@@ -4164,7 +4220,7 @@ def analyze_ms2(ms2_index,
             executor.submit(Library_Tools.calculate_glycan_fragments,
                             glycan,
                             library[glycan]['Monos_Composition'],
-                            adduct_combos,
+                            adduct_combos_dict,
                             tolerance,
                             tag,
                             permethylated,
@@ -4213,7 +4269,8 @@ def analyze_ms2(ms2_index,
                                      indexed_fragments,
                                      indexed_fragments_list,
                                      data, 
-                                     glycan, 
+                                     glycan,
+                                     adduct_combos_dict,
                                      lactonized_ethyl_esterified,
                                      rt_interval,
                                      tolerance,
@@ -4287,6 +4344,7 @@ def analyze_glycan_ms2(ms2_index,
                        indexed_fragments_list,
                        data, 
                        glycan_data,
+                       adduct_combos_dict,
                        lactonized_ethyl_esterified,
                        rt_interval,
                        tolerance,
@@ -4363,7 +4421,8 @@ def analyze_glycan_ms2(ms2_index,
         for adduct in glycan_data['Adducts_mz_data']:
             
             # Calculate the charge of the adduct
-            adduct_name, adduct_charge = General_Functions.fix_adduct_determine_charge(adduct)
+            adduct_name = adduct_combos_dict[adduct]['comp']
+            adduct_charge = adduct_combos_dict[adduct]['charges']
             glycan_fragments_data[adduct] = {}
             
             # Go through each file
@@ -4507,7 +4566,7 @@ def analyze_glycan_ms2(ms2_index,
                             if not filter_output:
                                 possible_fragments = indexed_fragments[identified_fragment_mz]
                             else:
-                                possible_fragments = [fragment for fragment in indexed_fragments[identified_fragment_mz] if (fragment.split("_")[0] in fragments_per_glycan[i] and set(General_Functions.fix_adduct_determine_charge(fragment.split("_")[1])[0].keys()).issubset(set(adduct_name.keys())))]
+                                possible_fragments = [fragment for fragment in indexed_fragments[identified_fragment_mz] if (fragment.split("_")[0] in fragments_per_glycan[i] and set(adduct_combos_dict[fragment.split("_")[1]]['comp'].keys()).issubset(set(adduct_name.keys())))]
                             
                             # If after filtering, no possible fragments are found, move on to the next peak
                             if len(possible_fragments) == 0:
@@ -4523,7 +4582,8 @@ def analyze_glycan_ms2(ms2_index,
                                 
                                 fragments_ranking[fragment_name] = fragments_ranking.get(fragment_name, 0) + 1
                                 
-                                adduct_comp_frag, adduct_charge_frag = General_Functions.fix_adduct_determine_charge(fragment_adduct)
+                                adduct_comp_frag = adduct_combos_dict[fragment_adduct]['comp']
+                                adduct_charge_frag = adduct_combos_dict[fragment_adduct]['charges']
                                 
                                 adduct_str = ""
                                 for o in adduct_comp_frag:
