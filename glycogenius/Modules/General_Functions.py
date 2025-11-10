@@ -263,6 +263,9 @@ def cleanup_by_average(x, y, th = 2.5):
 def determine_tag_comp(tag_mass):   
     '''
     '''
+    if type(tag_mass) == dict:
+        return (tag_mass, mass.calculate_mass(tag_mass))
+        
     try:
         tag_mass = float(tag_mass)
     except:

@@ -761,6 +761,10 @@ def imp_exp_gen_library(args_dict):
                         exp_lib_name += str(time_lib)
                     else:
                         exp_lib_name += word
+                        
+            exp_lib_name = exp_lib_name.replace("<", "_")
+            exp_lib_name = exp_lib_name.replace(">", "_")
+            
             counter = 0
             while True:
                 if counter == 0 and os.path.isfile(os.path.join(save_path, exp_lib_name+'.ggl')):

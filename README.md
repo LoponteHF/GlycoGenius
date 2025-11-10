@@ -13,8 +13,10 @@ With that in mind, GlycoGenius is tailored to reduce manual workload. It allows 
 There are two ways to install it:
 1. Download the latest version of the Graphical User Interface from Releases page on https://github.com/LoponteHF/GlycoGenius_GUI, unzip it and run the executable file (Windows only, for other OS, you can install the GUI from PyPI);
 2. Install from PyPI:
-	1. Install Python from python.org or from your OS package distributor;
-	2. Type "pip install glycogenius" on a terminal.
+	1. Install Python from [python.org](https://www.python.org/) or from your OS package distributor;
+	2. Type "pip install glycogenius" or "pip3 install glycogenius" on a terminal.
+	
+Older versions of MacOS might not install GlycoGenius properly on Python versions 3.14 or later, so install an earlier, compatible Python version, such as 3.13.
 	
 ## Usage
 
