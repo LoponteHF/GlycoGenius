@@ -1030,11 +1030,11 @@ def gen_adducts_combo(min_max_proton,
             for adduct, number in {item: adduct_combo.count(item) for item in set(adduct_combo)}.items():
                 adduct_comp = form_to_comp_atoms(adduct)
                 for atom, count in adduct_comp.items():
-                    if atom == 'H' and max_charge < 0:
+                    if atom == 'H' and max_charge < 0 and len(adduct_comp) == 1:
                         adduct_atoms_dict[atom] = adduct_atoms_dict.get(atom, 0)-(count*number)
                     else:
                         adduct_atoms_dict[atom] = adduct_atoms_dict.get(atom, 0)+(count*number)
                     
             adduct_combos.append([adduct_atoms_dict, current_charge])
-            
+           
     return adduct_combos

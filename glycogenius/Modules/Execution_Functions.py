@@ -40,7 +40,7 @@ import copy
 import pathlib
 import shutil
 
-version = '1.2.15'
+version = '1.3.2'
 
 ##---------------------------------------------------------------------------------------
 ##Functions to be used for execution and organizing results data
