@@ -40,7 +40,7 @@ import copy
 import pathlib
 import shutil
 
-version = '1.3.2'
+version = '1.3.3'
 
 ##---------------------------------------------------------------------------------------
 ##Functions to be used for execution and organizing results data
@@ -389,13 +389,15 @@ def output_extra_library_files(full_library,
                     adduct_comp = copy.deepcopy(adduct_combos_dict[j]['comp'])
                     adduct_charge = copy.deepcopy(adduct_combos_dict[j]['charges'])
                     
-                    if len(adduct_comp) > 1 or i == "Internal Standard": #can't seem to make skyline work with mixed adducts, so have this in place for now
+                    if len(adduct_comp) > 1 or i == "Internal Standard": #can't seem to make skyline work with mixed adducts, so have this in place for now. A description to implement this is available at https://skyline.ms/_webdav/home/software/Skyline/@files/tutorials/SmallMolecule-3_6.pdf, under "A note on ion formulas and adduct descriptions".
                         continue
                     
-                    adduct = str(adduct_comp[list(adduct_comp.keys())[0]])+str(list(adduct_comp.keys())[0]) #only first adduct
-                    del adduct_comp[list(adduct_comp.keys())[0]]
+                    adduct_element = list(adduct_comp.keys())[0] #only first adduct
+                    adduct_count = adduct_comp[adduct_element]
+                    adduct = f"[M{'+' if adduct_count > 0 else '-'}{abs(adduct_count) if abs(adduct_count) != 1 else ''}{adduct_element}]"
+                    del adduct_comp[adduct_element]
                     formula = General_Functions.comp_to_formula(General_Functions.sum_atoms(full_library[i]['Atoms_Glycan+Tag'], adduct_comp))
-                    list_form = [i, str(formula), '[M+'+j+']', str(adduct_charge)]
+                    list_form = [i, str(formula), adduct, str(adduct_charge)]
                     f.write(",".join(list_form)+'\n')
             f.close()
 
@@ -592,6 +594,7 @@ def imp_exp_gen_library(args_dict):
                 f.close()
             full_library = library_data[0]
             library_metadata = library_data[1]
+            metadata = library_metadata
             
             # Load data from the metadata
             if library_metadata.get('custom glycans list', [False, []])[0]:
@@ -842,7 +845,7 @@ def imp_exp_gen_library(args_dict):
     print(time_formatted+'Library length: '+str(len(full_library)))
     return full_library, adduct_combos
     
-def align_assignments(df, df_type, multithreaded, number_cores, temp_folder = None, gg_file = None, deltas = None, rt_tol = None, iso_fit_score = 0, curve_fit_score = 0, max_ppm = 0, s_to_n = 0):
+def align_assignments(df, df_type, multithreaded, number_cores, temp_folder = None, gg_file = None, deltas = None, rt_tol = None, iso_fit_score = 0, curve_fit_score = 0, max_ppm = 0, s_to_n = 0, original_sample_numbers = None):
     '''Aligns the results obtained from running the whole program and uses
     the identifications to align the chromatograms between samples for 
     visualization purposes.
@@ -976,6 +979,7 @@ def align_assignments(df, df_type, multithreaded, number_cores, temp_folder = No
             all_deltas = []
             for j_j, j in enumerate(i):
                 all_deltas.append(i[j][0])
+            finite_deltas = [delta for delta in all_deltas if delta != inf]
             for j_j, j in enumerate(i):
                 if i[j][0] != inf:
                     if i[j][0] > 0:
@@ -988,12 +992,16 @@ def align_assignments(df, df_type, multithreaded, number_cores, temp_folder = No
             elif len(negative_ids) < len(positive_ids):
                 for j_j, j in enumerate(negative_ids):
                     i[j][0] = inf
-            elif mean(all_deltas) < rt_tol:
+            elif len(finite_deltas) == 0:
+                pass
+            elif abs(mean(finite_deltas)) < rt_tol:
                 for j_j, j in enumerate(i):
-                    i[j][0] = 0
+                    if i[j][0] != inf:
+                        i[j][0] = 0
             elif len(negative_ids) == len(positive_ids):
                 for j_j, j in enumerate(i):
-                    i[j][0] = mean(all_deltas)
+                    if i[j][0] != inf:
+                        i[j][0] = mean(finite_deltas)
                     
         #print(deltas_per_sample[2])                         
         #print()
@@ -1096,6 +1104,10 @@ def align_assignments(df, df_type, multithreaded, number_cores, temp_folder = No
         else:
             cpu_count = 1
             
+        # Extract the shared chromatograms list once, before the worker processes need it, so they don't race to extract it
+        if "eics_list" not in os.listdir(temp_folder):
+            General_Functions.open_gg(gg_file, temp_folder, file = "eics_list")
+            
         results = []
         with concurrent.futures.ProcessPoolExecutor(max_workers = cpu_count if cpu_count < 60 else 60) as executor:
             for i_i, i in enumerate(dataframe['File_Name']): #sample by sample
@@ -1108,7 +1120,8 @@ def align_assignments(df, df_type, multithreaded, number_cores, temp_folder = No
                                          max_ppm,
                                          s_to_n,
                                          temp_folder,
-                                         gg_file)
+                                         gg_file,
+                                         original_sample_numbers[i_i] if original_sample_numbers != None else i_i)
                 results.append(result)
             
             for index, i in enumerate(results):
@@ -1123,7 +1136,8 @@ def adjust_chromatogram(i,
                         max_ppm,
                         s_to_n,
                         temp_folder,
-                        gg_file):
+                        gg_file,
+                        chromatogram_number):
     '''Actual alignment of chromatogram. This function does just the adjustment part of the alignment for a given chromatogram. Used in the concurrent.futures for alignment.
     
     Parameters
@@ -1133,16 +1147,19 @@ def adjust_chromatogram(i,
         
     i_i : int
         Sample index.
-        
+
     deltas : dict
         The identified delta-t per sample, for use in aligning the chromatograms.
         'deltas' obtained by running this function in "total_glycans" mode for df_type.
-        
+
+    chromatogram_number : int
+        The original number of the sample in the .gg file, used to name its chromatogram files.
+
     Uses
     ----
     General_Functions.linear_regression : tuple
         Returns the slope, y-intercept and outliers of linear fit of given data.
-        
+
     Returns
     -------
     i : str
@@ -1152,17 +1169,25 @@ def adjust_chromatogram(i,
         Sample index.
     '''
     eic_name = 'RTs'
-    sample_RTs = General_Functions.access_chromatogram(i_i, f"{i_i}_{eic_name}", temp_folder, gg_file)
-        
+    sample_RTs = General_Functions.access_chromatogram(chromatogram_number, f"{chromatogram_number}_{eic_name}", temp_folder, gg_file)
+
     if len(deltas[i_i]) > 0:
-        
+
         if f"eics_list" not in os.listdir(temp_folder):
             General_Functions.open_gg(gg_file, temp_folder, file = f"eics_list")
-        
+
         with open(os.path.join(temp_folder, f"eics_list"), 'rb') as f:
             loaded_eics_list = dill.load(f)
-            chromatograms_list = loaded_eics_list[i_i]
+            chromatograms_list = loaded_eics_list[chromatogram_number]
             f.close()
+
+        # Find, for each scan, whether any chromatogram has signal above 1% and 10% of its maximum, loading each chromatogram only once
+        signal_above_1_perc = np.zeros(len(sample_RTs), dtype=bool)
+        signal_above_10_perc = np.zeros(len(sample_RTs), dtype=bool)
+        for k in chromatograms_list[1:]:
+            target_chromatogram = np.array(General_Functions.access_chromatogram(chromatogram_number, f"{chromatogram_number}_smoothed_{k}", temp_folder, gg_file))
+            signal_above_1_perc |= target_chromatogram > target_chromatogram.max()*0.01
+            signal_above_10_perc |= target_chromatogram > target_chromatogram.max()*0.1
             
         chromatogram_length_rt = sample_RTs[-1]
         chromatogram_beg_rt = sample_RTs[0]
@@ -1171,18 +1196,10 @@ def adjust_chromatogram(i,
         points_per_minute = int(1/chromatogram_interval)
         interval_list_rts = []
         interval_list = []
+        zero = False
         for j in range(len(sample_RTs)-1, -1, -1):
             if sample_RTs[j] < list(deltas[i_i].keys())[0]: #this finds the zero before the peaks
-                zero = True
-                for k_k, k in enumerate(chromatograms_list):
-                    if k_k != 0:
-                        
-                        # Load the target chromatogram
-                        target_chromatogram = General_Functions.access_chromatogram(i_i, f"{i_i}_smoothed_{k}", temp_folder, gg_file)
-                            
-                        if target_chromatogram[j] > max(target_chromatogram)*0.01:
-                            zero = False
-                            break
+                zero = not signal_above_1_perc[j]
                 if zero:
                     interval_list_rts.append(sample_RTs[j])
                     interval_list.append(j)
@@ -1190,18 +1207,10 @@ def adjust_chromatogram(i,
         if not zero:
             interval_list_rts.append(sample_RTs[0])
             interval_list.append(0)
+        zero = False
         for j_j, j in enumerate(sample_RTs):
             if j > list(deltas[i_i].keys())[-1]: #this finds the zero after the peaks
-                zero = True
-                for k_k, k in enumerate(chromatograms_list):
-                    if k_k != 0:
-                        
-                        # Load the target chromatogram
-                        target_chromatogram = General_Functions.access_chromatogram(i_i, f"{i_i}_smoothed_{k}", temp_folder, gg_file)
-                            
-                        if target_chromatogram[j_j] > max(target_chromatogram)*0.1:
-                            zero = False
-                            break
+                zero = not signal_above_10_perc[j_j]
                 if zero:
                     interval_list_rts.append(j)
                     interval_list.append(j_j)
@@ -1256,7 +1265,7 @@ def adjust_chromatogram(i,
                     for l_l, l in enumerate(range(highest_id+1, chromatogram_length)):
                         sample_RTs[l] = float("%.4f" % round(highest+(interval*(l_l+1)), 4))
     
-    with open(os.path.join(temp_folder, f"{i_i}_aligned_{eic_name}_{iso_fit_score}_{curve_fit_score}_{max_ppm}_{s_to_n}"), 'wb') as f:
+    with open(os.path.join(temp_folder, f"{chromatogram_number}_aligned_{eic_name}_{iso_fit_score}_{curve_fit_score}_{max_ppm}_{s_to_n}"), 'wb') as f:
         dill.dump(sample_RTs, f)
         f.close()
     
@@ -1417,12 +1426,7 @@ def make_df1_refactor(df1,
                         else: # If samples are separated into groups
                             # Identify the sample group
                             sample_group = sample_groups[df2['File_Name'][i_i]]
-                            indexes = []
-                            for index, _sample_group in enumerate(sample_groups.items()):
-                                sample = _sample_group[0]
-                                group = _sample_group[1]
-                                if group == sample_group:
-                                    indexes.append(index)
+                            indexes = [index for index, file_name in enumerate(df2['File_Name']) if sample_groups.get(file_name) == sample_group]
                                     
                         remove = True
                         good_count = 0
@@ -1649,48 +1653,48 @@ def make_df1_refactor(df1,
             sample_groups_for_filter[group] = [index]
         else:
             sample_groups_for_filter[group].append(index)
+
+    # Gather all the glycans
+    all_glycans = []
+    for sample in df1_refactor:
+        for glycan in sample['Glycan']:
+            if glycan not in all_glycans:
+                all_glycans.append(glycan)
         
+    # Count the number of samples each glycan is found in per group
     samples_per_glycan = {}
     for group in sample_groups_for_filter:
         temp_samples_per_glycan = {}
-        for i_i in sample_groups_for_filter[group]:
-            checked_glycans = []
-            for j_j, j in enumerate(df1_refactor[i_i]["Glycan"]):
-                if j not in temp_samples_per_glycan.keys():
-                    temp_samples_per_glycan[j] = 1
-                    checked_glycans.append(j)
-                elif j in temp_samples_per_glycan.keys() and j not in checked_glycans:
-                    temp_samples_per_glycan[j] += 1
-                    checked_glycans.append(j)
+        for glycan in all_glycans:
+            for sample in sample_groups_for_filter[group]:
+                temp_samples_per_glycan[glycan] = temp_samples_per_glycan.get(glycan, 0)+1 if glycan in df1_refactor[sample]['Glycan'] else temp_samples_per_glycan.get(glycan, 0)
         samples_per_glycan[group] = temp_samples_per_glycan
-    
-    for group in sample_groups_for_filter:
-        for i_i in sample_groups_for_filter[group]:
-            to_remove = []  
-            to_remove_glycan = []          
-            for j_j, j in enumerate(df1_refactor[i_i]["Glycan"]):
-                if samples_per_glycan[group][j] < round(len(sample_groups_for_filter[group])*(min_samples/100)):
-                    to_remove.append(j_j)
-                    to_remove_glycan.append(j)
-            if len(to_remove) != 0:
-                to_remove.reverse()
-                to_remove_glycan.reverse()
-                for j_j, j in enumerate(to_remove):
-                    for k in df1_refactor[i_i]:
-                        if k == 'Detected_Fragments':
-                            continue
-                        del df1_refactor[i_i][k][j]
-                    if analyze_ms2:
-                        for k in range(len(fragments_dataframes[i_i]["Glycan"])-1, -1, -1):
-                            if fragments_dataframes[i_i]["Glycan"][k] == to_remove_glycan[j_j]:
-                                del fragments_dataframes[i_i]["Glycan"][k]
-                                del fragments_dataframes[i_i]["Adduct"][k]
-                                del fragments_dataframes[i_i]["Fragment"][k]
-                                del fragments_dataframes[i_i]["Fragment_mz"][k]
-                                del fragments_dataframes[i_i]["Fragment_Intensity"][k]
-                                del fragments_dataframes[i_i]["RT"][k]
-                                del fragments_dataframes[i_i]["Precursor_mz"][k]
-                                del fragments_dataframes[i_i]["% TIC explained"][k]
+
+    # Check which glycans need to be removed
+    glycans_to_remove = []
+    for glycan in all_glycans:
+        remove = True
+        for group, glycans in samples_per_glycan.items():
+            if glycans.get(glycan, 0) >= round(len(sample_groups_for_filter[group])*(min_samples/100)):
+                remove = False
+                break
+        if remove:
+            glycans_to_remove.append(glycan)
+
+    # Remove the glycans marked for removal
+    for glycan in glycans_to_remove:
+        for sample_index, sample_data in enumerate(df1_refactor):
+            indices_to_remove = [i for i, x in enumerate(sample_data['Glycan']) if x == glycan]
+            for index_to_remove in reversed(indices_to_remove):
+                for header, data in sample_data.items():
+                    if header == 'Detected_Fragments':
+                        continue
+                    del data[index_to_remove]
+            if analyze_ms2 and len(indices_to_remove) > 0:
+                indices_to_remove = [i for i, x in enumerate(fragments_dataframes[sample_index]['Glycan']) if x == glycan]
+                for index_to_remove in reversed(indices_to_remove):
+                    for header, data in fragments_dataframes[sample_index].items():
+                        del data[index_to_remove]
         
     return df1_refactor, fragments_dataframes, noise_levels
         
@@ -1826,7 +1830,7 @@ def make_filtered_ms2_refactor(df1_refactor,
                         fragments_int_sum += fragments_dataframes[i_i]["Fragment_Intensity"][k]
                     else:
                         break
-            if current_checking == to_check and fragments_dataframes[i_i]["% TIC explained"] != 0:
+            if current_checking == to_check and fragments_dataframes[i_i]["% TIC explained"][j_j] != 0:
                 fragments_dataframes[i_i]["% TIC explained"][j_j] = float("%.2f" % round((fragments_int_sum/fragments_dataframes[i_i]["% TIC explained"][j_j])*100, 2)) #end of annotated_peaks ratio calculation
                 
     for i_i, i in enumerate(df1_refactor): #start of ms2 score calculation (at the moment its just % TIC explained)
@@ -2040,7 +2044,7 @@ def determine_nglycan_class(total_dataframes,
             i['Class'].append(glycan_class[j])
     proportion_classes = {'Paucimannose' : [], 'Hybrid' : [], 'High-Mannose' : [], 'Complex' : []}        
     for i_i, i in enumerate(compositions_dataframes):
-        total_sample = sum(i['AUC'])
+        total_sample = sum([auc for glycan, auc in zip(i['Glycan'], i['AUC']) if glycan != 'Internal Standard'])
         if total_sample == 0:
             total_sample = inf
         total_pauci = 0
@@ -2082,20 +2086,19 @@ def calculate_fucosylation_sialylation(compositions_dataframes):
     glycans_fucsia = {}
     for i_i, i in enumerate(compositions_dataframes):
         for j_j, j in enumerate(i['Glycan']):
-            fucsia = []
-            if 'S' in j or 'Am' in j or 'E' in j or 'G' in j:
-                fucsia.append(True)
-            else:
-                fucsia.append(False)
-            if 'F' in j:
-                fucsia.append(True)
-            else:
-                fucsia.append(False)
+            fucsia = [False, False]
+            if j != 'Internal Standard':
+                for composition in j.split("/"):
+                    comp = General_Functions.form_to_comp_glycans(composition)
+                    if any(comp.get(sialic, 0) > 0 for sialic in ['S', 'Am', 'E', 'G', 'AmG', 'EG']):
+                        fucsia[0] = True
+                    if comp.get('F', 0) > 0:
+                        fucsia[1] = True
             glycans_fucsia[j] = fucsia
             
     proportion_fucsia = {'Fucosylated' : [], 'Sialylated' : [], 'Fuc+Sia' : []}       
     for i_i, i in enumerate(compositions_dataframes):
-        total_sample = sum(i['AUC'])
+        total_sample = sum([auc for glycan, auc in zip(i['Glycan'], i['AUC']) if glycan != 'Internal Standard'])
         if total_sample == 0:
             total_sample = inf
         total_fuc = 0
@@ -2127,7 +2130,9 @@ def create_metaboanalyst_files(plot_metaboanalyst,
                                metab_groups = {},
                                fill_gaps_noise_level = False,
                                noise_levels = [],
-                               glycans_mz = {}):
+                               glycans_mz = {},
+                               temp_folder = None,
+                               original_sample_numbers = None):
     '''Creates the metaboanalyst-compatible .csv files.
     
     Parameters
@@ -2173,6 +2178,8 @@ def create_metaboanalyst_files(plot_metaboanalyst,
     if len(noise_levels) == 0:
         fill_gaps_noise_level = False
     local_noises_dict = {}
+
+    # Start making calculations for peak-separated csv file
     with open(os.path.join(save_path, begin_time+"_glycan_abundance_table.csv"), "w") as f:
         # Make samples line
         samples_line = ["Sample"]
@@ -2229,10 +2236,11 @@ def create_metaboanalyst_files(plot_metaboanalyst,
                 else:
                     is_areas.append(0.0)
         
-        # Write to peak-separated file
+        # Write sample and group line to peak-separated file
         f.write(",".join(samples_line)+"\n")
         f.write(",".join(groups_line)+"\n")
         
+        # Go through each glycan to start building the abundance table
         for glycan_rt in all_glycans_list:
             glycan_line = []
             glycan_line_IS = []
@@ -2240,6 +2248,7 @@ def create_metaboanalyst_files(plot_metaboanalyst,
             glycan_line_IS.append(glycan_rt)
             glycan_line.append(glycan_rt)
             for sample_index, sample in enumerate(total_dataframes): #moving through samples
+                local_noises_dict[sample_index] = local_noises_dict.get(sample_index, {})
                 found = False
                 temp_AUC = 0
                 for glycan_index, glycan in enumerate(sample["Glycan"]):
@@ -2247,55 +2256,56 @@ def create_metaboanalyst_files(plot_metaboanalyst,
                         continue
                     if glycan == target_glycan and abs(sample["RT"][glycan_index] - float(target_rt)) <= rt_tolerance:
                         found = True
-                        if "Internal Standard" in sample["Glycan"]:
-                            if is_areas[sample_index] > 0.0:
-                                temp_AUC_IS = sample["AUC"][glycan_index]/is_areas[sample_index]
-                            else:
-                                temp_AUC_IS = 0.0
-                            temp_AUC+= sample["AUC"][glycan_index]
-                        else:
-                            temp_AUC += sample["AUC"][glycan_index]
+                        temp_AUC += sample["AUC"][glycan_index]
                 if found:
-                    if "Internal Standard" in sample["Glycan"]:
-                        glycan_line_IS.append(str(temp_AUC_IS))
+                    if found_int_std and is_areas[sample_index] > 0.0:
+                        glycan_line_IS.append(str(temp_AUC/is_areas[sample_index]))
+                    else:
+                        glycan_line_IS.append("0.0")
                     glycan_line.append(str(temp_AUC))
                     continue
                     
                 if not found:
+                    # Noise gap filling logic
                     if fill_gaps_noise_level:
                         local_noise = []
                         
                         single_glycan = target_glycan.split("/")[0]
                         mz_values = glycans_mz[single_glycan]
                                 
-                        for noise_specs in noise_levels[1][sample_index]:
+                        # Fetch the rt array for this sample
+                        chromatogram_number = original_sample_numbers[sample_index] if original_sample_numbers != None else sample_index
+                        rt_array = General_Functions.access_chromatogram(chromatogram_number, f"{chromatogram_number}_RTs", temp_folder, None)
+
+                        # Fetch the average RT for the glycan from other samples here
+                        target_rt_index = np.argmin(np.abs(np.array(rt_array) - float(target_rt)))
+
+                        # Gets the average of the local noise for all mz values of the glycan, on the target RT 
+                        for action_index in range(target_rt_index-5 if target_rt_index-5 > 0 else target_rt_index, target_rt_index+5 if target_rt_index+5 < len(rt_array) else target_rt_index+1):
                             noises = []
                             for mz_value in mz_values:
-                                noises.append(General_Functions.local_noise_calc(noise_specs, float(mz_value), noise_levels[0][sample_index]))
+                                noises.append(General_Functions.local_noise_calc(noise_levels[1][sample_index][action_index], float(mz_value), noise_levels[0][sample_index]))
                             local_noise.append(sum(noises)/len(noises))
                         local_noise = sum(local_noise)/len(local_noise)
                         
-                        if "Internal Standard" in sample["Glycan"]:
-                            if is_areas[sample_index] > 0.0:
-                                glycan_line_IS.append(str(local_noise/is_areas[sample_index]))
+                        if found_int_std and is_areas[sample_index] > 0.0:
+                            glycan_line_IS.append(str(local_noise/is_areas[sample_index]))
                         else:
                             glycan_line_IS.append("0.0")
                         glycan_line.append(str(local_noise))
-                        if single_glycan in local_noises_dict.keys():
-                            local_noises_dict[single_glycan].append(local_noise)
-                        else:
-                            local_noises_dict[single_glycan] = [local_noise]
+                        
+                        local_noises_dict[sample_index][single_glycan] = local_noises_dict[sample_index].get(single_glycan, [])+[local_noise]
                     else:
                         glycan_line_IS.append("")
                         glycan_line.append("")
-                    continue
+
             if found_int_std:
                 with open(os.path.join(save_path, begin_time+"_glycan_abundance_table_normalized.csv"), "a") as g:
                     g.write(",".join(glycan_line_IS)+"\n")
                     g.close()
             f.write(",".join(glycan_line)+"\n")
         f.close()
-    
+
     # Make compositional metaboanalyst
     if compositions:
         total_glycans_compositions = []
@@ -2330,9 +2340,10 @@ def create_metaboanalyst_files(plot_metaboanalyst,
                     else:
                         if fill_gaps_noise_level:
                             single_glycan = glycan.split("/")[0]
-                            glycan_line.append(str(sum(local_noises_dict[single_glycan])/len(local_noises_dict[single_glycan])))
+                            average_local_noise = sum(local_noises_dict[sample_index].get(single_glycan, [1]))/len(local_noises_dict[sample_index].get(single_glycan, [1]))
+                            glycan_line.append(str(average_local_noise))
                             if 'Internal Standard' in sample['Glycan']:
-                                glycan_line_IS.append(str((sum(local_noises_dict[single_glycan])/len(local_noises_dict[single_glycan]))/sample['AUC'][sample['Glycan'].index('Internal Standard')]))
+                                glycan_line_IS.append(str((average_local_noise)/sample['AUC'][sample['Glycan'].index('Internal Standard')]))
                             else:
                                 glycan_line_IS.append("0.0")
                         else:
@@ -2524,6 +2535,10 @@ def output_filtered_data(args_dict):
             noise_levels = dill.load(f)
     else:
         noise_levels = []
+
+    # Keep the original sample order, as the chromatogram files in the .gg are named by it and samples may be removed by grouping
+    original_file_names = list(df2['File_Name'])
+
     #reorganizes and filters the raw data based on the quality thresholds
     if from_GUI:
         df1_refactor, fragments_dataframes, noise_levels = make_df1_refactor(df1, df2, curve_fit_score, iso_fit_score, sn, max_ppm, percentage_auc, analyze_ms2, unrestricted_fragments, min_samples, fragments_dataframes, fill_gaps, metab_groups, noise_levels)
@@ -2532,7 +2547,10 @@ def output_filtered_data(args_dict):
             df1_refactor, fragments_dataframes, noise_levels = make_df1_refactor(df1, df2, curve_fit_score, iso_fit_score, sn, max_ppm, percentage_auc, analyze_ms2, unrestricted_fragments, min_samples, fragments_dataframes, fill_gaps, plot_metaboanalyst[1], noise_levels)
         else:
             df1_refactor, fragments_dataframes, noise_levels = make_df1_refactor(df1, df2, curve_fit_score, iso_fit_score, sn, max_ppm, percentage_auc, analyze_ms2, unrestricted_fragments, min_samples, fragments_dataframes, fill_gaps, {}, noise_levels)
-    
+
+    # Map each remaining sample to its original number in the .gg file
+    original_sample_numbers = [original_file_names.index(file_name) for file_name in df2['File_Name']]
+
     #filters ms2 data by reporter ions, calculates %TIC of MS2 spectra and reorganizes MS2 data
     if analyze_ms2:
         df1_refactor, fragments_dataframes, fragments_refactor_dataframes = make_filtered_ms2_refactor(df1_refactor, fragments_dataframes, reporter_ions, unrestricted_fragments, rt_tolerance_frag)
@@ -2681,7 +2699,7 @@ def output_filtered_data(args_dict):
                         if mz not in glycans_mzs[glycan]:
                             glycans_mzs[glycan].append(mz)
         
-        create_metaboanalyst_files(plot_metaboanalyst, df2, total_dataframes, all_glycans_list, compositions, compositions_dataframes, save_path, begin_time, rt_tolerance, from_GUI, metab_groups, fill_gaps[3], noise_levels, glycans_mzs)
+        create_metaboanalyst_files(plot_metaboanalyst, df2, total_dataframes, all_glycans_list, compositions, compositions_dataframes, save_path, begin_time, rt_tolerance, from_GUI, metab_groups, fill_gaps[3], noise_levels, glycans_mzs, temp_folder, original_sample_numbers)
         
         print("Done!") #end of metaboanalyst plot
     
@@ -2800,7 +2818,7 @@ def output_filtered_data(args_dict):
                 
             time_formatted = str(datetime.datetime.now()).split(" ")[-1].split(".")[0]+" - "
             print(time_formatted+"Aligning chromatograms...", end='', flush=True)
-            align_assignments(df2, 'chromatograms', multithreaded, number_cores, temp_folder, gg_file, aligned_total_glycans[1], None, iso_fit_score, curve_fit_score, max_ppm, sn)
+            align_assignments(df2, 'chromatograms', multithreaded, number_cores, temp_folder, gg_file, aligned_total_glycans[1], None, iso_fit_score, curve_fit_score, max_ppm, sn, original_sample_numbers)
             samples_aligned = True
             print("Done!")
         
@@ -2812,16 +2830,16 @@ def output_filtered_data(args_dict):
             
             eic_name = 'RTs'
             if samples_aligned:
-                with open(os.path.join(temp_folder, f"{i_i}_aligned_{eic_name}_{iso_fit_score}_{curve_fit_score}_{max_ppm}_{sn}"), "rb") as f:
+                with open(os.path.join(temp_folder, f"{original_sample_numbers[i_i]}_aligned_{eic_name}_{iso_fit_score}_{curve_fit_score}_{max_ppm}_{sn}"), "rb") as f:
                     found_eic_processed_dataframes[i_i]['RTs_'+str(i_i)] = dill.load(f)
                     f.close()
             else:
-                found_eic_processed_dataframes[i_i]['RTs_'+str(i_i)] = General_Functions.access_chromatogram(i_i, f"{i_i}_{eic_name}", temp_folder, gg_file)
+                found_eic_processed_dataframes[i_i]['RTs_'+str(i_i)] = General_Functions.access_chromatogram(original_sample_numbers[i_i], f"{original_sample_numbers[i_i]}_{eic_name}", temp_folder, gg_file)
             
             for j_j, j in enumerate(i['Glycan']):
                 query = j+"+"+i['Adduct'][j_j]+" - "+str(i['mz'][j_j])
                 try:
-                    found_eic_processed_dataframes[i_i][query] = General_Functions.access_chromatogram(i_i, f"{i_i}_smoothed_{query}", temp_folder, gg_file)
+                    found_eic_processed_dataframes[i_i][query] = General_Functions.access_chromatogram(original_sample_numbers[i_i], f"{original_sample_numbers[i_i]}_smoothed_{query}", temp_folder, gg_file)
                 except:
                     pass
         
@@ -2830,15 +2848,13 @@ def output_filtered_data(args_dict):
         found_eic_processed_dataframes_simplified = []
         found_eic_processed_dataframes_copy = copy.deepcopy(found_eic_processed_dataframes)
         for i_i, i in enumerate(found_eic_processed_dataframes_copy):
-            current_glycan = ""
             found_eic_processed_dataframes_simplified.append({})
             for j_j, j in enumerate(i):
-                working_glycan = j.split("+")[0].split("_")[0].split("-")[0]
                 if j_j == 0:
                     found_eic_processed_dataframes_simplified[i_i][j] = i[j]
                     continue
-                elif working_glycan != current_glycan:
-                    current_glycan = working_glycan
+                working_glycan = j.rsplit(" - ", 1)[0].rsplit("+", 1)[0]
+                if working_glycan not in found_eic_processed_dataframes_simplified[i_i]:
                     found_eic_processed_dataframes_simplified[i_i][working_glycan] = i[j]
                 else:
                     for k_k, k in enumerate(i[j]):
@@ -2955,7 +2971,7 @@ def output_filtered_data(args_dict):
                 smoothed_eic_dataframes = {}
                 
                 eic_name = "RTs"
-                if samples_aligned:
+                if samples_aligned and i_i in original_sample_numbers:
                     rts_name = f"{i_i}_aligned_{eic_name}_{iso_fit_score}_{curve_fit_score}_{max_ppm}_{sn}"
                 else:
                     rts_name = f"{i_i}_{eic_name}"
@@ -3517,37 +3533,40 @@ def pre_processing(data,
             rt_array_report[j_j] = data[j]['retentionTime']
             mz_ints = [data[j]['m/z array'], data[j]['intensity array']]
             
-            # If custom noise is used...
-            if custom_noise[0]:
-                temp_noise[j_j] = custom_noise[1][data_id]
-                temp_avg_noise[j_j] = custom_noise[1][data_id]
-            
-            # Else it calculates the noise level
-            elif data[j]['retentionTime'] >= ret_time_interval[0] and data[j]['retentionTime'] <= ret_time_interval[1]:
-                if len(data[j]['intensity array']) == 0:
-                    temp_noise[j_j] = (1.0, 0.0, 0.0)
-                    temp_avg_noise[j_j] = 1.0
+            # Only analyze spectra inside the RT/MT range that contain peaks
+            if data[j]['retentionTime'] >= ret_time_interval[0] and data[j]['retentionTime'] <= ret_time_interval[1] and len(data[j]['intensity array']) > 0:
+                threads_arrays.append(j)
+                ms1_id.append(j_j)
+
+                # If custom noise is used, make a flat noise level in the same format as the calculated one
+                if custom_noise[0]:
+                    temp_noise[j_j] = (custom_noise[1][data_id], custom_noise[1][data_id], mz_ints[0][-1])
+                    temp_avg_noise[j_j] = custom_noise[1][data_id]
+
+                # Else it calculates the noise level
                 else:
-                    threads_arrays.append(j)
-                    ms1_id.append(j_j)
                     temp_noise_segments = General_Functions.rt_noise_level_parameters_set(mz_ints, "segments")
                     temp_noise[j_j] = temp_noise_segments
                     temp_noise_whole = General_Functions.rt_noise_level_parameters_set(mz_ints, "whole")
                     temp_avg_noise[j_j] = temp_noise_whole
                     if temp_noise_whole != 1.0:
                         list_for_avg.append(temp_noise_whole)
-            
-            # Outside the RT range, dummy noise levels
+
+            # Empty spectra or outside the RT range, dummy noise levels
             else:
                 temp_noise[j_j] = (1.0, 0.0, 0.0)
                 temp_avg_noise[j_j] = 1.0
-                
+
         if len(list_for_avg) != 0:
-            avg = np.mean(list_for_avg)      
+            avg = np.mean(list_for_avg)
             for i_i, i in enumerate(temp_avg_noise):
                 if i == 1.0:
                     temp_avg_noise[i_i] = avg
-        
+
+        # With custom noise, the average noise is the custom value for the whole file
+        if custom_noise[0]:
+            temp_avg_noise = [custom_noise[1][data_id]]*len(ms1_index[data_id])
+
         acquisition_interval = rt_array_report[len(rt_array_report)//2]-rt_array_report[(len(rt_array_report)//2)-1]
         sampling_rate = round((1/60)/acquisition_interval)
         
@@ -4220,21 +4239,27 @@ def analyze_ms2(args_dict):
     
     # Start fragment library building
     with concurrent.futures.ProcessPoolExecutor(max_workers = cpu_count if cpu_count < 60 else 60) as executor:
+        results = []
         for index, glycan in enumerate(library):
-            executor.submit(Library_Tools.calculate_glycan_fragments,
-                            glycan,
-                            library[glycan]['Monos_Composition'],
-                            adduct_combos_dict,
-                            tolerance,
-                            tag,
-                            permethylated,
-                            reduced,
-                            lactonized_ethyl_esterified,
-                            forced,
-                            fragments_dict,
-                            fragments_per_glycan,
-                            custom_monos)
-            
+            result = executor.submit(Library_Tools.calculate_glycan_fragments,
+                                     glycan,
+                                     library[glycan]['Monos_Composition'],
+                                     adduct_combos_dict,
+                                     tolerance,
+                                     tag,
+                                     permethylated,
+                                     reduced,
+                                     lactonized_ethyl_esterified,
+                                     forced,
+                                     fragments_dict,
+                                     fragments_per_glycan,
+                                     custom_monos)
+            results.append(result)
+
+        # Raise any error that happened while building the fragments of a glycan, instead of silently ignoring it
+        for result in results:
+            result.result()
+
     # Index the fragments, arranged by mz, to allow for binary search
     indexed_fragments = {}
     for fragment, frag_data in fragments_dict.items():
@@ -4482,7 +4507,7 @@ def analyze_glycan_ms2(ms2_index,
                         if isotopic_peak_index > 4:
                             break
                             
-                        target_mz = (isotopic_peak_mass+(General_Functions.h_mass*adduct_charge))/abs(adduct_charge)
+                        target_mz = glycan_data['Adducts_mz'][adduct]+((isotopic_peak_mass-glycan_data['Isotopic_Distribution_Masses'][0])/abs(adduct_charge))
                         
                         tolerance_calculated = General_Functions.tolerance_calc(tolerance[0], tolerance[1], target_mz)*5
                         

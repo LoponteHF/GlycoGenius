@@ -87,7 +87,7 @@ setup(
         'License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)',
         'Operating System :: OS Independent',
     ],
-    python_requires='>=3.6',
+    python_requires='>=3.12,<3.13',
     install_requires=requirements,
     entry_points={
         'console_scripts': [

@@ -204,8 +204,8 @@ def config_handler(from_GUI = False, param_file_path = ''):
         min_max_xyl = library_metadata.get('min/max xyloses', [0, 0])
         min_max_hn = library_metadata.get('min/max hexosamines', [0, 0])
         min_max_ua = library_metadata.get('min/max uronic acids', [0, 0])
-        min_max_sulfation = library_metadata[21]
-        min_max_phosphorylation = library_metadata[22]
+        min_max_sulfation = library_metadata.get('min/max sulfation', [0, 0])
+        min_max_phosphorylation = library_metadata.get('min/max phosphorylation', [0, 0])
         forced = library_metadata.get('glycan class', None)
         min_max_proton = library_metadata.get('min/max protons', [0, 0])
         max_charges = library_metadata.get('maximum charges', 3)
@@ -224,7 +224,8 @@ def config_handler(from_GUI = False, param_file_path = ''):
         custom_glycans_list[0] = True
         
         if not reanalysis:
-            if (len(config['library_building_modes']['custom_glycans_list'].split("\\")) > 1 or len(config['library_building_modes']['custom_glycans_list'].split("/")) > 1):
+            custom_glycans_value = config['library_building_modes']['custom_glycans_list'].strip().strip('"').strip("'")
+            if os.path.isfile(custom_glycans_value) or "\\" in custom_glycans_value or os.path.splitext(custom_glycans_value)[1] != '':
                 try:
                     # Adjust custom_glycans path
                     temp_path_custom_glycans = config['library_building_modes']['custom_glycans_list']
@@ -271,15 +272,11 @@ def config_handler(from_GUI = False, param_file_path = ''):
                     except KeyboardInterrupt:
                         os._exit(1)
             else:
-                custom_glycans = config['library_building_modes']['custom_glycans_list'].split(",")
+                custom_glycans = [glycan.strip() for glycan in config['library_building_modes']['custom_glycans_list'].split(",") if len(glycan.strip()) > 0]
                 to_add = []
                 for i_i, i in enumerate(custom_glycans):
-                    custom_glycans[i_i] = i.strip()
-                    if len(custom_glycans[i_i]) == 0:
-                        custom_glycans = custom_glycans[:i_i]+custom_glycans[i_i+1:]
-                        continue
-                    if len(custom_glycans[i_i].split("/")) > 1:
-                        splitted_glycan = custom_glycans[i_i].split("/")
+                    if len(i.split("/")) > 1:
+                        splitted_glycan = i.split("/")
                         custom_glycans[i_i] = splitted_glycan[0]
                         to_add.append(splitted_glycan[1])
                 for i in to_add:
@@ -357,7 +354,7 @@ def config_handler(from_GUI = False, param_file_path = ''):
             cm = [element.strip() for element in cm.split(",")]
             
             # If short-code in use
-            if cm[1] in short_codes_in_use:
+            if cm[1].upper() in short_codes_in_use:
                 print(f"Custom monosaccharide {cm[0]} short-code already in use. Use one not listed below:")
                 for short_code in [x.upper() for x in General_Functions.monosaccharides.keys()]+['T']:
                     print(short_code)
@@ -367,6 +364,7 @@ def config_handler(from_GUI = False, param_file_path = ''):
                         time.sleep(3600)
                 except KeyboardInterrupt:
                     os._exit(1)
+            short_codes_in_use.add(cm[1].upper())
             
             # Generate new one-letter code
             alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
@@ -471,7 +469,7 @@ def config_handler(from_GUI = False, param_file_path = ''):
         if 'noise_levels' in config['analysis_parameters']:
             noise_levels = config['analysis_parameters']['noise_levels'].split(",")
             for i_i, i in enumerate(noise_levels):
-                noise_levels[i_i] = int(i.strip())
+                noise_levels[i_i] = float(i.strip())
             custom_noise = [config['analysis_parameters'].getboolean('custom_noise_level'), noise_levels]
         
     #post-analysis for analysis running mode and reanalysis running mode
@@ -509,7 +507,7 @@ def config_handler(from_GUI = False, param_file_path = ''):
             
         fill_gaps = (fill_gaps_on_off, fill_gaps_percentage, fill_gaps_rt_tol, fill_gaps_noise)
         
-        compositions = config['post-analysis/reanalysis'].getboolean('analyze_compositions')
+        compositions = config['post-analysis/reanalysis'].getboolean('output_compositions_analysis', fallback=True)
         plot_metaboanalyst_file = config['post-analysis/reanalysis'].getboolean('output_metaboanalyst_file')
         if plot_metaboanalyst_file:
             metaboanalyst_groups_path = config['post-analysis/reanalysis']['sample_groups'].strip().strip("'").strip('"')

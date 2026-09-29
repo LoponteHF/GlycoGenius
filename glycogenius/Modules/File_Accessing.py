@@ -66,7 +66,7 @@ class make_mzxml(object):
     def __init__(self,it):
         self.data = mzml.MzML(it)
     def __iter__(self):
-        return self.make_mzxml_iterator(self.data)
+        return self.make_mzxml_iterator(self)
     def __getitem__(self,index):
         if type(index) == int:
             pre_data = self.data[index]
@@ -104,6 +104,7 @@ class make_mzxml(object):
                 last_index = len(self.data)
             data = []
             for index in range(first_index, last_index):
+                pre_data = self.data[index]
                 if self.data[index]['ms level'] == 2:
                     if float(self.data[-1]['scanList']['scan'][0]['scan start time']) > 300:
                         data.append({'num': self.data[index]['id'].split('=')[-1], 'retentionTime': float(self.data[index]['scanList']['scan'][0]['scan start time'])/60, 'msLevel': self.data[index]['ms level'], 'm/z array': self.data[index]['m/z array'], 'intensity array': self.data[index]['intensity array']})
@@ -133,19 +134,9 @@ class make_mzxml(object):
             return self
 
         def __next__(self):
-            if self.index < len(self.data):
-                pre_data = self.data[self.index]
+            if self.index < len(self.data.data):
                 self.index += 1
-                if pre_data['ms level'] == 2:
-                    if float(self.data[-1]['scanList']['scan'][0]['scan start time']) > 300: #300 scan time should allow for the correct evaluation of scan time being in seconds or minutes for every run that lasts between 5 minutes and 5 hours
-                        return {'num': pre_data['id'].split('=')[-1], 'retentionTime': float(pre_data['scanList']['scan'][0]['scan start time'])/60, 'msLevel': pre_data['ms level'], 'm/z array': pre_data['m/z array'], 'intensity array': pre_data['intensity array'], 'precursorMz': [{'precursorMz': pre_data['precursorList']['precursor'][0]['selectedIonList']['selectedIon'][0]['selected ion m/z']}]}
-                    else:
-                        return {'num': pre_data['id'].split('=')[-1], 'retentionTime': float(pre_data['scanList']['scan'][0]['scan start time']), 'msLevel': pre_data['ms level'], 'm/z array': pre_data['m/z array'], 'intensity array': pre_data['intensity array'], 'precursorMz': [{'precursorMz': pre_data['precursorList']['precursor'][0]['selectedIonList']['selectedIon'][0]['selected ion m/z']}]}
-                else:
-                    if float(self.data[-1]['scanList']['scan'][0]['scan start time']) > 300:
-                        return {'num': pre_data['id'].split('=')[-1], 'retentionTime': float(pre_data['scanList']['scan'][0]['scan start time'])/60, 'msLevel': pre_data['ms level'], 'm/z array': pre_data['m/z array'], 'intensity array': pre_data['intensity array']}
-                    else:
-                        return {'num': pre_data['id'].split('=')[-1], 'retentionTime': float(pre_data['scanList']['scan'][0]['scan start time']), 'msLevel': pre_data['ms level'], 'm/z array': pre_data['m/z array'], 'intensity array': pre_data['intensity array']}
+                return self.data[self.index-1]
             else:
                 raise StopIteration
        
@@ -795,10 +786,9 @@ def peak_curve_fit(rt_int,
             if len(temp_y[len(y_adds):len(temp_y)-len(y_adds)]) <= 2:
                 temp_relation = []
                 for l in range(len(temp_y[len(y_adds):len(temp_y)-len(y_adds)])):
-                    if temp_y[len(y_adds):len(temp_y)-len(y_adds)][l] >= y_gaussian_scaled[len(y_adds):len(temp_y)-len(y_adds)][l]:
-                        temp_relation.append(temp_y[len(y_adds):len(temp_y)-len(y_adds)][l]/y_gaussian_scaled[len(y_adds):len(temp_y)-len(y_adds)][l])
-                    else:
-                        temp_relation.append(y_gaussian_scaled[len(y_adds):len(temp_y)-len(y_adds)][l]/temp_y[len(y_adds):len(temp_y)-len(y_adds)][l])
+                    actual = temp_y[len(y_adds):len(temp_y)-len(y_adds)][l]
+                    ideal = y_gaussian_scaled[len(y_adds):len(temp_y)-len(y_adds)][l]
+                    temp_relation.append(min(actual, ideal)/max(actual, ideal) if max(actual, ideal) > 0 else 0.0)
                 R_sq = mean(temp_relation)
             else:
                 corr_matrix = numpy.corrcoef(temp_y[len(y_adds):len(temp_y)-len(y_adds)], y_gaussian_scaled[len(y_adds):len(temp_y)-len(y_adds)])

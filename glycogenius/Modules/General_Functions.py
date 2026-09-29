@@ -25,6 +25,7 @@ from statistics import stdev, mean
 from scipy.stats import linregress
 from scipy.sparse.linalg import splu
 from scipy import sparse
+import random
 import dill
 import numpy
 import sys
@@ -162,6 +163,44 @@ def binary_search_with_tolerance(arr, target, low, high, tolerance, int_arr = []
     else:
         # If target is smaller, ignore the right half
         return binary_search_with_tolerance(arr, target, low, mid - 1, tolerance, int_arr, black_list)
+    
+def fast_binary_search_with_tolerance(arr, target, tolerance, int_arr=None):
+    '''Fast NumPy-based search for the most intense or closest peak within tolerance.
+    
+    Parameters
+    ----------
+    arr : list/np.array
+        Target array to search for target.
+        
+    target : float
+        Float to find in target array.
+        
+    tolerance : float
+        Tolerance to check for target in target array.
+        
+    int_arr : list/np.array, optional
+        List of intensities, synchronized with arr, to help choose the best target within tolerance.
+        
+    Returns
+    -------
+    selected_id : int
+        The index of the selected target, or -1 if not found.
+    '''
+    m_z_arr = numpy.asarray(arr)
+    int_arr_np = numpy.asarray(int_arr) if int_arr is not None else None
+    
+    left = numpy.searchsorted(m_z_arr, target - tolerance, side='left')
+    right = numpy.searchsorted(m_z_arr, target + tolerance, side='right')
+    
+    if left >= right:
+        return -1
+    
+    if int_arr_np is not None:
+        intensities = int_arr_np[left:right]
+        return left + numpy.argmax(intensities)
+    else:
+        diffs = numpy.abs(m_z_arr[left:right] - target)
+        return left + numpy.argmin(diffs)
 
 def linear_regression(x, y, th = 2.5):
     '''Traces a linear regression of supplied 2d data points and returns the slope,
@@ -299,9 +338,9 @@ def determine_adduct_charge(mode, *args):
         # Determine the charges of the adduct combo
         distance = inf
         chosen = None
-        for charge in range(1, max_charges+1):
+        for charge in range(1, abs(max_charges)+1):
             if abs(glycan_adduct_mz*charge-glycan_neutral_mass) < distance:
-                distance = abs(glycan_adduct_mz-glycan_neutral_mass)
+                distance = abs(glycan_adduct_mz*charge-glycan_neutral_mass)
                 chosen = charge
                 
         adduct_charge = chosen
@@ -569,10 +608,10 @@ def rt_noise_level_parameters_set(mz_int, mode):
         max_val = numpy.max(segment)
         
         if (min_val != 0 and noise_threshold > min_val*5) or noise_threshold > max_val*0.5: #this means that the data is denoised already, so it picks really high intensity as possible noise
-            # if mode == "whole": print("picked minimum", min(j), max(j), len(j), noise_threshold) 
-            noise.append(min_val if min_val != 0 else 1.0)
+            # Random noise level (for variability in filled gaps), seeded by the spectrum data so the same file always gives the same result
+            noise_rng = random.Random(f"{len(segment)}_{float(numpy.sum(segment))}_{float(min_val)}")
+            noise.append(noise_rng.uniform(min_val/2, min_val) if min_val != 0 else 1.0)
         else:
-            # if mode == "whole": print("picked 2 std", min(j), max(j), len(j), noise_threshold) 
             noise.append(noise_threshold)
     if len(noise) == 1:
         return noise[0]
@@ -602,13 +641,14 @@ def local_noise_calc(noise_specs, x, avg_noise):
     '''
     returned_value = None
     
-    if noise_specs[2] == 0.0 or noise_specs[1] > noise_specs[0]*5 or noise_specs[0] > noise_specs[1]*5:
+    if noise_specs[2] == 0.0 or ((noise_specs[1] > noise_specs[0]*5 or noise_specs[0] > noise_specs[1]*5) and avg_noise != 0.0):
         returned_value = avg_noise
     else:
         returned_value = noise_specs[0] + (((noise_specs[1]-noise_specs[0])/noise_specs[2])*x)
-        
+
+    # A noise level must always be positive: fall back to the average noise, or to 1.0 if that isn't usable either
     if returned_value <= 0 or not returned_value:
-        returned_value = avg_noise
+        returned_value = avg_noise if avg_noise > 0 else 1.0
         
     return returned_value
     
@@ -729,22 +769,25 @@ def glycan_to_atoms(glycan_composition, permethylated, monos):
         "O": 6, "N": 0, "H": 12}.
     '''
     atoms = {key:0 for i in monos for key in monos[i][2].keys()}
-    monosaccharides_local = monos
-    
-    if permethylated:
-        for mono_name, mono_inf in monosaccharides_local.items():
-            mono_comp = mono_inf[2]
-            
-            unsaturations = mono_comp['C'] - ((mono_comp['H']+2)/2) + (mono_comp['N']/2) + 1
-            methylations = (mono_comp['O']+1) + mono_comp['N'] - unsaturations - 2
-            
-            mono_comp['C'] += methylations
-            mono_comp['H'] += methylations*2
+
     for i in glycan_composition:
         if i == "T":
             continue
+        mono_comp = monos[i][2]
+
+        # Calculate the methylations locally so the monosaccharides dictionary is not modified
+        methylations = 0
+        if permethylated:
+            unsaturations = mono_comp['C'] - ((mono_comp['H']+2)/2) + (mono_comp['N']/2) + 1
+            methylations = (mono_comp['O']+1) + mono_comp['N'] - unsaturations - 2
+
         for j in atoms:
-            atoms[j] += monosaccharides_local[i][2].get(j, 0)*glycan_composition[i]
+            atom_count = mono_comp.get(j, 0)
+            if j == 'C':
+                atom_count += methylations
+            elif j == 'H':
+                atom_count += methylations*2
+            atoms[j] += atom_count*glycan_composition[i]
     return atoms
 
 def sum_atoms(*compositions):
@@ -1036,5 +1079,8 @@ def gen_adducts_combo(min_max_proton,
                         adduct_atoms_dict[atom] = adduct_atoms_dict.get(atom, 0)+(count*number)
                     
             adduct_combos.append([adduct_atoms_dict, current_charge])
-           
+    
+    # Remove duplicate combos
+    adduct_combos = [adduct_combo for index, adduct_combo in enumerate(adduct_combos) if adduct_combo not in adduct_combos[index+1:]]
+    
     return adduct_combos

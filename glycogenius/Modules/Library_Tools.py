@@ -725,9 +725,10 @@ def include_internal_standard(full_library,
             if permethylated:
                 i_atoms = General_Functions.sum_atoms(i_atoms, {'C': 2, 'H': 4})
                 if reduced:
-                    i_atoms = General_Functions.sum_atoms(i_atoms, {'O': 1})
+                    i_atoms = General_Functions.sum_atoms(i_atoms, {'C': 1, 'H': 4})
             if not permethylated and reduced:
                 i_atoms = General_Functions.sum_atoms(i_atoms, {'H': 2})
+        i_neutral_mass = mass.calculate_mass(composition=i_atoms)
         i_atoms_tag = General_Functions.sum_atoms(i_atoms, tag[0])
         i_neutral_tag = i_neutral_mass+tag[1]
     else:
@@ -813,15 +814,18 @@ def calculate_glycan_fragments(glycan,
     constraints["T"] = (0, 1)
     monos_chars = "".join([letter for letter in constraints])
     
+    # Creates fragments possibilities
     for i in range(1, sum(glycan_comp.values())+2):
         combinations = generate_combinations_with_constraints(monos_chars, i, constraints, monosaccharides)
         for j in combinations:
             fragments_glycan.append(General_Functions.sum_monos(def_glycan_comp, j, monos = monosaccharides))
     
+    # Calculate the numbers of sialic acids
     total_glycolyl_sialics_in_glycan = sum([glycan_comp[sialic] for sialic in sialics if sialic in glycolyl_sialics])
     total_non_glycolyl_sialics_in_glycan = sum([glycan_comp[sialic] for sialic in sialics if sialic not in glycolyl_sialics])
     total_sialics_in_glycan = total_glycolyl_sialics_in_glycan + total_non_glycolyl_sialics_in_glycan
     
+    # Remove fragments outside the ranges of existing glycans
     to_be_removed = []
     for i_i, i in enumerate(fragments_glycan):
         
@@ -837,7 +841,7 @@ def calculate_glycan_fragments(glycan,
             or ((i['F'] > 0 and total_sialics > 0) and (i['H'] == 0 and i['N'] == 0))):
             to_be_removed.append(i_i)
             
-        if forced == 'nglycan' and i_i not in to_be_removed: #some rules and hardcoded exceptions for N-Glycans
+        if forced == 'n_glycans' and i_i not in to_be_removed: #some rules and hardcoded exceptions for N-Glycans
             
             if ((i['T'] == 1 and total_monos < 8 and total_sialics > 0)
                 or (total_monos < 6 and total_sialics >= 1 and i['N'] > 1)
@@ -852,7 +856,8 @@ def calculate_glycan_fragments(glycan,
                 
     for i in sorted(to_be_removed, reverse = True):
         del fragments_glycan[i]
-        
+    
+    # Start selecting base fragments
     fragments_glycan_formulas = []
     for fragment in fragments_glycan:
         fragment_formula = General_Functions.comp_to_formula(fragment)
@@ -867,7 +872,7 @@ def calculate_glycan_fragments(glycan,
                     if permethylated:
                         fragment_atoms = General_Functions.sum_atoms(fragment_atoms, {'C': 1, 'H': 2})
                         if reduced:
-                            fragment_atoms = General_Functions.sum_atoms(fragment_atoms, {'O': 1})
+                            fragment_atoms = General_Functions.sum_atoms(fragment_atoms, {'C': 1, 'H': 4})
                     if not permethylated and reduced:
                         fragment_atoms = General_Functions.sum_atoms(fragment_atoms, {'H': 2})
                 fragment_atoms = General_Functions.sum_atoms(fragment_atoms, tag[0])
@@ -914,7 +919,7 @@ def calculate_glycan_fragments(glycan,
         fragments_glycan_formulas_permethylated = []
         for fragment in fragments_glycan_formulas:
             new_fragment_name = f"{fragment}+CH2"
-            fragments_glycan_formulas_h2o.append(new_fragment_name)
+            fragments_glycan_formulas_permethylated.append(new_fragment_name)
             
             if new_fragment_name not in fragments_dict:
                 fragment_info = copy.deepcopy(fragments_dict[fragment])
