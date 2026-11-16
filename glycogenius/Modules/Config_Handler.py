@@ -165,12 +165,7 @@ def config_handler(from_GUI = False, param_file_path = ''):
         
     elif general_mode != 'reanalysis' and general_mode != 'library' and general_mode != 'analysis':
         print("Wrong mode selected. Use 'analysis',\n'reanalysis' or 'library' in mode under\n'running_modes', in the parameters file.")
-        print("Close the window or press CTRL+C to exit.")
-        try:
-            while True:
-                time.sleep(3600)
-        except KeyboardInterrupt:
-            os._exit(1)
+        General_Functions.exit_after_error(from_GUI)
         
     
     #library building mode
@@ -265,12 +260,7 @@ def config_handler(from_GUI = False, param_file_path = ''):
                         custom_glycans.append(i)
                 except:
                     print("Custom glycans file not found. Check the path to\nthe file you've inputted in the parameters file.")
-                    print("Close the window or press CTRL+C to exit.")
-                    try:
-                        while True:
-                            time.sleep(3600)
-                    except KeyboardInterrupt:
-                        os._exit(1)
+                    General_Functions.exit_after_error(from_GUI)
             else:
                 custom_glycans = [glycan.strip() for glycan in config['library_building_modes']['custom_glycans_list'].split(",") if len(glycan.strip()) > 0]
                 to_add = []
@@ -284,12 +274,7 @@ def config_handler(from_GUI = False, param_file_path = ''):
             custom_glycans_list[1] = custom_glycans
     elif library_mode != 'custom_library' and library_mode != 'import_library' and library_mode != 'generate_library':
         print("Wrong mode selected. Use 'import_library',\n'custom_library' or 'generate_library' in mode\nunder 'library_building_modes', in the\nparameters file.")
-        print("Close the window or press CTRL+C to exit.")
-        try:
-            while True:
-                time.sleep(3600)
-        except KeyboardInterrupt:
-            os._exit(1)
+        General_Functions.exit_after_error(from_GUI)
     
     elif library_mode == 'generate_library': 
         total_monosaccharides = config['library_building_modes']['total_monosaccharides'].split(',')
@@ -335,12 +320,7 @@ def config_handler(from_GUI = False, param_file_path = ''):
             forced = config['common_library_building_settings']['force_class_structure'].lower()
         else:
             print("Wrong 'force class structure' chosen.\nYou must choose between 'n_glycan', 'o_glycan'\nor 'gags'.")
-            print("Close the window or press CTRL+C to exit.")
-            try:
-                while True:
-                    time.sleep(3600)
-            except KeyboardInterrupt:
-                os._exit(1)
+            General_Functions.exit_after_error(from_GUI)
                 
     custom_monosaccharides_list = config['library_building_modes'].get('custom_monosaccharides', [])
                     
@@ -358,12 +338,7 @@ def config_handler(from_GUI = False, param_file_path = ''):
                 print(f"Custom monosaccharide {cm[0]} short-code already in use. Use one not listed below:")
                 for short_code in [x.upper() for x in General_Functions.monosaccharides.keys()]+['T']:
                     print(short_code)
-                print("Close the window or press CTRL+C to exit.")
-                try:
-                    while True:
-                        time.sleep(3600)
-                except KeyboardInterrupt:
-                    os._exit(1)
+                General_Functions.exit_after_error(from_GUI)
             short_codes_in_use.add(cm[1].upper())
             
             # Generate new one-letter code
