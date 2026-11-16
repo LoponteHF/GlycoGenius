@@ -510,7 +510,7 @@ def autofit_columns_excel(df, worksheet):
     for idx, col in enumerate(df):  # loop through all columns
         series = df[col]
         max_len = max((
-            series.astype(str).map(len).max(),  # len of largest item
+            series.map(lambda x: len(str(x))).max(),  # len of largest item
             len(str(series.name))  # len of column name/header
             )) + 1  # adding a little extra space
         worksheet.set_column(idx, idx, max_len)
