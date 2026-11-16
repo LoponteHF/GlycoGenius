@@ -54,7 +54,12 @@ def main(args={}):
         # If only reanalysis is set, only reanalyze, else do the complete workflow
         if args["output_filtered_data_args"]['reanalysis']:
             Execution_Functions.output_filtered_data(args["output_filtered_data_args"])
-        
+
+        # If set to only generate the library, generate it and skip the analysis
+        elif args['imp_exp_gen_library_args'].get('only generate library', False):
+            args['imp_exp_gen_library_args']['temporary folder'] = temp_folder
+            Execution_Functions.imp_exp_gen_library(args['imp_exp_gen_library_args'])
+
         else:
             # Add the temporary folder to the imp_exp_gen_library args
             args['imp_exp_gen_library_args']['temporary folder'] = temp_folder
@@ -184,16 +189,10 @@ def main(args={}):
         # Remove the temporary folder
         shutil.rmtree(temp_folder)
         
-        # If running interactively, press enter to exit, else just close
-        if os.isatty(0):
+        # If running interactively, press enter to exit, else just close.
+        # From the GUI, just return so the analysis thread can finish.
+        if not from_GUI and os.isatty(0):
             input('\nPress Enter to exit.')
-        else:
-            print("Close the window or press CTRL+C to exit.")
-            try:
-                while True:
-                    time.sleep(3600)
-            except KeyboardInterrupt:
-                os._exit(1)
     except KeyboardInterrupt:
         print("\n\n----------Execution cancelled by user.----------\n", flush=True)
         raise SystemExit(1)

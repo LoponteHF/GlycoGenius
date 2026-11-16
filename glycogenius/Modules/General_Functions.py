@@ -1084,3 +1084,28 @@ def gen_adducts_combo(min_max_proton,
     adduct_combos = [adduct_combo for index, adduct_combo in enumerate(adduct_combos) if adduct_combo not in adduct_combos[index+1:]]
     
     return adduct_combos
+
+def exit_after_error(from_GUI = False):
+    '''Stops the execution after an error message has been printed.
+
+    From the GUI, raises an exception so that the GUI can handle it instead of
+    freezing. In an interactive terminal, waits for Enter so that the message can
+    be read before the window closes. When the parameters were piped in, exits
+    right away with exit code 1.
+
+    Parameters
+    ----------
+    from_GUI : boolean
+        Whether or not the execution came from the GUI.
+
+    Returns
+    -------
+    nothing
+        Raises RuntimeError (GUI) or exits the program.
+    '''
+    if from_GUI:
+        raise RuntimeError("GlycoGenius stopped due to an error. Check the messages above.")
+    if os.isatty(0):
+        input("\nPress Enter to exit.")
+    sys.stdout.flush()
+    os._exit(1)

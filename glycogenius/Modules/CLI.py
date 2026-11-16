@@ -1053,16 +1053,7 @@ def CLI():
                 for i in glycan_comp:
                     if i not in General_Functions.monosaccharides:
                         print(f"\n\nUnrecognized monosaccharide in glycan list: {i}\nCheck your custom glycans list.\n")
-                        if os.isatty(0):
-                            input("\nPress Enter to exit.")
-                            os._exit(1)
-                        else:
-                            print("Close the window or press CTRL+C to exit.")
-                            try:
-                                while True:
-                                    time.sleep(3600)
-                            except KeyboardInterrupt:
-                                os._exit(1)
+                        General_Functions.exit_after_error()
                 custom_glycans_comp.append(General_Functions.sum_monos(glycan_comp))
             monos = {}
             max_monos = 0

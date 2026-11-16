@@ -629,16 +629,7 @@ def imp_exp_gen_library(args_dict):
             print("Done!")
         except:
             print("\n\nGlycan library file not found. Check if the\npath used in 'library_path' is correct or set\n'imp_library' to 'no'.\n")
-            if os.isatty(0):
-                input("\nPress Enter to exit.")
-                os._exit(1)
-            else:
-                print("Close the window or press CTRL+C to exit.")
-                try:
-                    while True:
-                        time.sleep(3600)
-                except KeyboardInterrupt:
-                    os._exit(1)
+            General_Functions.exit_after_error(from_GUI)
                     
     # If not importing, but generating a library from custom glycans list
     elif custom_glycans_list[0] and not imp_exp_library[0]:
@@ -651,16 +642,7 @@ def imp_exp_gen_library(args_dict):
             for i in glycan_comp:
                 if i not in monosaccharides:
                     print(f"\n\nUnrecognized monosaccharide in glycan list: {i}\nCheck your custom glycans list.\n")
-                    if os.isatty(0):
-                        input("\nPress Enter to exit.")
-                        os._exit(1)
-                    else:
-                        print("Close the window or press CTRL+C to exit.")
-                        try:
-                            while True:
-                                time.sleep(3600)
-                        except KeyboardInterrupt:
-                            os._exit(1)
+                    General_Functions.exit_after_error(from_GUI)
             custom_glycans_comp.append(General_Functions.sum_monos(glycan_comp))
             
         # Here it dynamically builds the constraints from the custom glycans list. This is important for fragment library building.
@@ -829,18 +811,7 @@ def imp_exp_gen_library(args_dict):
         print("set 'only_gen_lib' to False and input")
         print("remaining parameters.")
         
-        shutil.rmtree(temp_folder)
-        
-        if os.isatty(0):
-            input("\nPress Enter to exit.")
-            os._exit(1)
-        else:
-            print("Close the window or press CTRL+C to exit.")
-            try:
-                while True:
-                    time.sleep(3600)
-            except KeyboardInterrupt:
-                os._exit(1)
+        return full_library, adduct_combos
     time_formatted = str(datetime.datetime.now()).split(" ")[-1].split(".")[0]+" - "
     print(time_formatted+'Library length: '+str(len(full_library)))
     return full_library, adduct_combos
@@ -1508,16 +1479,7 @@ def make_df1_refactor(df1,
                     if analyze_ms2:
                         if "Detected_Fragments" not in list(df1[i_i].keys()):
                             print("\nThe data you are trying to reanalyze doesn't\ncontain MS2 data. Set 'analyze_ms2' to 'no' and\ntry again.\n")
-                            if os.isatty(0):
-                                input("\nPress Enter to exit.")
-                                os._exit(1)
-                            else:
-                                print("Close the window or press CTRL+C to exit.")
-                                try:
-                                    while True:
-                                        time.sleep(3600)
-                                except KeyboardInterrupt:
-                                    os._exit(1)
+                            General_Functions.exit_after_error()
                         if len(temp_rt) == 0:
                             df1[i_i]["Detected_Fragments"][j_j] = ""
                             for k in range(len(fragments_dataframes[i_i]["Glycan"])-1, -1, -1):
